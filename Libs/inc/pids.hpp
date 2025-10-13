@@ -1,6 +1,9 @@
 #ifndef PIDS_HPP
 #define PIDS_HPP
 #ifdef __cplusplus
+#include "stm32f4xx_hal.h"
+
+
 extern "C"
 {
 #endif
@@ -15,6 +18,7 @@ extern "C"
         float Kf;      // 前馈系数
         float delta_t; // 时间间隔
         int reverse;   // 反向控制标志
+        uint32_t dwt_dt;    // 自动DT用的DWT句柄
 
         // 限制参数
         float inte_lim;    // 积分限幅

@@ -7,6 +7,7 @@
 #include "motor_dji.hpp"
 #include "motor_dm.hpp"
 #include "bsp_dwt.h"
+#include "StateMachine.hpp"
 
 typedef struct
 {
@@ -24,6 +25,9 @@ typedef struct
 class RobotSystem
 {   
     public:
+    RobotSystem(){};
+    ~RobotSystem(){};   
+
     typedef enum
     {
         ChassisChk,
@@ -47,6 +51,9 @@ class RobotSystem
     
     LedWs2812* Led = nullptr;
     Odometer_Ops9* Odo = nullptr;      // 里程计指针
+
+    StateCore Automatic_Core;       // 自动状态机核心
+    StateCore Controlled_Core;      // 受控状态机核心
     
     
     void Init(bool Sc = true);       // Sc是缩写，表示启用自检
@@ -60,7 +67,8 @@ class RobotSystem
 };
 
 
-
+/* 默认的机器人系统 */
+extern RobotSystem System;
 
 
 #endif

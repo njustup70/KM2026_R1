@@ -19,10 +19,10 @@ void FastControlCpp();
 void SlowControlCpp();
 
 /// @brief 机器人主要进程
-void RobotApplicationCpp();
+void RobotMainCpp();
 
 /// @brief 机器人主任务
-void RobotMainCpp();
+void RobotSystemCpp();
 
 /******     MAIN函数        ******/
 /// @brief 主函数

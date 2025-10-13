@@ -340,7 +340,7 @@
               <MiscControls></MiscControls>
               <Define>USE_HAL_DRIVER,STM32F427xx</Define>
               <Undefine></Undefine>
-              <IncludePath>../Core/Inc;../Drivers/STM32F4xx_HAL_Driver/Inc;../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy;../Middlewares/Third_Party/FreeRTOS/Source/include;../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS;../Middlewares/Third_Party/FreeRTOS/Source/portable/RVDS/ARM_CM4F;../Drivers/CMSIS/Device/ST/STM32F4xx/Include;../Drivers/CMSIS/Include;../Libs;../Apps;../Mods;../Libs/inc;../Libs/src;../Apps/inc;../Apps/src;../Mods/inc;../Mods/src</IncludePath>
+              <IncludePath>../Core/Inc;../Drivers/STM32F4xx_HAL_Driver/Inc;../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy;../Middlewares/Third_Party/FreeRTOS/Source/include;../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS;../Middlewares/Third_Party/FreeRTOS/Source/portable/RVDS/ARM_CM4F;../Drivers/CMSIS/Device/ST/STM32F4xx/Include;../Drivers/CMSIS/Include;../Libs;../Apps;../Mods;../Libs/inc;../Libs/src;../Apps/inc;../Apps/src;../Mods/inc;../Mods/src;../Sys;../Sys/src;../Sys/inc</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -859,29 +859,19 @@
           <GroupName>Apps</GroupName>
           <Files>
             <File>
-              <FileName>MainCpp.cpp</FileName>
-              <FileType>8</FileType>
-              <FilePath>..\Apps\src\MainCpp.cpp</FilePath>
-            </File>
-            <File>
-              <FileName>RtosCpp.cpp</FileName>
-              <FileType>8</FileType>
-              <FilePath>..\Apps\src\RtosCpp.cpp</FilePath>
-            </File>
-            <File>
-              <FileName>RobotSystem.cpp</FileName>
-              <FileType>8</FileType>
-              <FilePath>..\Apps\src\RobotSystem.cpp</FilePath>
-            </File>
-            <File>
-              <FileName>StateMachine.cpp</FileName>
-              <FileType>8</FileType>
-              <FilePath>..\Apps\src\StateMachine.cpp</FilePath>
-            </File>
-            <File>
               <FileName>Chassis.cpp</FileName>
               <FileType>8</FileType>
               <FilePath>..\Apps\src\Chassis.cpp</FilePath>
+            </File>
+            <File>
+              <FileName>Test.cpp</FileName>
+              <FileType>8</FileType>
+              <FilePath>..\Apps\src\Test.cpp</FilePath>
+            </File>
+            <File>
+              <FileName>Process.cpp</FileName>
+              <FileType>8</FileType>
+              <FilePath>..\Apps\src\Process.cpp</FilePath>
             </File>
           </Files>
         </Group>
@@ -912,6 +902,36 @@
               <FileName>led_ws2812.cpp</FileName>
               <FileType>8</FileType>
               <FilePath>..\Mods\src\led_ws2812.cpp</FilePath>
+            </File>
+          </Files>
+        </Group>
+        <Group>
+          <GroupName>Sys</GroupName>
+          <Files>
+            <File>
+              <FileName>RobotSystem.cpp</FileName>
+              <FileType>8</FileType>
+              <FilePath>..\Sys\src\RobotSystem.cpp</FilePath>
+            </File>
+            <File>
+              <FileName>RtosCpp.cpp</FileName>
+              <FileType>8</FileType>
+              <FilePath>..\Sys\src\RtosCpp.cpp</FilePath>
+            </File>
+            <File>
+              <FileName>StateMachine.cpp</FileName>
+              <FileType>8</FileType>
+              <FilePath>..\Sys\src\StateMachine.cpp</FilePath>
+            </File>
+            <File>
+              <FileName>RobotSystemRDM.md</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\Sys\RobotSystemRDM.md</FilePath>
+            </File>
+            <File>
+              <FileName>StateMachineRDM.md</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\Sys\StateMachineRDM.md</FilePath>
             </File>
           </Files>
         </Group>

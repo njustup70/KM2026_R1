@@ -26,6 +26,7 @@ typedef struct
 class StateBlocks
 {
     public:
+    StateBlocks(){};
     StateBlocks(char *name, void (*StateAction)(StateCore *core))
     {
         strncpy(this->name, name, 15);
@@ -49,6 +50,8 @@ class StateBlocks
 class StateCore
 {
     public:
+    StateCore(){};
+
     uint32_t dwt_tick;          // dwt计时器用句柄
     float dt;                   // 两次状态切换的时间间隔，单位秒
     StateBlocks states[24];     // 状态块数组（上限24个）

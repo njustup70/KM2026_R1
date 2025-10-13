@@ -162,7 +162,6 @@ float PidGeneral::Calc(float targ, float real, float output_lim)
  */
 float PidGeneral::CalcPos(float targ, float real, float output_lim)
 {
-    static uint32_t dwt_dt = 0;
     float pid_output;
     error = targ - real;
 

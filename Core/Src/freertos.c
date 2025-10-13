@@ -51,7 +51,8 @@
 osThreadId RobotMainTaskHandle;
 osThreadId FastControlTaskHandle;
 osThreadId SlowControlTaskHandle;
-osThreadId RobotAppTaskHandle;
+osThreadId RobotSystemTaskHandle;
+osThreadId TestTaskHandle;
 
 /* Private function prototypes -----------------------------------------------*/
 /* USER CODE BEGIN FunctionPrototypes */
@@ -61,7 +62,8 @@ osThreadId RobotAppTaskHandle;
 void RobotMain(void const * argument);
 void FastControl(void const * argument);
 void SlowControl(void const * argument);
-void RobotApp(void const * argument);
+void RobotSystem(void const * argument);
+void Test(void const * argument);
 
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
 
@@ -108,7 +110,7 @@ void MX_FREERTOS_Init(void) {
 
   /* Create the thread(s) */
   /* definition and creation of RobotMainTask */
-  osThreadDef(RobotMainTask, RobotMain, osPriorityBelowNormal, 0, 128);
+  osThreadDef(RobotMainTask, RobotMain, osPriorityBelowNormal, 0, 256);
   RobotMainTaskHandle = osThreadCreate(osThread(RobotMainTask), NULL);
 
   /* definition and creation of FastControlTask */
@@ -119,9 +121,13 @@ void MX_FREERTOS_Init(void) {
   osThreadDef(SlowControlTask, SlowControl, osPriorityNormal, 0, 512);
   SlowControlTaskHandle = osThreadCreate(osThread(SlowControlTask), NULL);
 
-  /* definition and creation of RobotAppTask */
-  osThreadDef(RobotAppTask, RobotApp, osPriorityHigh, 0, 1024);
-  RobotAppTaskHandle = osThreadCreate(osThread(RobotAppTask), NULL);
+  /* definition and creation of RobotSystemTask */
+  osThreadDef(RobotSystemTask, RobotSystem, osPriorityHigh, 0, 1024);
+  RobotSystemTaskHandle = osThreadCreate(osThread(RobotSystemTask), NULL);
+
+  /* definition and creation of TestTask */
+  osThreadDef(TestTask, Test, osPriorityIdle, 0, 256);
+  TestTaskHandle = osThreadCreate(osThread(TestTask), NULL);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -173,19 +179,37 @@ void SlowControl(void const * argument)
   /* USER CODE END SlowControl */
 }
 
-/* USER CODE BEGIN Header_RobotApp */
+/* USER CODE BEGIN Header_RobotSystem */
 /**
-* @brief Function implementing the RobotAppTask thread.
+* @brief Function implementing the RobotSystemTask thread.
 * @param argument: Not used
 * @retval None
 */
-/* USER CODE END Header_RobotApp */
-void RobotApp(void const * argument)
+/* USER CODE END Header_RobotSystem */
+void RobotSystem(void const * argument)
 {
-  /* USER CODE BEGIN RobotApp */
+  /* USER CODE BEGIN RobotSystem */
   /* Infinite loop */
-  RobotApplicationCpp();
-  /* USER CODE END RobotApp */
+  RobotSystemCpp();
+  /* USER CODE END RobotSystem */
+}
+
+/* USER CODE BEGIN Header_Test */
+/**
+* @brief Function implementing the TestTask thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_Test */
+void Test(void const * argument)
+{
+  /* USER CODE BEGIN Test */
+  /* Infinite loop */
+  for(;;)
+  {
+    osDelay(1);
+  }
+  /* USER CODE END Test */
 }
 
 /* Private application code --------------------------------------------------*/
