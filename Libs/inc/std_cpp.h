@@ -24,9 +24,16 @@ void RobotMainCpp();
 /// @brief 机器人主任务
 void RobotSystemCpp();
 
+/// @brief 测试任务
+void TestCpp();
+
 /******     MAIN函数        ******/
-/// @brief 主函数
-void MainCpp();
+/**
+ * @brief 预初始化函数
+ * @warning 为什么要搞一个这个，而不是在RTOS启动的线程初始化呢
+ * 主要是因为怕线程爆栈，主函数的栈深基本上摸不到底的
+ */
+void PreMainCpp();
 
 
 /******     IT函数        ******/

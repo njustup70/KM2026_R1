@@ -102,6 +102,7 @@ int main(void)
   MX_TIM5_Init();
   MX_SPI4_Init();
   /* USER CODE BEGIN 2 */
+  PreMainCpp();
 
   /* USER CODE END 2 */
 

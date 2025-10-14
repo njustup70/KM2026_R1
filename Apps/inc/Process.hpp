@@ -4,12 +4,12 @@
 #include "RobotSystem.hpp"
 #include "StateMachine.hpp"
 
-namespace PROCESS
+class RobotProcess
 {
+    public:
     void Init();
-    void stateinit(StateCore *core);
-}
+};
 
-
+extern RobotProcess Process;
 
 #endif

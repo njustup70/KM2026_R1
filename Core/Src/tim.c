@@ -95,7 +95,7 @@ void HAL_TIM_Base_MspInit(TIM_HandleTypeDef* tim_baseHandle)
 
     /* TIM5 DMA Init */
     /* TIM5_CH4_TRIG Init */
-    hdma_tim5_ch4_trig.Instance = DMA1_Stream1;
+    hdma_tim5_ch4_trig.Instance = DMA1_Stream3;
     hdma_tim5_ch4_trig.Init.Channel = DMA_CHANNEL_6;
     hdma_tim5_ch4_trig.Init.Direction = DMA_MEMORY_TO_PERIPH;
     hdma_tim5_ch4_trig.Init.PeriphInc = DMA_PINC_DISABLE;

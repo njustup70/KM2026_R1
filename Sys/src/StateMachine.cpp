@@ -2,6 +2,7 @@
 #include "bsp_dwt.h"
 #include "stdio.h"
 
+
 /**
  * @brief 为状态块添加状态链接
  */
@@ -14,6 +15,7 @@ void StateBlocks::AddLink(bool *condition, StateBlocks *nextState)
         linkNums++;
     }
 }
+
 
 /**
  * @brief 进行状态转移，返回下一个状态ID
@@ -34,11 +36,13 @@ uint8_t StateBlocks::Transition()
 /**
  * @brief 为状态机添加状态块
  */
-void StateCore::AddState(StateBlocks state)
+void StateCore::AddState(StateBlocks *state)
 {
     if (stateNums < 24)
     {
-        states[stateNums] = state;
+        state->id = stateNums;
+        states[stateNums] = *state;
+        state->incore = &states[stateNums];
         stateNums++;
     }
 }

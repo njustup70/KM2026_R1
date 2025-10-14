@@ -5,13 +5,15 @@
 #include "bsp_dwt.h"
 #include "motor_dji.hpp"
 #include "RobotSystem.hpp"
+#include "Process.hpp"
+#include "Test.hpp"
 
 
 /**
  * @brief   机器人主要的应用层任务
  * @note    负载 `极低`，以10Hz运行
  */
-void RobotMainCpp()
+void RobotMainCpp()   
 {
     uint32_t AppTick = xTaskGetTickCount();
 
@@ -73,4 +75,41 @@ void FastControlCpp()
         MotorDji::ControlAllMotors();
         osDelay(1);     // FreeRTOS的极限，1ms喂狗
     }
+}
+
+
+
+/**
+ * @brief   机器人的测试任务
+ * @note    以200Hz运行，默认不启用，测试新功能时启用
+ */
+void TestCpp()
+{
+    // 需要用到测试功能时，启用本线程
+    if (TestEnable)
+    {
+        uint32_t AppTick = xTaskGetTickCount();
+        TestPart_Init();
+        while (1)
+        {
+            TestPart_Loop();
+            osDelayUntil(&AppTick, 5);    // 200Hz
+        }
+    }
+    // 不用测试功能时，销毁本线程
+    else
+    {
+        osThreadTerminate(NULL);
+    }
+}
+
+/**
+ * @brief 预初始化函数
+ * @warning 为什么要搞一个这个，而不是在RTOS启动的线程初始化呢
+ * 主要是因为怕线程爆栈，主函数的栈深基本上摸不到底的
+ */
+void PreMainCpp()
+{
+    Process.Init();
+    System.Init();
 }

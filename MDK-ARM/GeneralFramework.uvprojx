@@ -195,7 +195,7 @@
             <uLtcg>0</uLtcg>
             <nSecure>0</nSecure>
             <RoSelD>3</RoSelD>
-            <RwSelD>4</RwSelD>
+            <RwSelD>3</RwSelD>
             <CodeSel>0</CodeSel>
             <OptFeed>0</OptFeed>
             <NoZi1>0</NoZi1>
@@ -212,7 +212,7 @@
             <Ra2Chk>0</Ra2Chk>
             <Ra3Chk>0</Ra3Chk>
             <Im1Chk>1</Im1Chk>
-            <Im2Chk>1</Im2Chk>
+            <Im2Chk>0</Im2Chk>
             <OnChipMemories>
               <Ocm1>
                 <Type>0</Type>
@@ -873,6 +873,11 @@
               <FileType>8</FileType>
               <FilePath>..\Apps\src\Process.cpp</FilePath>
             </File>
+            <File>
+              <FileName>MsgCenter.cpp</FileName>
+              <FileType>8</FileType>
+              <FilePath>..\Apps\src\MsgCenter.cpp</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
@@ -902,6 +907,11 @@
               <FileName>led_ws2812.cpp</FileName>
               <FileType>8</FileType>
               <FilePath>..\Mods\src\led_ws2812.cpp</FilePath>
+            </File>
+            <File>
+              <FileName>msg_coder.cpp</FileName>
+              <FileType>8</FileType>
+              <FilePath>..\Mods\src\msg_coder.cpp</FilePath>
             </File>
           </Files>
         </Group>

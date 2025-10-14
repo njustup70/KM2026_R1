@@ -205,10 +205,7 @@ void Test(void const * argument)
 {
   /* USER CODE BEGIN Test */
   /* Infinite loop */
-  for(;;)
-  {
-    osDelay(1);
-  }
+  TestCpp();
   /* USER CODE END Test */
 }
 
