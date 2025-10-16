@@ -25,14 +25,14 @@ void MotorDji::Init(CAN_HandleTypeDef *hcan, uint8_t motorESC_id, MotorDJIMode d
 {
 	
 	// 首先，初始化其 速度环Pid类
-	if (fastInit)	speed_pid.FastInit(7.2, 96.0, 0.0, 0.16, 5000, false);		// 增量速度环
+	if (fastInit)	speed_pid.FastInit(3, 24.0, 0.0, 0.16, 5000, false);		// 增量速度环
 	// if (fastInit)	speed_pid.Init(10.8, 0.0, 0.0, 0.05, 0.0, 0, 0.0, 0.0, 0.8, false, true, true);		// 位置速度环
-	else 			speed_pid.FastInit(0.0, 0.0, 0.0, 0.0, 0, false);
+	else 			speed_pid.FastInit(0.0, 0.0, 0.0, 0.0, 5000, false);
 	
 	// 接着是 位置环Pid类	
 	// if (fastInit)	position_pid.FastInit(0.10, 1.00, 0.0, 0.0, 10000, false);		// 增量位置环
-	if (fastInit)	position_pid.Init(0.108, 0.0, 0.0, 0.05, 0.0, 0, 0.0, 0.0, 0.8, false, true, true);		// 位置位置环
-	else 			position_pid.Init(0.0, 0.0, 0.0, 0.0, 0.0, 0, 0.0, 0.0, 0.8, false, false, false);		// 位置位置环
+	if (fastInit)	position_pid.Init(0.108, 0.0, 0.0, 0.05, 0.0, 0, 0.0, 4000.0, 0.8, false, true, true);		// 位置位置环
+	else 			position_pid.Init(0.0, 0.0, 0.0, 0.0, 0.0, 0, 0.0, 4000.0, 0.8, false, false, false);		// 位置位置环
 	
 	if (fastInit)	mode = djimode;
 	else			mode = djimode;

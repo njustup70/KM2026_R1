@@ -122,11 +122,11 @@ void MX_FREERTOS_Init(void) {
   SlowControlTaskHandle = osThreadCreate(osThread(SlowControlTask), NULL);
 
   /* definition and creation of RobotSystemTask */
-  osThreadDef(RobotSystemTask, RobotSystem, osPriorityHigh, 0, 1024);
+  osThreadDef(RobotSystemTask, RobotSystem, osPriorityNormal, 0, 1024);
   RobotSystemTaskHandle = osThreadCreate(osThread(RobotSystemTask), NULL);
 
   /* definition and creation of TestTask */
-  osThreadDef(TestTask, Test, osPriorityIdle, 0, 256);
+  osThreadDef(TestTask, Test, osPriorityNormal, 0, 256);
   TestTaskHandle = osThreadCreate(osThread(TestTask), NULL);
 
   /* USER CODE BEGIN RTOS_THREADS */

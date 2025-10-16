@@ -110,6 +110,7 @@ void TestCpp()
  */
 void PreMainCpp()
 {
+    TestPart_MainInit();
     Process.Init();
     System.Init();
 }
