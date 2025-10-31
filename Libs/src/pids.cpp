@@ -47,9 +47,9 @@ PidGeneral::PidGeneral(float kp, float ki, float kd,float dt, int reverse,
     inte_lim = intLim;
     out_lim = outLim;
     kd_filter_rate = dtFilter;
-    Incremental = Incremental;
-    Feedforward = Feedforward;
-    InnerAcc = InnerAcc;
+    this->Incremental = Incremental;
+    this->Feedforward = Feedforward;
+    this->InnerAcc = InnerAcc;
 }
 
 /**
@@ -74,10 +74,10 @@ void PidGeneral::Init(float kp, float ki, float kd, float kf, float dt, int reve
     inte_lim = intLim;
     out_lim = outLim;
     kd_filter_rate = dtFilter;
-    Incremental = Incremental;
-    Feedforward = Feedforward;
-    InnerAcc = InnerAcc;
-    AutoDt = (dt == 0); // 若dt为0则启用自动计算
+    this->Incremental = Incremental;
+    this->Feedforward = Feedforward;
+    this->InnerAcc = InnerAcc;
+    this->AutoDt = (dt == 0); // 若dt为0则启用自动计算
 }
 
 /**
