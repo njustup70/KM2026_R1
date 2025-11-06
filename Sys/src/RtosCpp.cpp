@@ -118,7 +118,7 @@ void TestCpp()
  * @warning 为什么要搞一个这个，而不是在RTOS启动的线程初始化呢
  * 主要是因为怕线程爆栈，主函数的栈深基本上摸不到底的
  */
-void PreMainCpp()
+void MainInitCpp()
 {
     TestPart_MainInit();
     StateCenter.Regist();

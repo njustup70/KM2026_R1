@@ -110,13 +110,13 @@ void LedWs2812::SendData()
     HAL_TIM_PWM_Start_DMA(htim, Channel, (uint32_t*)WS2812buf2send, LedNums * 24 + 1);
 }
 
-int cnt_222 = 0;
+
 /**
  * @brief 覆写PWM + DMA发送完成中断
  */
 void HAL_TIM_PWM_PulseFinishedCallback(TIM_HandleTypeDef *htim)
 {
-    cnt_222 ++;
+
     if(htim == targ_led->htim)
     {
         HAL_TIM_PWM_Stop_DMA(targ_led->htim, targ_led->Channel);

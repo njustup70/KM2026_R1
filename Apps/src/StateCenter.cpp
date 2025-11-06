@@ -3,20 +3,9 @@
 #include "msg_coder.hpp" 
 #include "Action.hpp"
 #include "Chassis.hpp"
-
-#define PASTE2(a,b) a##b
-#define NEW_STATE(core, name) \
-    StateBlocks PASTE2(St_, name)(#name, PASTE2(Robo, name)); \
-    core.AddState(&PASTE2(St_, name));
+#include "StateCore.hpp"
 
 RobotStateCenter StateCenter;
-
-void RoboInit(StateCore *core);
-void RoboIdle(StateCore *core);
-void RoboError(StateCore *core);
-void RoboStop(StateCore *core);
-void RoboArea1(StateCore *core);
-bool Area1Flag;
 
 /**
  * @brief 进程模块的初始化部分
@@ -27,61 +16,37 @@ void RobotStateCenter::Regist()
     UartMsgCoder uart_coder;
     uart_coder.Init(&huart2);
     
-    // 注册状态机的所有状态块
-    NEW_STATE(System.Automatic_Core, Init);
-    NEW_STATE(System.Automatic_Core, Idle);
-    NEW_STATE(System.Automatic_Core, Stop);
-    NEW_STATE(System.Automatic_Core, Error);
-
-    NEW_STATE(System.Automatic_Core, Area1);
-
-    // 建立状态块之间的链接
-    St_Init.incore->AddLink(&(EvtSParam.RoboReady), St_Idle.incore);
-    St_Idle.incore->AddLink(&(EvtCParam.StopRobot), St_Stop.incore);
+    // 进入简并模式
+    System.Automatic_Core.Degenerate();
 
     // 绘制状态机图到串口，检验状态机结构
     System.Automatic_Core.CoreGraph(uart_coder.uart_inst);
 }
 
-
-void RoboInit(StateCore *core)
-{
-}
-
-/**
- * @brief 机器人区域1的状态
- * @details R1 在1区时的具体行为
- */
-void RoboArea1(StateCore *core)
+/**     覆写简并函数    **/
+void Roboworking(StateCore *core)
 {
     SEQLIZE
     {
-        // case 0:
-        // p_act_0 = Action.LaunchInstant(Arm.FetchBlock());
-        // p_act_1 = Action.LaunchAsync(Chassis.MoveAt(Vec2(2.0f, 2.0f));
-        // ACTEND
-        
-        // case 1:
-        // Action.WaitUntil(p_act_0->Completed() && p_act_1->Completed());
-        // ACTEND
-
-        // case 2:
-        // SEQEND;
-    }
-}
-
-
-void RoboIdle(StateCore *core)
-{
-
-}
-
-void RoboError(StateCore *core)
-{
-    
-}
-
-void RoboStop(StateCore *core)
-{
-
+        case 0:
+            Action.Wait(1000, SEQPARAM);            // 等待1秒
+        case 1:
+            Chassis.Enable();                       // 启用底盘
+            Chassis.Move(Vec2(0.5f, 0.0f));         // 前进
+            ACTEND
+        case 2:
+            Action.Wait(1000, SEQPARAM);            // 等待1秒
+        case 3:
+            Chassis.Move(Vec2(0.0f, 0.5f));         // 左移
+            ACTEND
+        case 4:
+            Action.Wait(1000, SEQPARAM);            // 等待1秒
+            ACTEND
+        case 5:
+            Chassis.Disable();                      // 禁用底盘
+            ACTEND
+        case 6:
+            Action.Wait(1000, SEQPARAM);            // 等待1秒
+            SEQENDSET(core->states[core->at_state_id].Complete);
+    }   
 }

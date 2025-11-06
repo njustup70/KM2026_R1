@@ -2,7 +2,6 @@
 #define PROCESS_HPP
 
 #include "RobotSystem.hpp"
-#include "StateCore.hpp"
 
 class RobotStateCenter
 {

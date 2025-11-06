@@ -329,8 +329,8 @@
             <uC99>1</uC99>
             <uGnu>0</uGnu>
             <useXO>0</useXO>
-            <v6Lang>3</v6Lang>
-            <v6LangP>3</v6LangP>
+            <v6Lang>6</v6Lang>
+            <v6LangP>9</v6LangP>
             <vShortEn>1</vShortEn>
             <vShortWch>1</vShortWch>
             <v6Lto>0</v6Lto>
@@ -853,6 +853,11 @@
               <FileType>8</FileType>
               <FilePath>..\Libs\src\pids.cpp</FilePath>
             </File>
+            <File>
+              <FileName>bsp_tim_pwm.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Libs\src\bsp_tim_pwm.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
@@ -917,6 +922,11 @@
               <FileName>msg_coder.cpp</FileName>
               <FileType>8</FileType>
               <FilePath>..\Mods\src\msg_coder.cpp</FilePath>
+            </File>
+            <File>
+              <FileName>servo.cpp</FileName>
+              <FileType>8</FileType>
+              <FilePath>..\Mods\src\servo.cpp</FilePath>
             </File>
           </Files>
         </Group>

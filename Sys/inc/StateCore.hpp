@@ -8,6 +8,14 @@
 class StateCore;        // 为了能引用，进行前向声明
 class StateBlocks;
 
+
+#define PASTE2(a,b) a##b
+#define NEW_STATE(core, name) \
+    StateBlocks PASTE2(St_, name)(#name, PASTE2(Robo, name)); \
+    core.AddState(&PASTE2(St_, name));
+
+
+
 /**
  * @brief 状态链接，代表了状态之间的转换关系
  */
@@ -62,11 +70,16 @@ class StateCore
     uint8_t stateNums;          // 状态块数量
     uint8_t at_state_id;        // 当前状态ID [0, 23]
 
+    void Degenerate(void);                                  // 进入状态机简并运行模式
     void (*GlobalAction)(StateCore *core) = nullptr;          // 全局状态函数
     
+    void RegistGlobalAction(void (*GlobalAction)(StateCore *core));
     void CoreGraph(BspUart_Instance uart_inst);
     void AddState(StateBlocks *state);
     void Run(void);
 };
+
+__weak void RoboWorking(StateCore *core);
+__weak void RoboEnd(StateCore *core);
 
 #endif
