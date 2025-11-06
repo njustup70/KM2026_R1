@@ -102,8 +102,10 @@ void TestCpp()
         TestPart_Init();
         while (1)
         {
+
             TestPart_Loop();
-            osDelayUntil(&AppTick, 5);    // 200Hz
+            // osDelayUntil(&AppTick, 5);    // 200Hz
+            HAL_Delay(5);
         }
     }
     // 不用测试功能时，销毁本线程

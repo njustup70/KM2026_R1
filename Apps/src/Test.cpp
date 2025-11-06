@@ -7,8 +7,12 @@
 #include "odo_ops.hpp"
 #include "led_ws2812.hpp"
 #include "bsp_dwt.h"
+#include "motor_dji.hpp"
 
 bool TestEnable = true;
+
+MotorC610 motor1;
+float target_speed = 500.0f;
 
 /**
  * @brief 只在Main中初始化的函数
@@ -16,6 +20,7 @@ bool TestEnable = true;
  */
 void TestPart_MainInit()
 {
+    
 }
 
 
@@ -26,7 +31,11 @@ void TestPart_MainInit()
  */
 void TestPart_Init()
 {
-    
+    motor1.Init(&hcan1, 1, Speed_Control, true);
+    motor1.SetSpeed(target_speed);
+    motor1.speed_pid.ParamSet(1.50, 20.0, 0.0);
+    motor1.Enable();
+
 }
 
 /**
@@ -35,5 +44,5 @@ void TestPart_Init()
  */
 void TestPart_Loop()
 {
-
+    
 }
