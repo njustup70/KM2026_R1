@@ -6,13 +6,13 @@
 
 
 /**
- * @brief 进程模块的初始化部分
- * @note 只会执行一次，在其中 组织机器人状态机的结构
+ * @brief 自动状态机的构建函数
+ * @note 在其中构建 自动状态机 的状态
  */
 void AutoLogic::Build()
 {
     // 进入简并模式
-    System.Automatic_Core.Degenerate();
+    System.auto_core.Degenerate();
 }
 
 

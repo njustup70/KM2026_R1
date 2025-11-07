@@ -59,8 +59,8 @@ class RobotSystem
 
     Vec3 global_position;           // 机器人全局位置，单位m，场地坐标系
 
-    StateCore Automatic_Core;       // 自动状态机核心
-    StateCore Controlled_Core;      // 受控状态机核心
+    StateCore auto_core;       // 自动状态机核心
+    StateCore instru_core;      // 受控状态机核心
     
     
     void Init(bool Sc = true);       // Sc是缩写，表示启用自检

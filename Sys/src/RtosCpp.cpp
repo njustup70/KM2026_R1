@@ -18,7 +18,7 @@ void InitializeCpp()
 {
     TestPart_MainInit();
     System.Init();
-    Buildlize();
+    Interface::Buildlize();
 }
 
 
@@ -34,7 +34,7 @@ void RobotMainCpp()
     {   
         // 维护DWT计时器
         DWT_CntUpdate();
-        Lazy_p();
+        Interface::Lazy();
 
         /***    最大循环频率：20Hz     ***/
         osDelayUntil(&AppTick, 50);    // 20Hz
@@ -56,7 +56,7 @@ void RobotSystemCpp()
     {
         System.Run();
         Action.ExecutorRun();          // 持续 追踪/执行 抛出的动作
-        System_p();
+        Interface::System();
 
         /***    最大循环频率：200Hz     ***/
         osDelayUntil(&AppTick, 5);
@@ -76,7 +76,7 @@ void SlowControlCpp()
 
     while (1)
     {
-        Slow_p();
+        Interface::Slow();
         /***    最大循环频率：200Hz     ***/
         osDelayUntil(&AppTick, 5);
     }
@@ -94,7 +94,7 @@ void FastControlCpp()
     while (1)
     {
         MotorDji::ControlAllMotors();
-        Fast_p();
+        Interface::Fast();
         /***    最大循环频率：1000Hz     ***/
         osDelay(1);     // FreeRTOS的极限，1ms喂狗
     }

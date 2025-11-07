@@ -878,6 +878,11 @@
               <FileType>8</FileType>
               <FilePath>..\Apps\src\AutoLogic.cpp</FilePath>
             </File>
+            <File>
+              <FileName>Interfaces.cpp</FileName>
+              <FileType>8</FileType>
+              <FilePath>..\Apps\src\Interfaces.cpp</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>

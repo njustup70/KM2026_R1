@@ -4,14 +4,18 @@
 #include "RobotSystem.hpp"
 
 
-/**         构建        **/
-void Buildlize();
+namespace Interface
+{
+    /**         构建        **/
+    void Buildlize();
 
-/**         线程        **/
+    /**         线程        **/
 
-void Lazy_p();
-void Slow_p();
-void Fast_p();
-void System_p();
+    void Lazy();
+    void Slow();
+    void Fast();
+    void System();
+}
+
 
 #endif
