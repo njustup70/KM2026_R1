@@ -8,7 +8,7 @@
 #include "StateCenter.hpp"
 #include "Test.hpp"
 #include "Action.hpp"
-
+#include "motor_vesc.hpp"//这是yuan定义的
 
 /**
  * @brief   机器人主要的应用层任务
@@ -98,12 +98,18 @@ void TestCpp()
     // 需要用到测试功能时，启用本线程
     if (TestEnable)
     {
+       
         uint32_t AppTick = xTaskGetTickCount();
         TestPart_Init();
+
+
+    MotorVESC_Init(&motor_vesc_1,&hcan1,1,120);
+
         while (1)
         {
             TestPart_Loop();
             osDelayUntil(&AppTick, 5);    // 200Hz
+       //     motor_vesc_1.MotorVESC_SetMotorDuty(50);
         }
     }
     // 不用测试功能时，销毁本线程

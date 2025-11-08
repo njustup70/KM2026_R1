@@ -17,6 +17,10 @@
         "task.h": "c",
         "__config": "cpp",
         "__nullptr": "cpp",
-        "arm_math.h": "c"
-    }
+        "arm_math.h": "c",
+        "tim.h": "c",
+        "cstdint": "c",
+        "motor_vesc.hpp": "c"
+    },
+    "C_Cpp.errorSquiggles": "disabled"
 }
