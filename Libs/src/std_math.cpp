@@ -124,3 +124,8 @@ Vec3 Vec2::ToVec3()
     Vec3 v(this->x, this->y, 0);
     return v;
 }
+///////////////////////////////////////////          COLOR        /////////////////////////////////////////////////////
+Color Color::Red = Color(64.0f, 0.0f, 0.0f);   // 红色（r=1, g=0, b=0）
+Color Color::Green = Color(0.0f, 64.0f, 0.0f); // 绿色（r=0, g=1, b=0）
+Color Color::Blue = Color(0.0f, 0.0f, 64.0f);  // 蓝色（r=0, g=0, b=1）
+
