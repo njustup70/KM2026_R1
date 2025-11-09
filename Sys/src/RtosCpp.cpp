@@ -103,13 +103,13 @@ void TestCpp()
         TestPart_Init();
 
 
-    MotorVESC_Init(&motor_vesc_1,&hcan1,1,120);
+    MotorVESC_Init(&motor_vesc_1,&hcan1,1,114);
 
         while (1)
         {
+            motor_vesc_1.MotorVESC_SetMotorRPM(5000);
             TestPart_Loop();
             osDelayUntil(&AppTick, 5);    // 200Hz
-       //     motor_vesc_1.MotorVESC_SetMotorDuty(50);
         }
     }
     // 不用测试功能时，销毁本线程
