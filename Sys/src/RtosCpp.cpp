@@ -9,6 +9,9 @@
 #include "Test.hpp"
 #include "Action.hpp"
 #include "motor_vesc.hpp"//这是yuan定义的
+#include "bsp_can.h"
+#include <string.h>
+#include "can.h"
 
 /**
  * @brief   机器人主要的应用层任务
@@ -101,15 +104,15 @@ void TestCpp()
        
         uint32_t AppTick = xTaskGetTickCount();
         TestPart_Init();
-
-
-    MotorVESC_Init(&motor_vesc_1,&hcan1,1,114);
-
+        MotorVESC_Init(&motor_vesc_1,&hcan1,0,120);
         while (1)
         {
-            motor_vesc_1.MotorVESC_SetMotorRPM(5000);
+//			motor_vesc_1.MotorVESC_SetMotorDuty(100);
+            motor_vesc_1.MotorVESC_SetMotorRPM(10000);
+//            motor_vesc_set_rpm(0, 1000);
             TestPart_Loop();
-            osDelayUntil(&AppTick, 5);    // 200Hz
+            // osDelayUntil(&AppTick, 5);    // 200Hz
+            osDelay(100);
         }
     }
     // 不用测试功能时，销毁本线程

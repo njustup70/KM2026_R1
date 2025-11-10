@@ -20,7 +20,9 @@
         "arm_math.h": "c",
         "tim.h": "c",
         "cstdint": "c",
-        "motor_vesc.hpp": "c"
+        "motor_vesc.hpp": "c",
+        "array": "cpp",
+        "string_view": "cpp"
     },
     "C_Cpp.errorSquiggles": "disabled"
 }

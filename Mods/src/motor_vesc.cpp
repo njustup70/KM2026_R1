@@ -12,23 +12,24 @@ float read_duty = 0;
 int read_rpm = 0;
 float test_duty_value = 0.1;
 
-// 全局电机实例
+//// 全局电机实例
 MotorVESC motor_vesc_1;
 MotorVESC motor_vesc_2;
 MotorVESC motor_vesc_3;
 
-extern BspCan_Instance bspcan_inst;	// 电机的CAN实例
+
 
 /// @brief 接收回调函数
 /// @param RxHeader 
 /// @param RxData 
-static void Motor_vesc_RxCallback(CAN_RxHeaderTypeDef *rxHeader, uint8_t *rxData, CAN_HandleTypeDef *hcan)
+ void Motor_vesc_RxCallback(CAN_RxHeaderTypeDef *rxHeader, uint8_t *rxData, CAN_HandleTypeDef *hcan)
 {
     MotorVescRecvData vesc_rx;
     vesc_rx.rx_header = *rxHeader;
     memcpy(vesc_rx.recv_data,rxData,8);
      motor_vesc_handle(vesc_rx);
 }
+
 
 /// @name motor_vesc_get_rpm
 /// @brief 返回指定标签电机的真实转速
@@ -85,8 +86,10 @@ void MotorVESC_Init(MotorVESC *motor, CAN_HandleTypeDef *can_n, int motor_id, in
     motor->motor_rpm_real = 0;
     motor->motor_duty_set = 0;
     motor->motor_rpm_set = 0;
+    uint32_t motor_rx_id = ((CAN_PACKET_STATUS << 8) | motor->motor_can_id);
 
-    BspCan_InstRegist(&motor->bspcan_inst, can_n, motor_can_id, motor_can_id, 1, 1, Motor_vesc_RxCallback);
+    uint32_t motor_tx_id = ((CAN_PACKET_SET_RPM << 8) | motor->motor_can_id); 
+    BspCan_InstRegist(&motor->bspcan_inst, can_n, motor_rx_id, motor_tx_id, 1, 1, Motor_vesc_RxCallback);
 }
 
 
@@ -170,15 +173,17 @@ void  MotorVESC::MotorVESC_SetMotorDuty( float duty)
 void  MotorVESC::MotorVESC_SendCanTXBuffer(CanPacketType cmd_type, float values)
 {
     static uint32_t txmailbox;            // CAN 邮箱
-    CAN_TxHeaderTypeDef TxMsg;            // TX 消息头
+//    CAN_TxHeaderTypeDef TxMsg;            // TX 消息头
 
-    // 配置标准CAN参数
-    TxMsg.StdId = 0x00;    // 低8位为CAN_ID，高21位为指令ID
-    TxMsg.ExtId = (cmd_type << 8 | this->motor_can_id);
-    TxMsg.IDE = CAN_ID_EXT;
-    TxMsg.RTR = CAN_RTR_DATA;
-    TxMsg.DLC = 8;
+//    // 配置标准CAN参数
+//    TxMsg.StdId = 0x00;    // 低8位为CAN_ID，高21位为指令ID
+//    TxMsg.ExtId = (cmd_type << 8 | this->motor_can_id);
+//    TxMsg.IDE = CAN_ID_EXT;
+//    TxMsg.RTR = CAN_RTR_DATA;
+//    TxMsg.DLC = 8;
+int ExtId=(cmd_type << 8 | this->motor_can_id);
 
+  BspCan_TxConfig custom_tx_conf=BspCan_GetTxConfig(this->targ_can_n,ExtId,1,0,8,50);
     uint8_t txbuf[8] = {0};
     switch (cmd_type)
     {
@@ -207,7 +212,8 @@ void  MotorVESC::MotorVESC_SendCanTXBuffer(CanPacketType cmd_type, float values)
     }
      // 等待CAN邮箱,很占时间，最好不要放在回调里
    while (HAL_CAN_GetTxMailboxesFreeLevel(this->targ_can_n) == 0);    
-    HAL_CAN_AddTxMessage(this->targ_can_n,&TxMsg, txbuf, &txmailbox);
+   BspCan_Transmit(custom_tx_conf,txbuf);
+ //   HAL_CAN_AddTxMessage(this->targ_can_n,&TxMsg, txbuf, &txmailbox);
 	memcpy(canTx_text,txbuf,8);
 }
 
@@ -225,7 +231,5 @@ float MotorVESC::limit_abs(float targ_num, float limit)
     }
     return targ_num;
 }
-
-
 
 
