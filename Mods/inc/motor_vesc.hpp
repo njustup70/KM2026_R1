@@ -78,7 +78,7 @@ int motor_vesc_get_rpm(int motor_id);
 int motor_vesc_set_rpm(int motor_id, float set_rpm);
 
 
-extern MotorVESC motor_vesc_1;
+extern MotorVESC motor_vesc_1;  
 extern MotorVESC motor_vesc_2;
 extern MotorVESC motor_vesc_3;
 extern uint8_t canTx_text[8];

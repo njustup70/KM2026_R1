@@ -104,15 +104,13 @@ void TestCpp()
        
         uint32_t AppTick = xTaskGetTickCount();
         TestPart_Init();
-        MotorVESC_Init(&motor_vesc_1,&hcan1,0,120);
+        MotorVESC_Init(&motor_vesc_1,&hcan1,0,114);
         while (1)
         {
-//			motor_vesc_1.MotorVESC_SetMotorDuty(100);
-            motor_vesc_1.MotorVESC_SetMotorRPM(10000);
-//            motor_vesc_set_rpm(0, 1000);
+          motor_vesc_set_rpm(0,5000);
             TestPart_Loop();
-            // osDelayUntil(&AppTick, 5);    // 200Hz
-            osDelay(100);
+             osDelayUntil(&AppTick, 5);    // 200Hz
+//            osDelay(20);
         }
     }
     // 不用测试功能时，销毁本线程

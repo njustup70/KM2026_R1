@@ -87,7 +87,6 @@ void MotorVESC_Init(MotorVESC *motor, CAN_HandleTypeDef *can_n, int motor_id, in
     motor->motor_duty_set = 0;
     motor->motor_rpm_set = 0;
     uint32_t motor_rx_id = ((CAN_PACKET_STATUS << 8) | motor->motor_can_id);
-
     uint32_t motor_tx_id = ((CAN_PACKET_SET_RPM << 8) | motor->motor_can_id); 
     BspCan_InstRegist(&motor->bspcan_inst, can_n, motor_rx_id, motor_tx_id, 1, 1, Motor_vesc_RxCallback);
 }
