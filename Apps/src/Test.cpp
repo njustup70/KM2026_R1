@@ -8,7 +8,7 @@
 #include "led_ws2812.hpp"
 #include "bsp_dwt.h"
 
-bool TestEnable = true;
+bool TestEnable = false;
 
 /**
  * @brief 只在Main中初始化的函数

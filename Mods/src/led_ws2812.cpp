@@ -33,6 +33,7 @@ void LedWs2812::Init(TIM_HandleTypeDef *htim, uint32_t Channel, uint8_t LedNums)
 
 /**
  * @brief 设置某个LED的颜色
+ * @warning 输入的RGB为0~255范围
  */
 void LedWs2812::SetColor(int8_t Led_id, uint8_t R, uint8_t G, uint8_t B)
 {

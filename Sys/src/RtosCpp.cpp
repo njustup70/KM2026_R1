@@ -5,9 +5,21 @@
 #include "bsp_dwt.h"
 #include "motor_dji.hpp"
 #include "RobotSystem.hpp"
-#include "StateCenter.hpp"
 #include "Test.hpp"
 #include "Action.hpp"
+#include "Interfaces.hpp"
+
+/**
+ * @brief 预初始化函数
+ * @warning 为什么要搞一个这个，而不是在RTOS启动的线程初始化呢
+ * 主要是因为怕线程爆栈，主函数的栈深基本上摸不到底的
+ */
+void InitializeCpp()
+{
+    TestPart_MainInit();
+    System.Init();
+    Interface::Buildlize();
+}
 
 
 /**
@@ -22,13 +34,13 @@ void RobotMainCpp()
     {   
         // 维护DWT计时器
         DWT_CntUpdate();
+        Interface::Lazy();
 
         /***    最大循环频率：20Hz     ***/
         osDelayUntil(&AppTick, 50);    // 20Hz
     }
     
 }
-
 
 
 /**
@@ -44,6 +56,7 @@ void RobotSystemCpp()
     {
         System.Run();
         Action.ExecutorRun();          // 持续 追踪/执行 抛出的动作
+        Interface::System();
 
         /***    最大循环频率：200Hz     ***/
         osDelayUntil(&AppTick, 5);
@@ -63,7 +76,7 @@ void SlowControlCpp()
 
     while (1)
     {
-
+        Interface::Slow();
         /***    最大循环频率：200Hz     ***/
         osDelayUntil(&AppTick, 5);
     }
@@ -81,7 +94,7 @@ void FastControlCpp()
     while (1)
     {
         MotorDji::ControlAllMotors();
-
+        Interface::Fast();
         /***    最大循环频率：1000Hz     ***/
         osDelay(1);     // FreeRTOS的极限，1ms喂狗
     }
@@ -113,14 +126,3 @@ void TestCpp()
     }
 }
 
-/**
- * @brief 预初始化函数
- * @warning 为什么要搞一个这个，而不是在RTOS启动的线程初始化呢
- * 主要是因为怕线程爆栈，主函数的栈深基本上摸不到底的
- */
-void MainInitCpp()
-{
-    TestPart_MainInit();
-    StateCenter.Regist();
-    System.Init();
-}

@@ -103,7 +103,7 @@ int main(void)
   MX_SPI4_Init();
   MX_TIM4_Init();
   /* USER CODE BEGIN 2 */
-  MainInitCpp();
+  InitializeCpp();
 
   /* USER CODE END 2 */
 

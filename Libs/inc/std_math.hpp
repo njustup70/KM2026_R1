@@ -115,6 +115,7 @@ inline Vec3 operator/(const Vec3& vec, float scalar) {  // 向量数除
 
 /**
  * @name 三维向量
+ * @warning 颜色分量虽然是float类型，但其适配RGB24方案，取值范围应为0.0f~255.0f
  */
 class Color
 {
@@ -125,6 +126,11 @@ class Color
         // 构造函数的实现直接放在类定义中
         Color(float r, float g, float b) : r(r), g(g), b(b) {}
         Color() : r(0), g(0), b(0) {}
+
+        // 预定义颜色
+        static Color Red;
+        static Color Green;
+        static Color Blue;
         
         // 友元函数重载运算符
         friend Color operator+(const Color& lhs, const Color& rhs);
