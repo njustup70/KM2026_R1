@@ -5,59 +5,34 @@
 static BspGpio_Instance *bspgpio_insts[BSPGPIO_MAX_INSTS] = {NULL}; 
 static int bspgpio_inst_count = 0; // 当前实例数量
 
-/**
- * @brief 注册一个GPIO实例，注册的同时初始化该GPIO
- * 
- */
-void BspGpio_InstRegist(BspGpio_Instance *inst, GPIO_TypeDef *GPIOx, uint32_t pin,
-                        BspGpio_Mode mode, BspGpio_Pull pull, uint32_t speed, uint32_t alternate)
+///@brief 在cube中初始化后，注册一个GPIO实例
+void BspGpio_InstRegist(BspGpio_Instance *inst,GPIO_TypeDef *GPIOx,uint32_t Pin)
 {
-    //检验参数有效性
+    // 检验参数有效性
     if (inst == NULL || GPIOx == NULL)
     {
         return; //参数无效
     }
-    //初始化实例
+    // 将实例映射到已经初始化的GPIO
     inst->GPIO_Port = GPIOx;
-    inst->Pin = pin;
-    inst->Mode = mode;
-    inst->Pull = pull;
-    inst->Speed = speed;
-    inst->Alternate = alternate;
-}
-/**
- * @brief 启用GPIO
- * 
- * @param inst 
- */
-void BspGpio_Init(BspGpio_Instance *inst)
-{
-    GPIO_InitTypeDef BspGpio_Init = {0};
-    
-    // 将inst的配置数据复制到结构体中
-    BspGpio_Init.Pin = inst->Pin;
-    BspGpio_Init.Mode = inst->Mode;
-    BspGpio_Init.Pull = inst->Pull;
-    BspGpio_Init.Speed = inst->Speed;
-    BspGpio_Init.Alternate = inst->Alternate;    
-    
-    // 调用HAL函数
-    HAL_GPIO_Init(inst->GPIO_Port, &BspGpio_Init); 
+    inst->Pin = Pin;
 
     // 记录实例
     if (bspgpio_inst_count < BSPGPIO_MAX_INSTS)
     {
-        bspgpio_insts[bspgpio_inst_count++] = inst;    //从0号开始
+        bspgpio_insts[bspgpio_inst_count++] = inst;    
     }
+
 }
 
-static BspGpio_ExtiHandler exti_handlers[16] = {NULL};
+static BspGpio_ExtiHandler exti_handlers[16] = {NULL};  //将所有上层注册的中断处理函数存储在这里
 
-// 当收到中断时，快速索引数组获取对应的处理函数
+///@brief 当收到中断时，通过快速索引数组可以获取对应的处理函数
 static uint8_t BspGpio_GetPinIndex(uint16_t GPIO_Pin)
 {
-    // 检查是否是有效的单个位掩码（例如 0x0004, 0x0020）
-    if (GPIO_Pin == 0 || (GPIO_Pin & (GPIO_Pin - 1)) != 0) {
+    // 检查是否有且仅传入一个引脚,原则上通过NVIC后在PR寄存器中只能有一个位被置位
+    if (GPIO_Pin == 0 || (GPIO_Pin & (GPIO_Pin - 1)) != 0)  //因为寄存器中GPIO_Pin的值都是以位掩码存在的，如0x0001,0x0002,0x0004,0x0008...
+    {
         return 16; // 无效索引
     }
     
@@ -72,9 +47,9 @@ static uint8_t BspGpio_GetPinIndex(uint16_t GPIO_Pin)
     return index;
 }
 
-void BspGpio_ExtiHandlerRegist(uint16_t pin, BspGpio_ExtiHandler handler_func)
+void BspGpio_ExtiHandlerRegist(BspGpio_Instance *inst, BspGpio_ExtiHandler handler_func)
 {
-    uint8_t index = BspGpio_GetPinIndex(pin);
+    uint8_t index = BspGpio_GetPinIndex(inst->GPIO_Port);
     
     // 检查索引是否在0-15范围内
     if (index < 16)
@@ -84,7 +59,7 @@ void BspGpio_ExtiHandlerRegist(uint16_t pin, BspGpio_ExtiHandler handler_func)
     }
     
 }
-
+///@brief 回调函数的实函数
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
     uint8_t index = BspGpio_GetPinIndex(GPIO_Pin);
@@ -100,13 +75,14 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 }
 
 
-///@brief  对HAL库的复写
-BspGpio_PinState BspGpio_ReadPin(BspGpio_Instance *inst)
+/******* 以下是对HAL库函数的复写，供上层使用的接口函数 *******/
+
+uint32_t BspGpio_GetState(BspGpio_Instance *inst)
 {
     return HAL_GPIO_ReadPin(inst->GPIO_Port, inst->Pin);
 }
 
-void BspGpio_WritePin(BspGpio_Instance *inst, BspGpio_PinState PinState)
+void BspGpio_SetState(BspGpio_Instance *inst, uint32_t PinState)
 {
     HAL_GPIO_WritePin(inst->GPIO_Port, inst->Pin, PinState);
 }
@@ -120,10 +96,3 @@ void BspGpio_LockPin(BspGpio_Instance *inst)
 {
     HAL_GPIO_LockPin(inst->GPIO_Port, inst->Pin);
 }
-
-
-
-
-
-
-
