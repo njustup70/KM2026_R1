@@ -58,6 +58,8 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
+#define PickSensor_Pin GPIO_PIN_12
+#define PickSensor_GPIO_Port GPIOH
 
 /* USER CODE BEGIN Private defines */
 
