@@ -4,7 +4,9 @@
 #include "can.h"
 
 
+
 #define CAN_OFFSET (hcan == &hcan1 ? 0 : 8)
+#define limit_mx 10000.0f
 
 uint8_t canTx_text[8];//保存发送数据
 float read_current = 0;
@@ -60,17 +62,20 @@ int  motor_vesc_set_rpm(int motor_id, float set_rpm)
 {
     if (motor_id == motor_vesc_1.motor_id)
     {
-        motor_vesc_1.motor_rpm_set = (int)set_rpm;
+        int rpm = motor_vesc_1.limit_abs(set_rpm,limit_mx);
+        motor_vesc_1.motor_rpm_set = (int)rpm;
         return 1;
     }
     else if (motor_id == motor_vesc_2.motor_id)
     {
-        motor_vesc_2.motor_rpm_set = (int)set_rpm;
+        int rpm = motor_vesc_2.limit_abs(set_rpm,limit_mx);
+        motor_vesc_2.motor_rpm_set = (int)rpm;
         return 1;
     }
 		    else if (motor_id == motor_vesc_3.motor_id)
     {
-        motor_vesc_3.motor_rpm_set = (int)set_rpm;
+        int rpm = motor_vesc_3.limit_abs(set_rpm,limit_mx);
+        motor_vesc_3.motor_rpm_set = (int)rpm;
         return 1;
     }
 	return 0;
@@ -156,7 +161,8 @@ void motor_vesc_handle(MotorVescRecvData vesc_recvs)
 // 设置电机转速
 void  MotorVESC::MotorVESC_SetMotorRPM(int RPM)
 {
-   this->MotorVESC_SendCanTXBuffer( CAN_PACKET_SET_RPM, RPM);
+    int rpm = this->limit_abs((float)RPM,limit_mx);
+   this->MotorVESC_SendCanTXBuffer( CAN_PACKET_SET_RPM, rpm);
 }
 
 
@@ -165,7 +171,6 @@ void  MotorVESC::MotorVESC_SetMotorDuty( float duty)
 {
   this->MotorVESC_SendCanTXBuffer(CAN_PACKET_SET_DUTY, duty);
 }
-
 
 
 // 发送CAN消息

@@ -107,7 +107,8 @@ void TestCpp()
         MotorVESC_Init(&motor_vesc_1,&hcan1,0,114);
         while (1)
         {
-          motor_vesc_set_rpm(0,5000);
+            motor_vesc_1.MotorVESC_SetMotorRPM(5000);
+//          motor_vesc_set_rpm(0,5000);
             TestPart_Loop();
              osDelayUntil(&AppTick, 5);    // 200Hz
 //            osDelay(20);
