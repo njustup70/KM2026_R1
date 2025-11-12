@@ -114,7 +114,7 @@ void MX_FREERTOS_Init(void) {
   RobotMainTaskHandle = osThreadCreate(osThread(RobotMainTask), NULL);
 
   /* definition and creation of FastControlTask */
-  osThreadDef(FastControlTask, FastControl, osPriorityNormal, 0, 512);
+  osThreadDef(FastControlTask, FastControl, osPriorityAboveNormal, 0, 512);
   FastControlTaskHandle = osThreadCreate(osThread(FastControlTask), NULL);
 
   /* definition and creation of SlowControlTask */
