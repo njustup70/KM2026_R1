@@ -2,26 +2,88 @@
 #include "arm_math.h"
 #include "RobotSystem.hpp"
 
+
+
+
 // 唯一全局实例
 ChassisClass Chassis;
 
-void ChassisClass::Init(MotorDji* m1, MotorDji* m2, MotorDji* m3, MotorDji* m4, ChassisType t)
+void ChassisClass::Build()
 {
-    Motors[0] = m1;
-    Motors[1] = m2;
-    Motors[2] = m3;
-    Motors[3] = m4;
-    type = t;
+    // 初始化电机
+    for (int i = 0; i < 4; i++)
+    {
+        motors[i].Init(&hcan1, i + 1, MotorDJIMode::Speed_Control, true);
+        motors[i].Enable();
+    }
 }
 
+void ChassisClass::Enable()
+{
+    enabled = true;
+}
+
+void ChassisClass::Disable()
+{
+    // 停止所有电机
+    enabled = false;
+}
+
+void ChassisClass::Update()
+{
+    // 仅当底盘使能时才工作
+    if (enabled)
+    {
+        // 计算x, y, w合成分量
+        motor_spd[0] = (speed.x - speed.y)  / (BSP_SQRT2) - speed.z * ROTATE_RADIUS;
+        motor_spd[1] = (-speed.x - speed.y) / (BSP_SQRT2) + speed.z * ROTATE_RADIUS;
+        motor_spd[2] = (speed.x + speed.y)  / (BSP_SQRT2) - speed.z * ROTATE_RADIUS;
+        motor_spd[3] = (-speed.x + speed.y) / (BSP_SQRT2) + speed.z * ROTATE_RADIUS;
+
+        // 发送速度指令到电机
+        for (int i = 0; i < 4; i++)
+        {
+            motors[i].SetSpeed((motor_spd[i] * 60.0f) / (PI * WHEEL_DIAMETER));
+        }
+    }
+    else
+    {
+        // 底盘未使能，发送 0 电流（空档）
+        for (int i = 0; i < 4; i++)
+        {
+            motors[i].Neutral();
+        }
+    }
+}
+
+
+/**
+ * @brief 直接设置底盘速度（一个通用的开环行为）
+ * @param Spd 期望速度：（x: 前向速度，y：左向速度，w：逆时针）（m/s，m/s，rad/s）
+ * @note 轮序：     
+ *                      前
+ *                  0       1
+ *                  
+ * 
+ *                  2       3
+ * @warning 每次设置速度都会刷新安全锁，需要持续调用以保持底盘运动。
+ * 在指令中断100ms后，底盘会自动进入空档（0电流）状态。
+ * （100ms已经很长了，相当于20个指令周期都没有指令输入）
+ */
 void ChassisClass::Move(Vec3 Spd)
 {
-
+    speed = Spd;
 }
 
 void ChassisClass::Move(Vec2 Spd)
 {
-    
+    speed.x = Spd.x;
+    speed.y = Spd.y;
+}
+
+void ChassisClass::Rotate(float omega)
+{
+    speed.z = omega;
 }
 
 BaseAction* ChassisClass::MoveAt(Vec2 Pos)
@@ -72,7 +134,7 @@ void MoveAct::Reset(Vec2 new_target)
  * @brief 移动动作的更新函数
  * @note 动作被抛出后，这玩意会以200Hz被循环调用直到动作完成
  */
-bool MoveAct::OnUpdate()
+bool MoveAct::OnUpdate() 
 {
     // 这里实现移动到target_pos的逻辑
     if (movetype == AtPos)
@@ -113,7 +175,7 @@ bool MoveAct::MoveAt()
 
     // 更新底盘速度（向量式更新，保证更新量不大于MaxAccel）
     Vec2 targ_speed_vec = move_vec.Norm() * final_velo;     // 计算新的目标速度
-    Vec2 curr_speed_vec = Chassis.Speed.ToVec2();           // 当前速度
+    Vec2 curr_speed_vec = Chassis.speed.ToVec2();           // 当前速度
     
     // 计算速度差
     Vec2 delta_speed_vec = targ_speed_vec - curr_speed_vec;

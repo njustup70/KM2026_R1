@@ -64,10 +64,10 @@ void MotorDji::SwitchMode(MotorDJIMode new_mode)
 
 /// @brief 设置速度
 /// @param rpm 
-void MotorDji::SetSpeed(float rpm)
+void MotorDji::SetSpeed(float rpm, float redu_ratio)
 {
 	if (mode != Speed_Control) return; 	// 不是速度模式就不执行
-	targ_speed = rpm;
+	targ_speed = rpm * redu_ratio;				// 3508电机的减速比为 19:1
 }
 
 /// @brief 设置位置
@@ -79,7 +79,22 @@ void MotorDji::SetPos(float pos)
 }
 
 
-/// @brief 关闭电机控制
+/**
+ * @brief 空档
+ * @details 将电机设置为空档状态，强制要求电机不输出任何力矩
+ * 类似于汽车的空挡
+ * @warning 该函数会将控制模式切换为 None_Control, 使用后，需要重新设置控制模式
+ */
+void MotorDji::Neutral()
+{
+	targ_current = 0;
+	mode = None_Control;
+}
+
+/**
+ * @brief 关闭电机控制
+ * @warning 如果电机正在旋转，Disable之后指令停止发送，但是电流会保持，很容易导致电机疯转
+ */
 void MotorDji::Disable()
 {
 	enabled = false; 		// 禁用电机控制
@@ -172,16 +187,16 @@ int16_t MotorDji::Control()
 	{
 		if (mode == None_Control)
 		{
-			targ_current = 0; 			// 目标电流清零
+			targ_current = 0; 				// 目标电流清零
 		}
 		else if (mode == Speed_Control)
 		{
-			MotorDji_SpeedLoop();		// 速度环控制 得到电流
+			MotorDji_SpeedLoop();			// 速度环控制 得到电流
 		}
 		else if (mode == Pos_Control)
 		{
-			MotorDji_PosLoop();		// 位置环控制 得到速度
-			MotorDji_SpeedLoop();	// 速度环控制 得到电流
+			MotorDji_PosLoop();				// 位置环控制 得到速度
+			MotorDji_SpeedLoop();			// 速度环控制 得到电流
 		}
 	}
 	else

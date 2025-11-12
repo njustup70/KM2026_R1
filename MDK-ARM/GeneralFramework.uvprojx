@@ -314,7 +314,7 @@
           </ArmAdsMisc>
           <Cads>
             <interw>1</interw>
-            <Optim>3</Optim>
+            <Optim>4</Optim>
             <oTime>0</oTime>
             <SplitLS>0</SplitLS>
             <OneElfS>1</OneElfS>
@@ -853,35 +853,35 @@
               <FileType>8</FileType>
               <FilePath>..\Libs\src\pids.cpp</FilePath>
             </File>
+            <File>
+              <FileName>bsp_tim_pwm.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Libs\src\bsp_tim_pwm.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
           <GroupName>Apps</GroupName>
           <Files>
             <File>
-              <FileName>Chassis.cpp</FileName>
-              <FileType>8</FileType>
-              <FilePath>..\Apps\src\Chassis.cpp</FilePath>
-            </File>
-            <File>
               <FileName>Test.cpp</FileName>
               <FileType>8</FileType>
               <FilePath>..\Apps\src\Test.cpp</FilePath>
             </File>
             <File>
-              <FileName>EventCenter.cpp</FileName>
+              <FileName>InstruLogic.cpp</FileName>
               <FileType>8</FileType>
-              <FilePath>..\Apps\src\EventCenter.cpp</FilePath>
+              <FilePath>..\Apps\src\InstruLogic.cpp</FilePath>
             </File>
             <File>
-              <FileName>StateCenter.cpp</FileName>
+              <FileName>AutoLogic.cpp</FileName>
               <FileType>8</FileType>
-              <FilePath>..\Apps\src\StateCenter.cpp</FilePath>
+              <FilePath>..\Apps\src\AutoLogic.cpp</FilePath>
             </File>
             <File>
-              <FileName>Action.cpp</FileName>
+              <FileName>Interfaces.cpp</FileName>
               <FileType>8</FileType>
-              <FilePath>..\Apps\src\Action.cpp</FilePath>
+              <FilePath>..\Apps\src\Interfaces.cpp</FilePath>
             </File>
           </Files>
         </Group>
@@ -919,9 +919,9 @@
               <FilePath>..\Mods\src\msg_coder.cpp</FilePath>
             </File>
             <File>
-              <FileName>motor_vesc.cpp</FileName>
+              <FileName>servo.cpp</FileName>
               <FileType>8</FileType>
-              <FilePath>..\Mods\src\motor_vesc.cpp</FilePath>
+              <FilePath>..\Mods\src\servo.cpp</FilePath>
             </File>
           </Files>
         </Group>
@@ -942,6 +942,16 @@
               <FileName>StateCore.cpp</FileName>
               <FileType>8</FileType>
               <FilePath>..\Sys\src\StateCore.cpp</FilePath>
+            </File>
+            <File>
+              <FileName>Chassis.cpp</FileName>
+              <FileType>8</FileType>
+              <FilePath>..\Sys\src\Chassis.cpp</FilePath>
+            </File>
+            <File>
+              <FileName>Action.cpp</FileName>
+              <FileType>8</FileType>
+              <FilePath>..\Sys\src\Action.cpp</FilePath>
             </File>
           </Files>
         </Group>

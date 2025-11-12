@@ -11,6 +11,8 @@
 #include "arm_math.h"
 #include "std_math.hpp"
 
+
+
 typedef struct
 {
     bool ChassisMotorOnline[4];     // 底盘在线
@@ -51,19 +53,20 @@ class RobotSystem
 
     RobotDeviceStatus_t DeviceStatus;
     
-    LedWs2812* Led = nullptr;
-    Odometer_Ops9* Odo = nullptr;      // 物理里程计
+    // ChassisClass*   chassis = nullptr;               // 机器人底盘
+    LedWs2812*      led_band = nullptr;
+    Odometer_Ops9*  odometer = nullptr;       // 物理里程计
 
     Vec3 global_position;           // 机器人全局位置，单位m，场地坐标系
 
-    StateCore Automatic_Core;       // 自动状态机核心
-    StateCore Controlled_Core;      // 受控状态机核心
+    StateCore auto_core;       // 自动状态机核心
+    StateCore instru_core;      // 受控状态机核心
     
     
     void Init(bool Sc = true);       // Sc是缩写，表示启用自检
     void SetSelfcheck(bool IsEnable);
 
-    void ChassisRegist();
+    // void ChassisRegist(ChassisClass chas);
     void OdoRegist(Odometer_Ops9* odo);
     void MotorRegist(void* motor, MotorType type);
     

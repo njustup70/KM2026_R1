@@ -6,6 +6,7 @@
 #define _LED_WS2812_HPP_ 
 #include "stm32f4xx_hal.h"
 #include "std_math.hpp"
+#include "bsp_tim_pwm.h"
 
 class LedWs2812
 {

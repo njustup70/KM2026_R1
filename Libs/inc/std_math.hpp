@@ -1,9 +1,12 @@
 #ifndef STD_MSG_UP70
 #define STD_MSG_UP70
 
-// 根据自己的芯片改
 #include "stm32f4xx_hal.h"
 #include <assert.h>
+
+#define BSP_SQRT2 1.41421356237f
+#define BSP_SQRT3 1.73205080757f
+
 
 class Vec2;
 class Vec3;
@@ -54,8 +57,8 @@ inline Vec2 operator*(float scalar, const Vec2& vec) {  // 向量数乘（标量
     return Vec2(vec.x * scalar, vec.y * scalar);
 }
 inline Vec2 operator/(const Vec2& vec, float scalar) {  // 向量数除
-    assert(scalar != 0);
-    return Vec2(vec.x / scalar, vec.y / scalar);
+    if(scalar == 0) return Vec2(114514, 114514);
+    else return Vec2(vec.x / scalar, vec.y / scalar);
 }
 inline bool operator==(const Vec2& lhs, const Vec2& rhs) {  // 向量相等比较
     return (lhs.x == rhs.x) && (lhs.y == rhs.y);
@@ -104,14 +107,15 @@ inline Vec3 operator*(float scalar, const Vec3& vec) {  // 向量数乘（标量
     return Vec3(vec.x * scalar, vec.y * scalar, vec.z * scalar);
 }
 inline Vec3 operator/(const Vec3& vec, float scalar) {  // 向量数除
-    assert(scalar != 0); // 避免除以零
-    return Vec3(vec.x / scalar, vec.y / scalar, vec.z / scalar);
+    if(scalar == 0) return Vec3(114514, 114514, 114514); // 避免除以零
+    else return Vec3(vec.x / scalar, vec.y / scalar, vec.z / scalar);
 }
 
 
 
 /**
  * @name 三维向量
+ * @warning 颜色分量虽然是float类型，但其适配RGB24方案，取值范围应为0.0f~255.0f
  */
 class Color
 {
@@ -122,6 +126,11 @@ class Color
         // 构造函数的实现直接放在类定义中
         Color(float r, float g, float b) : r(r), g(g), b(b) {}
         Color() : r(0), g(0), b(0) {}
+
+        // 预定义颜色
+        static Color Red;
+        static Color Green;
+        static Color Blue;
         
         // 友元函数重载运算符
         friend Color operator+(const Color& lhs, const Color& rhs);
@@ -144,7 +153,7 @@ inline Color operator*(float scalar, const Color& vec) {  // 向量数乘（标�
     return Color(vec.r * scalar, vec.g * scalar, vec.b * scalar);
 }
 inline Color operator/(const Color& vec, float scalar) {  // 向量数除
-    assert(scalar != 0); // 避免除以零
+    if(scalar == 0) return Color(114514, 114514, 114514); // 避免除以零
     return Color(vec.r / scalar, vec.g / scalar, vec.b / scalar);
 }
 

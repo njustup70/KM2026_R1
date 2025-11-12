@@ -47,7 +47,6 @@ void StateCore::AddState(StateBlocks *state)
     }
 }
 
-
 /**
  * @brief 运行状态机
  */
@@ -64,6 +63,24 @@ void StateCore::Run()
 
     // 进行状态转移
     at_state_id = states[at_state_id].Transition();
+}
+
+
+/**
+ * @brief 状态机的简并初始化，一般用于调试
+ * @details 只有两个状态：working和end
+ */
+void StateCore::Degenerate()
+{
+    // 添加状态
+    NEW_STATE((*this), Working);
+    NEW_STATE((*this), End);
+
+    // 建立状态链接
+    St_Working.incore->AddLink(&(St_Working.incore->Complete), St_End.incore);
+
+    // 设置初始状态
+    at_state_id = St_Working.incore->id;
 }
 
 
@@ -87,4 +104,15 @@ void StateCore::CoreGraph(BspUart_Instance uart_inst)
             HAL_Delay(10);
         }
     }
+}
+
+__weak void RoboWorking(StateCore *core)
+{
+    // 等待定义
+}
+
+
+__weak void RoboEnd(StateCore *core)
+{
+    // 什么都不做，已结束
 }

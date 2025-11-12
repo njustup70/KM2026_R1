@@ -47,9 +47,9 @@ PidGeneral::PidGeneral(float kp, float ki, float kd,float dt, int reverse,
     inte_lim = intLim;
     out_lim = outLim;
     kd_filter_rate = dtFilter;
-    Incremental = Incremental;
-    Feedforward = Feedforward;
-    InnerAcc = InnerAcc;
+    this->Incremental = Incremental;
+    this->Feedforward = Feedforward;
+    this->InnerAcc = InnerAcc;
 }
 
 /**
@@ -74,10 +74,10 @@ void PidGeneral::Init(float kp, float ki, float kd, float kf, float dt, int reve
     inte_lim = intLim;
     out_lim = outLim;
     kd_filter_rate = dtFilter;
-    Incremental = Incremental;
-    Feedforward = Feedforward;
-    InnerAcc = InnerAcc;
-    AutoDt = (dt == 0); // 若dt为0则启用自动计算
+    this->Incremental = Incremental;
+    this->Feedforward = Feedforward;
+    this->InnerAcc = InnerAcc;
+    this->AutoDt = (dt == 0); // 若dt为0则启用自动计算
 }
 
 /**
@@ -164,7 +164,6 @@ float PidGeneral::CalcPos(float targ, float real, float output_lim)
 {
     float pid_output;
     error = targ - real;
-    if (dwt_dt == 0) dwt_dt = DWT_GetDeltaTime(&dwt_dt); // 初始化dwt句柄
 
     // 自适应时间间隔
     if (AutoDt) delta_t = DWT_GetDeltaTime(&dwt_dt); // 单位为秒
@@ -210,8 +209,6 @@ float PidGeneral::CalcPos(float targ, float real, float output_lim)
  */
 float PidGeneral::CalcInc(float targ, float real, float output_lim)
 {
-    static uint32_t dwt_dt = 0;
-    // float inc_output;
     error = targ - real;
 
     // 自适应时间间隔
@@ -247,10 +244,8 @@ float PidGeneral::CalcInc(float targ, float real, float output_lim)
  */
 float PidGeneral::CalcIncAuto(float targ, float real, float output_lim)
 {
-    static uint32_t dwt_dt = 0;
-    // float inc_output;
     error = targ - real;
-
+    
     // 自适应时间间隔
     if (AutoDt) delta_t = DWT_GetDeltaTime(&dwt_dt); // 单位为秒
 

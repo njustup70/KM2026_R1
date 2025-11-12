@@ -47,10 +47,11 @@ typedef enum
 class MotorDji
 {
 private:
-	bool enabled = false; 			// 是否启用电机控制，若为否，发送0电流指令或不发送指令
-	uint16_t current_limit = 8000;	// 电流限幅
-	uint16_t speed_limit = 20000;	// 速度限幅
-	uint16_t sloperate = 500;		// 电流爬坡率
+	bool enabled = false; 				// 是否启用电机控制，若为否，发送0电流指令或不发送指令
+	uint16_t current_limit = 8000;		// 电流限幅
+	uint16_t speed_limit = 20000;		// 速度限幅
+	uint16_t sloperate = 500;			// 电流爬坡率
+
 	/** 	  方法		**/
 	void MotorDji_SpeedLoop();
 	void MotorDji_PosLoop();
@@ -63,8 +64,9 @@ public:
 	/** 	  方法		**/
 	void Init(CAN_HandleTypeDef *hcan, uint8_t motorESC_id, MotorDJIMode djimode, bool fastInit = true);
 	void SwitchMode(MotorDJIMode new_mode);
-	void SetSpeed(float rpm);
+	void SetSpeed(float rpm, float redu_ratio = 19.0f);		// 3508的默认减速比（用2006的时候记得改！）
 	void SetPos(float pos);
+	void Neutral();
 	void Disable();
 	void Enable();
 	bool IsEnabled();		// 返回电机控制是否启用
@@ -78,25 +80,25 @@ public:
 	float ReadRPM_LPF_rate = 1.0f; // 电机转速低通滤波系数
 	float ReadCurrent_LPF_rate = 0.5f; // 电机转速低通滤波系数
 	BspCan_Instance bspcan_inst;	// 电机的CAN实例
+	float current_LPS_rate = 1.0f; 		// 电流变化低通滤波系数（一般不用）
+	uint8_t at_can_seg = 0;				// 当前电机所在的CAN段，用于发送电流 注：0-3分别对应CAN1的1-4号电机，5-8号电机，CAN2的1-4号电机，5-8号电机
+	
 
 	/** 	控制用变量	**/
-	float current_LPS_rate = 1.0f; 	// 电流变化低通滤波系数（一般不用）
+	
 	Pids speed_pid; 				// 速度环PID
 	Pids position_pid; 				// 位置环PID
-	float targ_position = 0;		// 目标位置
-	float targ_speed = 0;		    // 目标速度
+	float targ_position = 0;			// 目标位置
+	float targ_speed = 0;		    	// 目标速度
 	float targ_current = 0;			// 目标电流
 
 	/**		属性类变量	**/
 	MotorDJIMode mode = None_Control;	// 电机当前控制模式
-	uint8_t at_can_seg = 0;		// 当前电机所在的CAN段，用于发送电流 注：0-3分别对应CAN1的1-4号电机，5-8号电机，CAN2的1-4号电机，5-8号电机
 };
 
 
 typedef MotorDji MotorC610;		// 本库对C620和C610的支持是通用的
 typedef MotorDji MotorC620;		
-
-extern float targ_current_1;	// 便于debug和调试
 
 
 void get_total_angle(moto_measure_t *p);
