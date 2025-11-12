@@ -10,10 +10,7 @@ static MotorVESC* MotorList[16]= {nullptr};//用来存储电机实例指针，�
 // 发送CAN消息
 void MotorVESC_SendCanTXBuffer(MotorVESC *motor,CanPacketType cmd_type, float values);
 void Motor_vesc_RxCallback(CAN_RxHeaderTypeDef *rxHeader, uint8_t *rxData, CAN_HandleTypeDef *hcan);
-float read_current = 0;
-float read_duty = 0;
-int read_rpm = 0;
-float test_duty_value = 0.1;
+
 
 /// @brief 接收回调函数
 /// @param RxHeader 
@@ -45,8 +42,8 @@ int MotorVESC::Get_rpm(int motor_id)
 {
     if (motor_id == this->motor_id)
     {
-        read_rpm = this->motor_rpm_real;
-        return read_rpm;
+        
+        return (this->motor_rpm_real);
     }
 
     else return 0;
@@ -61,6 +58,7 @@ void MotorVESC::Init( CAN_HandleTypeDef *can_n, int motor_id, int motor_can_id)
     this->targ_can_n = can_n;
     this->motor_duty_real = 0;
     this->motor_rpm_real = 0;
+    this->motor_current_real = 0;
     motor_can_id_list[motor_can_id_count++] = motor_can_id;
     MotorList[motor_count++] = this;
     uint32_t motor_rx_id = ((CAN_PACKET_STATUS << 8) | this->motor_can_id);
@@ -90,7 +88,7 @@ void MotorVESC::RxHandle(MotorVescRecvData vesc_recvs)
         {
             this->motor_duty_real = (vesc_recvs.recv_data[6] * 256 + vesc_recvs.recv_data[7]) / 1000.0;
 
-            read_current = (vesc_recvs.recv_data[4] * 256 + vesc_recvs.recv_data[5]) / 10.0;
+            this->motor_current_real = (vesc_recvs.recv_data[4] * 256 + vesc_recvs.recv_data[5]) / 10.0;
             
             int32_t temp = (int32_t)(vesc_recvs.recv_data[0] << 24 | vesc_recvs.recv_data[1] << 16
                 | vesc_recvs.recv_data[2] << 8 | vesc_recvs.recv_data[3]);

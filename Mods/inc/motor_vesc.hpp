@@ -54,11 +54,12 @@ public:
     int motor_can_id;              // 总线上的电机的CANID
     float motor_duty_real;         // 电机实际占空比
     int32_t motor_rpm_real;        // 电机实际每分钟转速
+    float motor_current_real;         //读取电机的实际电流
     uint8_t canTx_text[8];         //保存发送数据
     CAN_HandleTypeDef *targ_can_n; // 哪一条CAN总线
     BspCan_Instance bspcan_inst; // 电机的CAN实例
 
-    
+
     /** 	  方法		**/
     // 初始化MotorVESC结构体,同时注册can实例
     void Init( CAN_HandleTypeDef *can_n, int motor_id, int motor_can_id);
