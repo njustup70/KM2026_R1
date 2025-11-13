@@ -215,7 +215,12 @@ float PidGeneral::CalcPos(float targ, float real, float output_lim)
     last_kderr = kd_error;
 
     // 前馈控制
-    if (Feedforward) pid_output += Kf * targ;
+    if (Feedforward) switch (fwd_type)
+    {
+        case SpeedForward: pid_output = pid_output + FwdFuncs::SpdForward(u, u_prev, delta_t, K, Tc) * Kf; break;
+        case PosForward:   pid_output = pid_output + FwdFuncs::PosForward(u, u_prev, u_prev_2, delta_t, K, Tc) * Kf; break;
+        default: break;
+    }
 
     // 如果用户配置了反向，作反向输出
     if (reverse) pid_output = -pid_output;
@@ -227,7 +232,6 @@ float PidGeneral::CalcPos(float targ, float real, float output_lim)
     if (out_lim > 0)     pid_output = limit_ab(pid_output, out_lim);
 
     
-
     return pid_output;
 }
 
@@ -298,8 +302,12 @@ float PidGeneral::CalcIncAuto(float targ, float real, float output_lim)
     control_value += inc_output;
     
     // 前馈控制
-    if (Feedforward)        return control_value + Kf * targ;
-    else                    return control_value;
+    if (Feedforward) switch (fwd_type)
+    {
+        case SpeedForward: control_value = control_value + FwdFuncs::SpdForward(u, u_prev, delta_t, K, Tc) * Kf; break;
+        case PosForward:   control_value = control_value + FwdFuncs::PosForward(u, u_prev, u_prev_2, delta_t, K, Tc) * Kf; break;
+        default: break;
+    }
 
     // 应用外界输出限幅（如果配置了限幅）
     if (output_lim > 0)     control_value = limit_ab(control_value, output_lim);
@@ -309,8 +317,8 @@ float PidGeneral::CalcIncAuto(float targ, float real, float output_lim)
     
     // 如果用户配置了反向，作反向输出
     if (reverse)            control_value = -control_value;
-    
-    
+
+    return control_value;
 }
 
 
@@ -320,7 +328,7 @@ float PidGeneral::CalcIncAuto(float targ, float real, float output_lim)
  * @brief 速度前馈控制器
  * @details 假设被控对象的传递函数为 标准一阶惯性环节 G(s) = K / (T*s + 1)
  */
-float PidGeneral::FwdFuncs::SpdForward(float u, float u_prev, float kf, float dt, float K, float T_c)
+float PidGeneral::FwdFuncs::SpdForward(float u, float u_prev, float dt, float K, float T_c)
 {
     float part_a = (T_c / K) * (u - u_prev) / dt;
     float part_b = (1 / K) * u;
@@ -332,7 +340,7 @@ float PidGeneral::FwdFuncs::SpdForward(float u, float u_prev, float kf, float dt
  * @brief 位置前馈控制器
  * @details 假设被控对象的传递函数为 一个积分环节与 一个一阶惯性环节的串联 G(s) = K / s(T*s + 1)
  */
-float PidGeneral::FwdFuncs::PosForward(float u, float u_prev, float u_prev_2, float kf, float dt, float K, float T_c)
+float PidGeneral::FwdFuncs::PosForward(float u, float u_prev, float u_prev_2, float dt, float K, float T_c)
 {
     float part_a = (T_c / K) * (u - 2 * u_prev + u_prev_2) / (dt * dt);
     float part_b = (1 / K) * (u - u_prev) / dt;

@@ -15,8 +15,8 @@ extern "C"
         {
             public:
             FwdFuncs(){};
-            static float SpdForward(float u, float u_prev, float kf, float dt, float K, float T_c);
-            static float PosForward(float u, float u_prev, float u_prev_2, float kf, float dt, float K, float T_c);
+            static float SpdForward(float u, float u_prev, float dt, float K, float T_c);
+            static float PosForward(float u, float u_prev, float u_prev_2, float dt, float K, float T_c);
         };
 
         // PID参数
