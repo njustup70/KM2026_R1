@@ -185,6 +185,8 @@ float PidGeneral::CalcPos(float targ, float real, float output_lim)
     last_error = error;
     last_kderr = kd_error;
 
+    // 前馈控制
+    if (Feedforward) pid_output += Kf * targ;
 
     // 如果用户配置了反向，作反向输出
     if (reverse) pid_output = -pid_output;
@@ -195,8 +197,7 @@ float PidGeneral::CalcPos(float targ, float real, float output_lim)
     // 应用内部输出限幅（如果配置了限幅）
     if (out_lim > 0)     pid_output = limit_ab(pid_output, out_lim);
 
-    // 前馈控制
-    if (Feedforward) pid_output += Kf * targ;
+    
 
     return pid_output;
 }
@@ -267,6 +268,10 @@ float PidGeneral::CalcIncAuto(float targ, float real, float output_lim)
     // 更新控制量
     control_value += inc_output;
     
+    // 前馈控制
+    if (Feedforward)        return control_value + Kf * targ;
+    else                    return control_value;
+
     // 应用外界输出限幅（如果配置了限幅）
     if (output_lim > 0)     control_value = limit_ab(control_value, output_lim);
 
@@ -276,9 +281,7 @@ float PidGeneral::CalcIncAuto(float targ, float real, float output_lim)
     // 如果用户配置了反向，作反向输出
     if (reverse)            control_value = -control_value;
     
-    // 前馈控制
-    if (Feedforward)        return control_value + Kf * targ;
-    else                    return control_value;
+    
 }
 
 /**

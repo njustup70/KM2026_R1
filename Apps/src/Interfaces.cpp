@@ -50,7 +50,7 @@ void Interface::Fast()
  */
 void Interface::System()
 {
-
+    
 }
 
 
