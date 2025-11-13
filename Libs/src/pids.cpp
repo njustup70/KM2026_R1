@@ -20,49 +20,14 @@ float limit_ab(float a, float limit)
     }
 }
 
-
-/// @brief 构造函数（完整版）
-/// @param dt 若不填写，默认使用DWT库测得的时间间隔
-/// @param reverse 是否反转输出
-/// @param intLim 积分限幅
-/// @param outLim 输出限幅
-/// @param dtFilter 微分滤波器系数
-/// @param Incremental 是否是增量PID
-/// @param Feedforward 是否启用前馈控制 
-PidGeneral::PidGeneral(float kp, float ki, float kd,float dt, int reverse,
-    float intLim, float outLim, float dtFilter, bool Incremental, bool Feedforward, bool InnerAcc)
-{
-    Kp = kp;
-    Ki = ki;
-    Kd = kd;
-    delta_t = dt;
-    this->reverse = reverse;
-
-    inte_errors = 0;
-    last_error = 0;
-    prev_error = 0;
-    kd_error = 0;
-    control_value = 0;
-
-    inte_lim = intLim;
-    out_lim = outLim;
-    kd_filter_rate = dtFilter;
-    this->Incremental = Incremental;
-    this->Feedforward = Feedforward;
-    this->InnerAcc = InnerAcc;
-}
-
 /**
  * @brief 完整初始化函数
  */
-void PidGeneral::Init(float kp, float ki, float kd, float kf, float dt, int reverse,
-    float intLim, float outLim, float dtFilter, bool Incremental, bool Feedforward, bool InnerAcc)
+void PidGeneral::Init(float kp, float ki, float kd, int reverse)
 {
     Kp = kp;
     Ki = ki;
     Kd = kd;
-    Kf = kf;
-    delta_t = dt;
     this->reverse = reverse;
 
     inte_errors = 0;
@@ -70,43 +35,107 @@ void PidGeneral::Init(float kp, float ki, float kd, float kf, float dt, int reve
     prev_error = 0;
     kd_error = 0;
     control_value = 0;
+}
 
-    inte_lim = intLim;
-    out_lim = outLim;
-    kd_filter_rate = dtFilter;
-    this->Incremental = Incremental;
-    this->Feedforward = Feedforward;
-    this->InnerAcc = InnerAcc;
-    this->AutoDt = (dt == 0); // 若dt为0则启用自动计算
+// /**
+//  * @brief 快速初始化函数
+//  * @note 默认使用 内部维护增量式PID ，启用前馈控制
+//  */
+// void PidGeneral::FastInit(float kp, float ki, float kd, float kf, float outLim, int reverse)
+// {
+//     Kp = kp;
+//     Ki = ki;
+//     Kd = kd;
+//     Kf = kf;
+//     delta_t = 0;
+//     this->reverse = reverse;
+
+//     inte_errors = 0;
+//     last_error = 0;
+//     prev_error = 0;
+//     kd_error = 0;
+//     control_value = 0;
+
+//     inte_lim = 0;       // 由于快速初始化默认用增量式，积分限幅设为0（增量式用outlim）
+//     out_lim = outLim;
+//     kd_filter_rate = 0.5f;
+//     Incremental = true;
+//     Feedforward = true;
+//     InnerAcc = true;
+//     AutoDt = true;      // 快速初始化默认启用自动计算时间间隔
+// }
+
+/**
+ * @brief 启用增量PID模式
+ * @param inner_acc 是否启用内部维护控制值
+ */
+void PidGeneral::IncreLize(bool inner_acc)
+{
+    InnerAcc = inner_acc;
+    Incremental = true;
 }
 
 /**
- * @brief 快速初始化函数
- * @note 默认使用 内部维护增量式PID ，启用前馈控制
+ * @brief 启用前馈控制
+ * @param fwd_type 前馈控制器类型
+ * @param kf 前馈系数
  */
-void PidGeneral::FastInit(float kp, float ki, float kd, float kf, float outLim, int reverse)
+void PidGeneral::ForwardLize(Forward_Typedef fwd_type, float kf)
+{
+    this->fwd_type = fwd_type;
+    Kf = kf;
+    Feedforward = true;   
+}
+
+
+/**
+ * @brief 手动设置时间间隔（同时禁用自动时间微分计算）
+ */
+void PidGeneral::ManualDt(float dt)
+{
+    delta_t = dt;
+    AutoDt = false;    // 禁用自动时间间隔计算
+}
+
+/**
+ * @brief 重设PID参数
+ */
+void PidGeneral::SetParam(float kp, float ki, float kd)
 {
     Kp = kp;
     Ki = ki;
     Kd = kd;
-    Kf = kf;
-    delta_t = 0;
-    this->reverse = reverse;
-
-    inte_errors = 0;
-    last_error = 0;
-    prev_error = 0;
-    kd_error = 0;
-    control_value = 0;
-
-    inte_lim = 0;       // 由于快速初始化默认用增量式，积分限幅设为0（增量式用outlim）
-    out_lim = outLim;
-    kd_filter_rate = 0.5f;
-    Incremental = true;
-    Feedforward = true;
-    InnerAcc = true;
-    AutoDt = true;      // 快速初始化默认启用自动计算时间间隔
 }
+
+/**
+ * @brief 设置PID限幅
+ */
+void PidGeneral::SetLimit(float intelim, float outlim, float dfilter)
+{
+    inte_lim = intelim;
+    out_lim = outlim;
+    kd_filter_rate = dfilter;
+}
+
+/**
+ * @brief 设置反向控制
+ */
+void PidGeneral::SetRev(bool reverse)
+{
+    this->reverse = reverse;
+}
+
+/**
+ * @brief 设置死区控制
+ */
+void PidGeneral::SetDeadband(float start, float end)
+{
+    deadband_start = start;
+    deadband_end = end;
+    DeadbandEnabled = (end > start); // 若end > start（输入合法）则启用死区控制
+}
+
+
 
 /**
  * @brief 重置PID控制器的状态
@@ -284,40 +313,29 @@ float PidGeneral::CalcIncAuto(float targ, float real, float output_lim)
     
 }
 
+
+/***        前馈控制函数        ***/
+
 /**
- * @brief 修改设置 PID参数
+ * @brief 速度前馈控制器
+ * @details 假设被控对象的传递函数为 标准一阶惯性环节 G(s) = K / (T*s + 1)
  */
-void PidGeneral::ParamSet(float kp, float ki, float kd)
+float PidGeneral::FwdFuncs::SpdForward(float u, float u_prev, float kf, float dt, float K, float T_c)
 {
-    Kp = kp;
-    Ki = ki;
-    Kd = kd;
+    float part_a = (T_c / K) * (u - u_prev) / dt;
+    float part_b = (1 / K) * u;
+
+    return part_a + part_b;
 }
 
 /**
- * @brief 修改设置 PID限幅
+ * @brief 位置前馈控制器
+ * @details 假设被控对象的传递函数为 一个积分环节与 一个一阶惯性环节的串联 G(s) = K / s(T*s + 1)
  */
-void PidGeneral::LimitSet(float integralLim, float outputLim, float deltaFilter)
+float PidGeneral::FwdFuncs::PosForward(float u, float u_prev, float u_prev_2, float kf, float dt, float K, float T_c)
 {
-    inte_lim = integralLim;
-    out_lim = outputLim;
-    kd_filter_rate = deltaFilter;
-}       
+    float part_a = (T_c / K) * (u - 2 * u_prev + u_prev_2) / (dt * dt);
+    float part_b = (1 / K) * (u - u_prev) / dt;
 
-/**
- * @brief 设置反向控制
- */ 
-void PidGeneral::RevSet(bool reverse)
-{
-    this->reverse = reverse;
-}
-
-/**
- * @brief 设置死区控制
- */
-void PidGeneral::DeadbandSet(float start, float end)
-{
-    deadband_start = start;
-    deadband_end = end;
-    DeadbandEnabled = (end > start); // 若end > start（输入合法）则启用死区控制
+    return part_a + part_b;
 }
