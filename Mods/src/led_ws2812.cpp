@@ -2,10 +2,8 @@
 #include "arm_math.h"
 #include "bsp_dwt.h"
 
-#define MaxLedNums 16
-
 static LedWs2812* targ_led;
-uint32_t WS2812buf2send[MaxLedNums][24] = {0};
+
 
 void LedWs2812::Init(TIM_HandleTypeDef *htim, uint32_t Channel, uint8_t LedNums)
 {
@@ -58,11 +56,14 @@ void LedWs2812::SetColor(int8_t Led_id, uint8_t R, uint8_t G, uint8_t B)
  */
 void LedWs2812::GradientFlow(Color color_0, Color color_1, float period)
 {
+    color_0 = color_0 * BiasFactor;
+    color_1 = color_1 * BiasFactor;
+
     // 记录已运行时间
     float delta_t = DWT_GetDeltaTime(&dwt_tick);
     RuntimeCnt += delta_t;
     if (RuntimeCnt >= period) {
-        fmod(RuntimeCnt, period);
+        RuntimeCnt = fmod(RuntimeCnt, period);
     }
 
     // 计算每个LED之间的相位差，确保整体效果连续
@@ -79,12 +80,120 @@ void LedWs2812::GradientFlow(Color color_0, Color color_1, float period)
         float ratio = 0.5f * (1.0f + sinf(2 * 3.1415 * phase / period - 1.5708));
         
         // 根据比例计算当前位置的颜色（在两种颜色间插值）
-        Color color_targ = (color_0 + (color_1 - color_0) * ratio) * 0.25f;
+        Color color_targ = (color_0 + (color_1 - color_0) * ratio);
 
         // 设置当前位置的颜色（亮度调整）
         SetColor(i, color_targ.r, color_targ.g, color_targ.b);
     }
 }
+
+/**
+ * @brief 单色呼吸灯
+ * @details 呼吸灯的亮灭不是线性的哦，而是遵循正弦曲线变化的
+ */
+void LedWs2812::Breath(Color color_0, float period)
+{
+    color_0 = color_0 * BiasFactor;
+
+    float delta_t = DWT_GetDeltaTime(&dwt_tick);
+    RuntimeCnt += delta_t;
+    if (RuntimeCnt >= period) {
+        RuntimeCnt = fmod(RuntimeCnt, period);
+    }
+
+    // 计算亮度比例（0-1之间），使用正弦函数实现平滑过渡
+    float ratio = 0.5f * (1.0f + sinf((2*PI) * RuntimeCnt / period - (PI/2)));
+
+    // 计算并填充当前颜色
+    Color color_targ = color_0 * ratio;
+    Fill(color_targ.r, color_targ.g, color_targ.b);
+}
+
+
+/**
+ * @brief 单色跑马灯
+ * @details 颜色在灯带上循环移动，不在亮带上的灯熄灭
+ * @param width 跑马灯的宽度（0~1），表示占整个灯带的比例
+ */
+void LedWs2812::Running(Color color, float width, float period)
+{
+    color = color * BiasFactor;
+
+    float delta_t = DWT_GetDeltaTime(&dwt_tick);
+    RuntimeCnt += delta_t;
+    if (RuntimeCnt >= period) {
+        RuntimeCnt = fmod(RuntimeCnt, period);
+    }
+
+    // 计算当前跑马灯的起始位置（0~LedNums范围内）
+    float position = (RuntimeCnt / period) * LedNums;
+    int width_in_leds = width * LedNums;
+
+    for (int i = 0; i < LedNums; i++)
+    {
+        // 计算当前LED与跑马灯位置的距离
+        float distance = fabsf(i - position);
+        
+        // 判断是否在跑马灯的宽度范围内（考虑循环）
+        if (distance <= (width_in_leds / 2) || distance >= (LedNums - width_in_leds / 2))
+        {
+            // 在跑马灯范围内，设置颜色
+            SetColor(i, color.r, color.g, color.b);
+        }
+        else
+        {
+            // 不在范围内，熄灭
+            SetColor(i, 0, 0, 0);
+        }
+    }
+}
+
+
+/**
+ * @brief 直接填充灯带颜色，每0.5s更新一次
+ */
+void LedWs2812::Lit(Color color)
+{
+    RuntimeCnt += DWT_GetDeltaTime(&dwt_tick);
+    if (RuntimeCnt > 0.5)
+    {
+        color = color * BiasFactor;
+        Fill(color.r, color.g, color.b);
+        RuntimeCnt = 0;
+    }
+}
+
+void LedWs2812::Expand(Color color_0, float period)
+{
+    // color_0 = color_0 * BiasFactor;
+
+    float delta_t = DWT_GetDeltaTime(&dwt_tick);
+
+    if (RuntimeCnt < period)
+    {
+        RuntimeCnt += delta_t;
+
+        // 计算填充比例
+        float ratio = RuntimeCnt / period;
+
+        // 计算中心位置
+        float center = LedNums / 2.0f;
+        
+        for (int i = 0; i < LedNums; i++)
+        {
+            float litness = 0;
+            if (i < center)     litness = (i / center) + 2 * ratio - 1;
+            else                litness = 2 * ratio - ((float)i - center) / center;
+            
+
+            if (litness < 0) litness = 0;
+            if (litness > 1) litness = 1;
+            Color color_targ = color_0 * litness;
+            SetColor(i, color_targ.r, color_targ.g, color_targ.b);
+        }
+    }
+}
+
 
 
 /// @brief 直接填充灯带颜色
@@ -105,7 +214,7 @@ void LedWs2812::Fill(uint8_t R, uint8_t G, uint8_t B)
  * @details 对于某一个LED的RGB信息，共24bit，每个bit发送：{0 ：取占空比33%，1：取占空比66%}
  * @warning PWM DMA被配置为byte了
  */
-void LedWs2812::SendData()
+void LedWs2812::Upload()
 {
     htim->Instance->CNT = htim->Instance->ARR - 1;
     HAL_TIM_PWM_Start_DMA(htim, Channel, (uint32_t*)WS2812buf2send, LedNums * 24 + 1);
@@ -117,7 +226,6 @@ void LedWs2812::SendData()
  */
 void HAL_TIM_PWM_PulseFinishedCallback(TIM_HandleTypeDef *htim)
 {
-
     if(htim == targ_led->htim)
     {
         HAL_TIM_PWM_Stop_DMA(targ_led->htim, targ_led->Channel);

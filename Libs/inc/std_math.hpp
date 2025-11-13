@@ -131,11 +131,13 @@ class Color
         static Color Red;
         static Color Green;
         static Color Blue;
+        static Color White;
         
         // 友元函数重载运算符
         friend Color operator+(const Color& lhs, const Color& rhs);
         friend Color operator-(const Color& lhs, const Color& rhs);
         friend Color operator*(const Color& vec, float scalar);
+        friend Color operator*(const Color& vec, Vec3 vecscalar);
         friend Color operator*(float scalar, const Color& vec);
         friend Color operator/(const Color& vec, float scalar);
 };
@@ -148,6 +150,9 @@ inline Color operator-(const Color& lhs, const Color& rhs) {
 }
 inline Color operator*(const Color& vec, float scalar) {  // 向量数乘（向量在前）
     return Color(vec.r * scalar, vec.g * scalar, vec.b * scalar);
+}
+inline Color operator*(const Color& vec, Vec3 vecscalar) {  // 颜色哈达玛积
+    return Color(vec.r * vecscalar.x, vec.g * vecscalar.y, vec.b * vecscalar.z);
 }
 inline Color operator*(float scalar, const Color& vec) {  // 向量数乘（标量在前）
     return Color(vec.r * scalar, vec.g * scalar, vec.b * scalar);
