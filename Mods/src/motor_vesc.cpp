@@ -2,8 +2,9 @@
 #include "bsp_can.h"
 #include <string.h>
 #include "can.h"
+#include "std_math.hpp"
 
-#define limit_mx 10000.0f
+
 int motor_can_id_list[16] = {0}, motor_can_id_count = 0,motor_count=0;//用来存储vesc的can_id，同时motor_id一定要从0开始，按顺序0—15进行初始化，不要跳号
 static MotorVESC* MotorList[16]= {nullptr};//用来存储电机实例指针，便于回调函数查表处理
 
@@ -34,11 +35,11 @@ void Motor_vesc_RxCallback(CAN_RxHeaderTypeDef *rxHeader, uint8_t *rxData, CAN_H
 }
 
 
-/// @name Get_rpm
+/// @name GetRPM
 /// @brief 返回指定标签电机的真实转速
 /// @param motor_id ：电机编号
 /// @return 该电机的实际转速
-int MotorVESC::Get_rpm(int motor_id)
+int MotorVESC::GetRPM(int motor_id)
 {
     if (motor_id == this->motor_id)
     {
@@ -49,7 +50,7 @@ int MotorVESC::Get_rpm(int motor_id)
     else return 0;
 }
 
-/// @name motor_vesc_init
+/// @name Init
 /// @brief 初始化MotorVESC结构体,同时注册can实例
 void MotorVESC::Init( CAN_HandleTypeDef *can_n, int motor_id, int motor_can_id)
 {
@@ -76,8 +77,6 @@ void MotorVESC::Init( CAN_HandleTypeDef *can_n, int motor_id, int motor_can_id)
  */
 void MotorVESC::RxHandle(MotorVescRecvData vesc_recvs)
 {
-    // 解码数据来自于CAN总线上的谁
-    uint8_t can_id = vesc_recvs.rx_header.ExtId & 0xff;
 
     // 获取电调上报的消息类型
     CanPacketType vesc_status_type = (CanPacketType)(vesc_recvs.rx_header.ExtId >> 8);
@@ -93,10 +92,7 @@ void MotorVESC::RxHandle(MotorVescRecvData vesc_recvs)
             int32_t temp = (int32_t)(vesc_recvs.recv_data[0] << 24 | vesc_recvs.recv_data[1] << 16
                 | vesc_recvs.recv_data[2] << 8 | vesc_recvs.recv_data[3]);
                 
-            if (temp < 50000 && temp > -50000)
-            {
-                this->motor_rpm_real = temp;
-            }
+            this->motor_rpm_real = temp;
             break;
         }
         default:
@@ -106,15 +102,15 @@ void MotorVESC::RxHandle(MotorVescRecvData vesc_recvs)
 
 
 // 设置电机转速
-void  MotorVESC::SetMotorRPM(int RPM)
+void  MotorVESC::SetRPM(int RPM,float limit_mx)
 {
-    int rpm = this->limit_abs((float)RPM,limit_mx);
+    int rpm = Limit_ABS((float)RPM,limit_mx);
    MotorVESC_SendCanTXBuffer( this,CAN_PACKET_SET_RPM, rpm);
 }
 
 
 // 设置电机占空比
-void  MotorVESC::SetMotorDuty( float duty)
+void  MotorVESC::SetDuty( float duty)
 {
   MotorVESC_SendCanTXBuffer(this,CAN_PACKET_SET_DUTY, duty);
 }
@@ -123,8 +119,6 @@ void  MotorVESC::SetMotorDuty( float duty)
 // 发送CAN消息
 void  MotorVESC_SendCanTXBuffer(MotorVESC *motor,CanPacketType cmd_type, float values)
 {
-    static uint32_t txmailbox;            // CAN 邮箱
-
 int ExtId=(cmd_type << 8 | motor->motor_can_id);
 
   BspCan_TxConfig custom_tx_conf=BspCan_GetTxConfig(motor->targ_can_n,ExtId,1,0,8,50);
@@ -134,7 +128,7 @@ int ExtId=(cmd_type << 8 | motor->motor_can_id);
         case CAN_PACKET_SET_DUTY:
         {
             int32_t data;
-            data = (int32_t)(values * 100000) ;
+            data = (int32_t)(values * 100000);
             txbuf[0] = data >> 24 ;
             txbuf[1] = data >> 16 ;
             txbuf[2] = data >> 8 ;
@@ -158,19 +152,5 @@ int ExtId=(cmd_type << 8 | motor->motor_can_id);
 	memcpy(motor->canTx_text,txbuf,8);
 }
 
-
-
-float MotorVESC::limit_abs(float targ_num, float limit)
-{
-    if (targ_num > limit)
-    {
-        return limit;
-    }
-    if (targ_num < -limit)
-    {
-        return -limit;
-    }
-    return targ_num;
-}
 
 

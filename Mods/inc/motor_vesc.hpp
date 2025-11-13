@@ -50,6 +50,7 @@ typedef struct MotorVescRecvData
 class MotorVESC
 {
 public:
+    /** 	  属性		**/
     int motor_id;                  // 总线上的电机编号，第几个
     int motor_can_id;              // 总线上的电机的CANID
     float motor_duty_real;         // 电机实际占空比
@@ -64,15 +65,13 @@ public:
     // 初始化MotorVESC结构体,同时注册can实例
     void Init( CAN_HandleTypeDef *can_n, int motor_id, int motor_can_id);
     // 设置电机占空比
-    void SetMotorDuty( float duty);
+    void SetDuty( float duty);
     // 设置电机转速
-    void SetMotorRPM(int RPM);
+    void SetRPM(int RPM,float limit_mx);
     // 获取电机转速
-    int Get_rpm(int motor_id);
+    int GetRPM(int motor_id);
     // 收到的信息并回复电机
     void RxHandle(MotorVescRecvData vesc_recvs);
-    //限幅函数
-    float limit_abs(float targ_num, float limit);
 };
 
 
