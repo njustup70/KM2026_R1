@@ -314,25 +314,35 @@ float PidGeneral::CalcIncAuto(float targ, float real, float output_lim)
     // 更新控制量
     control_value += inc_output;
     
+    float reterval = control_value;
+
     // 前馈控制
     if (Feedforward) switch (fwd_type)
     {
-        case SpeedForward: control_value = control_value + FwdFuncs::SpdForward(u, u_prev, delta_t, K, Tc) * Kf; break;
-        case PosForward:   control_value = control_value + FwdFuncs::PosForward(u, u_prev, u_prev_2, delta_t, K, Tc) * Kf; break;
+        case SpeedForward: reterval = control_value + FwdFuncs::SpdForward(u, u_prev, delta_t, K, Tc) * Kf; break;
+        case PosForward:   reterval = control_value + FwdFuncs::PosForward(u, u_prev, u_prev_2, delta_t, K, Tc) * Kf; break;
         default: break;
     }
     
 
     // 应用外界输出限幅（如果配置了限幅）
-    if (output_lim > 0)     control_value = limit_ab(control_value, output_lim);
+    if (output_lim > 0)
+    {
+        control_value = limit_ab(control_value, output_lim);
+        reterval = limit_ab(reterval, output_lim);
+    }     
 
     // 应用内部输出限幅（如果配置了限幅）
-    if (out_lim > 0)     control_value = limit_ab(control_value, out_lim);
+    if (out_lim > 0)
+    {
+        control_value = limit_ab(control_value, out_lim);
+        reterval = limit_ab(reterval, out_lim);
+    }     
     
     // 如果用户配置了反向，作反向输出
-    if (reverse)            control_value = -control_value;
+    if (reverse)            reterval = -reterval;
 
-    return control_value;
+    return reterval;
 }
 
 
