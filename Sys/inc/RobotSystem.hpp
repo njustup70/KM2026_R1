@@ -25,24 +25,26 @@ typedef struct
     bool Periphs_2_Online[8];       // 其他外设在线         
 }RobotDeviceStatus_t;
 
+/**
+ * @brief 定位模块
+ * @note 机器人系统将利用本模块，综合各个信息来源的数据，给出机器人的位置
+ */
+class Positioner
+{
+    public:
+    Positioner(){};
+    
+    
+    
+};
+
+
 
 class RobotSystem
 {   
     public:
     RobotSystem(){};
-    ~RobotSystem(){};   
-
-    typedef enum
-    {
-        ChassisChk,
-        OdomChk,
-        HostChk,
-        SubBoardChk,
-        ActionMotorChk,
-        Periphs_0_Chk,
-        Periphs_1_Chk,
-        Periphs_2_Chk,
-    }SelfCheckType;
+    ~RobotSystem(){};
 
     typedef enum
     {
@@ -53,17 +55,18 @@ class RobotSystem
 
     RobotDeviceStatus_t DeviceStatus;
     
-    // ChassisClass*   chassis = nullptr;               // 机器人底盘
-    LedWs2812*      led_band = nullptr;
-    Odometer_Ops9*  odometer = nullptr;       // 物理里程计
+    // ChassisClass*   chassis = nullptr;           // 机器人底盘
+    LedWs2812*      led_band = nullptr;             // 仅指 "系统灯"
+    Odometer_Ops9*  odometer = nullptr;             // 物理里程计
+    Positioner posner;
 
-    Vec3 global_position;           // 机器人全局位置，单位m，场地坐标系
+    Vec3 global_position;                           // 机器人全局位置，单位m，场地坐标系
 
-    StateCore auto_core;       // 自动状态机核心
-    StateCore instru_core;      // 受控状态机核心
+    StateCore auto_core;                            // 自动状态机核心
+    StateCore instru_core;                          // 受控状态机核心
     
     
-    void Init(bool Sc = true);       // Sc是缩写，表示启用自检
+    void Init(bool Sc = true);                      // Sc是缩写，表示启用自检
     void SetSelfcheck(bool IsEnable);
 
     // void ChassisRegist(ChassisClass chas);
@@ -71,6 +74,10 @@ class RobotSystem
     void MotorRegist(void* motor, MotorType type);
     
     void Run();
+    void Update_LedBand();
+    
+    private:
+    uint16_t ledband_prescaler = 4;                     // 主灯带更新预分频（200 / 4 = 50Hz）
 };
 
 
