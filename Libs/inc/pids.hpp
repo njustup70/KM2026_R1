@@ -29,8 +29,8 @@ extern "C"
         uint32_t dwt_dt;    // 自动DT用的DWT句柄
 
         // 前馈用参数
-        float Tc;       // 时间常数
-        float K;        // 环节增益
+        float Tc = 1;       // 时间常数
+        float K = 1;        // 环节增益
         float u;
         float u_prev;
         float u_prev_2;
@@ -87,7 +87,7 @@ extern "C"
         /// @brief 启用增量PID模式
         void IncreLize(bool inner_acc = true);
         /// @brief 启用前馈控制
-        void ForwardLize(Forward_Typedef fwd_type, float kf);
+        void ForwardLize(Forward_Typedef fwd_type, float kf, float K = 1.0f, float Tc = 1.0f);
         /// @brief 手动设置时间间隔（同时禁用自动时间微分计算） 
         void ManualDt(float dt);
 

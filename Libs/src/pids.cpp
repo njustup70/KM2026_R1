@@ -80,10 +80,13 @@ void PidGeneral::IncreLize(bool inner_acc)
  * @param fwd_type 前馈控制器类型
  * @param kf 前馈系数
  */
-void PidGeneral::ForwardLize(Forward_Typedef fwd_type, float kf)
+void PidGeneral::ForwardLize(Forward_Typedef fwd_type, float kf, float K, float Tc)
 {
     this->fwd_type = fwd_type;
-    Kf = kf;
+    this->Kf = kf;
+    this->K = K;
+    this->Tc = Tc;
+
     Feedforward = true;   
 }
 
@@ -214,6 +217,11 @@ float PidGeneral::CalcPos(float targ, float real, float output_lim)
     last_error = error;
     last_kderr = kd_error;
 
+    // 记录前馈项
+    u_prev_2 = u_prev;
+    u_prev = u;
+    u = targ;
+
     // 前馈控制
     if (Feedforward) switch (fwd_type)
     {
@@ -297,6 +305,11 @@ float PidGeneral::CalcIncAuto(float targ, float real, float output_lim)
 
     prev_kderr = last_kderr;
     last_kderr = kd_error;
+
+    // 记录前馈项
+    u_prev_2 = u_prev;
+    u_prev = u;
+    u = targ;
     
     // 更新控制量
     control_value += inc_output;
@@ -308,6 +321,7 @@ float PidGeneral::CalcIncAuto(float targ, float real, float output_lim)
         case PosForward:   control_value = control_value + FwdFuncs::PosForward(u, u_prev, u_prev_2, delta_t, K, Tc) * Kf; break;
         default: break;
     }
+    
 
     // 应用外界输出限幅（如果配置了限幅）
     if (output_lim > 0)     control_value = limit_ab(control_value, output_lim);
