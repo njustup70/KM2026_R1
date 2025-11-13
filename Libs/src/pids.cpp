@@ -37,34 +37,6 @@ void PidGeneral::Init(float kp, float ki, float kd, int reverse)
     control_value = 0;
 }
 
-// /**
-//  * @brief 快速初始化函数
-//  * @note 默认使用 内部维护增量式PID ，启用前馈控制
-//  */
-// void PidGeneral::FastInit(float kp, float ki, float kd, float kf, float outLim, int reverse)
-// {
-//     Kp = kp;
-//     Ki = ki;
-//     Kd = kd;
-//     Kf = kf;
-//     delta_t = 0;
-//     this->reverse = reverse;
-
-//     inte_errors = 0;
-//     last_error = 0;
-//     prev_error = 0;
-//     kd_error = 0;
-//     control_value = 0;
-
-//     inte_lim = 0;       // 由于快速初始化默认用增量式，积分限幅设为0（增量式用outlim）
-//     out_lim = outLim;
-//     kd_filter_rate = 0.5f;
-//     Incremental = true;
-//     Feedforward = true;
-//     InnerAcc = true;
-//     AutoDt = true;      // 快速初始化默认启用自动计算时间间隔
-// }
-
 /**
  * @brief 启用增量PID模式
  * @param inner_acc 是否启用内部维护控制值
@@ -343,6 +315,7 @@ float PidGeneral::CalcIncAuto(float targ, float real, float output_lim)
     if (reverse)            reterval = -reterval;
 
     return reterval;
+
 }
 
 

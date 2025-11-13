@@ -83,7 +83,7 @@ extern "C"
         PidGeneral(){}; // 默认构造函数
         
         // 初始化函数，带完整参数
-        void Init(float kp, float ki, float kd, int reverse);
+        void Init(float kp, float ki, float kd, int reverse = false);
         /// @brief 启用增量PID模式
         void IncreLize(bool inner_acc = true);
         /// @brief 启用前馈控制

@@ -25,19 +25,22 @@ void MotorDji::Init(CAN_HandleTypeDef *hcan, uint8_t motorESC_id, MotorDJIMode d
 {
 	
 	// 首先，初始化其 速度环Pid类
-	if (fastInit)	speed_pid.FastInit(3, 24.0, 0.0, 0.16, 5000, false);		// 增量速度环
-	// if (fastInit)	speed_pid.Init(10.8, 0.0, 0.0, 0.05, 0.0, 0, 0.0, 0.0, 0.8, false, true, true);		// 位置速度环
-	else 			speed_pid.FastInit(0.0, 0.0, 0.0, 0.0, 5000, false);
+	if (fastInit)
+	{
+		speed_pid.Init(5, 10, 0);
+		speed_pid.IncreLize();											// 增量式速度环
+		speed_pid.ForwardLize(PidGeneral::SpeedForward, 0.8f); 			// 速度型前馈
+	}
 	
 	// 接着是 位置环Pid类	
-	// if (fastInit)	position_pid.FastInit(0.10, 1.00, 0.0, 0.0, 10000, false);		// 增量位置环
-	if (fastInit)	position_pid.Init(0.108, 0.0, 0.0, 0.05, 0.0, 0, 0.0, 4000.0, 0.8, false, true, true);		// 位置位置环
-	else 			position_pid.Init(0.0, 0.0, 0.0, 0.0, 0.0, 0, 0.0, 4000.0, 0.8, false, false, false);		// 位置位置环
+	if (fastInit)
+	{
+		position_pid.Init(0.168, 0.0, 0.0);								// 位置位置环
+		position_pid.ForwardLize(PidGeneral::PosForward, 0.6f); 		// 位置型前馈
+	}	
 	
-	if (fastInit)	mode = djimode;
-	else			mode = djimode;
+	mode = djimode; // 设置控制模式
 	
-
 	/// @brief 根据电机 ID 和 CAN路线，将其存储到全局的电机实例列表中，同时顺序记录其ID
 	/// 一般一根CAN总线上最多有8个电机，所以CAN1分配到1-8号电机，CAN2分配到9-16号电机
 	if (motorESC_id <= 8 && motorESC_id >= 1)
