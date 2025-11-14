@@ -108,6 +108,17 @@ void MotorDM::SetPosi(float pos, float spd)
   BspCan_Transmit(txconf, buf);
 }
 
+
+/**
+ * @brief 设置位置限制
+ */
+void MotorDM::SetPosiLim(float posi_max, float posi_min)
+{
+  this->posi_max = posi_max;
+  this->posi_min = posi_min;
+}
+
+
 /**
  * @brief 处理达妙电机反馈信息的回调函数
  */
