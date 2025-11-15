@@ -39,7 +39,7 @@ static void UartMsgCoder_RxCallback(UART_HandleTypeDef *huart, uint8_t *rxData, 
         UartMsgCoder *targ_coder = UartMsgPointList[i]; // 取出实例
         if (targ_coder->uart_inst.huart == huart)
         {
-            uint8_t data[50] = {0};                                              // 临时数据缓冲区
+            uint8_t data[64] = {0};                                              // 临时数据缓冲区
             memcpy(data, rxData + 1, size - 2);                                  // 复制有效数据（去掉帧头、帧类型和帧尾）
             uint8_t frame_head = targ_coder->CalculateFrameHead(data, size - 2); // 计算帧头校验值
             uint8_t frame_tail = frame_head;                                     // 帧尾（与帧头相同）
@@ -160,8 +160,14 @@ bool UartMsgCoder::SendEncodedMsg(uint8_t *encoded_data, int length)
  */
 bool UartMsgCoder::SendMsg(uint8_t frame_type, uint8_t *data, int data_len)
 {
-    uint8_t encoded_buf[70]; // 足够大的缓冲区
+    if (data_len > 64)
+    {
+        data_len = 64; // 限制最大长度为64
+    }
+
+    uint8_t encoded_buf[67]; // 足够大的缓冲区
     int encoded_len = EncodeMsg(frame_type, data, data_len, encoded_buf);
+
     if (encoded_len > 0)
     {
         return SendEncodedMsg(encoded_buf, encoded_len);
