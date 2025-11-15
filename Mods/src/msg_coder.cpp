@@ -65,7 +65,7 @@ static void UartMsgCoder_RxCallback(UART_HandleTypeDef *huart, uint8_t *rxData, 
  * @param buf 输出缓冲区
  * @return 编码后的总长度
  */
-int UartMsgCoder::EncodeHostMsg(uint8_t *buf)
+int UartMsgCoder::Encode(uint8_t *buf)
 {
     if (this->frame.frame_head == 0 || this->frame.frame_tail == 0)
         return 0; // 帧头或帧尾未设置，返回0
@@ -80,11 +80,42 @@ int UartMsgCoder::EncodeHostMsg(uint8_t *buf)
 }
 
 /**
+ * @brief 高级编码接口 - 自动处理帧头和帧尾
+ * @param frame_type 帧类型
+ * @param data 数据指针
+ * @param data_len 数据长度
+ * @param out_buf 输出缓冲区
+ * @return 编码后的数据长度
+ */
+int UartMsgCoder::EncodeMsg(uint8_t frame_type, uint8_t *data, int data_len, uint8_t *out_buf)
+{
+    if (data_len > 64)
+    {
+        data_len = 64; // 限制最大长度为64
+    }
+
+    // 自动计算帧头帧尾
+    uint8_t temp_buf[65] = {0};
+    temp_buf[0] = frame_type;
+    memcpy(&temp_buf[1], data, data_len);
+
+    // 计算帧头和帧尾校验值
+    uint8_t frame_head = CalculateFrameHead(temp_buf, data_len + 1);
+    uint8_t frame_tail = frame_head;
+
+    // 设置帧参数
+    SetFrameParam(frame_head, frame_type, data, data_len, frame_tail);
+
+    // 编码
+    return Encode(out_buf);
+}
+
+/**
  * @brief 解码主机消息
  * @param buf 输入缓冲区
  * @return 校验成功返回 帧类型，校验失败返回 -1
  */
-int UartMsgCoder::DecodeHostMsg(uint8_t *buf)
+int UartMsgCoder::DecodeMsg(uint8_t *buf)
 {
     uint8_t frame_head = buf[0]; // 帧头
     uint8_t frame_type = buf[1]; // 帧类型
@@ -100,6 +131,42 @@ int UartMsgCoder::DecodeHostMsg(uint8_t *buf)
         return -1; // 校验失败，返回-1
 
     return frame_type; // 校验通过，返回帧类型
+}
+
+/**
+ * @brief 发送编码后的消息
+ * @param encoded_data 编码后的数据指针
+ * @param length 数据长度
+ * @return 发送成功返回 true，失败返回 false
+ */
+bool UartMsgCoder::SendEncodedMsg(uint8_t *encoded_data, int length)
+{
+    if (encoded_data == nullptr || length == 0)
+    {
+        return false;
+    }
+
+    // 使用BspUart发送数据
+    BspUart_Transmit(uart_inst, encoded_data, length);
+    return true;
+}
+
+/**
+ * @brief 发送消息（自动编码并发送）
+ * @param frame_type 帧类型
+ * @param data 数据指针
+ * @param data_len 数据长度
+ * @return 发送成功返回 true，失败返回 false
+ */
+bool UartMsgCoder::SendMsg(uint8_t frame_type, uint8_t *data, int data_len)
+{
+    uint8_t encoded_buf[70]; // 足够大的缓冲区
+    int encoded_len = EncodeMsg(frame_type, data, data_len, encoded_buf);
+    if (encoded_len > 0)
+    {
+        return SendEncodedMsg(encoded_buf, encoded_len);
+    }
+    return false;
 }
 
 /**
@@ -135,7 +202,7 @@ uint8_t UartMsgCoder::CalculateFrameHead(uint8_t *data, int data_len)
     return sum;
 }
 
-/**                以下为常用的类型转换方法                       **/
+/**                以下为常用的类型转换方法（静态方法）                       **/
 
 // 将float类型转换为4个字节
 void UartMsgCoder::FloatToBytes(float value, uint8_t *bytes)
@@ -156,4 +223,10 @@ void UartMsgCoder::Uint16ToBytes(uint16_t value, uint8_t *bytes)
 {
     bytes[0] = (uint8_t)(value & 0xFF);
     bytes[1] = (uint8_t)((value >> 8) & 0xFF);
+}
+
+// 将2个字节转换为uint16_t类型
+uint16_t UartMsgCoder::BytesToUint16(uint8_t *bytes)
+{
+    return (uint16_t)(bytes[0]) | ((uint16_t)(bytes[1]) << 8);
 }
