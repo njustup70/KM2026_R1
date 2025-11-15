@@ -155,7 +155,7 @@ bool UartMsgCoder::SendEncodedMsg(uint8_t *encoded_data, int length)
  * @brief 发送消息（自动编码并发送）
  * @param frame_type 帧类型
  * @param data 数据指针
- * @param data_len 数据长度
+ * @param data_len 数据长度（最大为64）
  * @return 发送成功返回 true，失败返回 false
  */
 bool UartMsgCoder::SendMsg(uint8_t frame_type, uint8_t *data, int data_len)
