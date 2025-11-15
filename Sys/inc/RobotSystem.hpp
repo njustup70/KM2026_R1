@@ -31,16 +31,39 @@ class Positioner
 class Monitor
 {
 private:
-    /* data */
+    
+    void PrintLog();
+
 public:
-    Monitor(/* args */){};
+    
+    Monitor(){};
     ~Monitor(){};
 
+    /// @brief 发送日志
     void Log(const char* format, ...);
+
+    /// @brief 发送警告
     void LogWarning(const char* format, ...);
+
+    /// @brief 发送错误
     void LogError(const char* format, ...);
 
-    void Track(bool& targ_status);
+    /// @brief 监控某个模块的状态变化
+    void Watch(bool& targ_status, bool is_neccessary = false);
+
+    /**
+     * @brief 跟踪某个变量
+     * @note 调用本函数后，其将被编码并加入机器人状态码中
+     */
+    template <typename T>
+    void Track(T targ);
+
+    /**
+     * @brief 运行方法
+     * @note 该方法应被周期性调用，以处理监控任务
+     * @details 内含发送日志信息、发送机器人状态码、监控维护模块等功能
+     */
+    void Run();
 };
 
 

@@ -3,6 +3,7 @@
 #include "msg_coder.hpp" 
 #include "Chassis.hpp"
 #include "led_ws2812.hpp"
+#include "typeinfo"
 
 RobotSystem System;
 LedWs2812 sys_ledband;
@@ -78,3 +79,14 @@ void RobotSystem::LedBandControl()
     }
     
 }
+
+
+template <typename T>
+void Monitor::Track(T targ)
+{
+    type_info type = typeid(targ);
+    uint8_t targ_size = sizeof(targ); 
+
+    type.name();
+}
+    
