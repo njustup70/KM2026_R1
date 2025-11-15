@@ -181,7 +181,7 @@ void UartMsgCoder::SetFrameParam(uint8_t Frame_Head, uint8_t Frame_Type, uint8_t
 {
     this->frame.frame_head = Frame_Head;                    // 设置帧头
     this->frame.frame_type = Frame_Type;                    // 设置帧类型
-    this->frame.data_len = (Data_Len > 32) ? 32 : Data_Len; // 设置数据包长度
+    this->frame.data_len = (Data_Len > 64) ? 64 : Data_Len; // 设置数据包长度
     memcpy(this->frame.data, Data, this->frame.data_len);   // 设置数据包
     this->frame.frame_tail = Frame_Tail;                    // 设置帧尾
 }
