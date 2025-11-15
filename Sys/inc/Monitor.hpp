@@ -59,6 +59,13 @@ public:
      */
     void Init(UART_HandleTypeDef *huart_host, UART_HandleTypeDef *huart_farc, bool vofa_mode = false);
 
+    /**
+     * @brief 运行方法
+     * @note 该方法应被周期性调用，以处理监控任务
+     * @details 内含发送日志信息、发送机器人状态码、监控维护模块等功能
+     */
+    void Run();
+
     /// @brief 发送日志
     void Log(const char* format, ...);
 
@@ -78,13 +85,6 @@ public:
      */
     template <typename T>
     void Track(T& targ);
-
-    /**
-     * @brief 运行方法
-     * @note 该方法应被周期性调用，以处理监控任务
-     * @details 内含发送日志信息、发送机器人状态码、监控维护模块等功能
-     */
-    void Run();
 
     /// @brief 发送监控信息
     void LogWatch();
