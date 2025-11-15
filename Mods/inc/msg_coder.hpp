@@ -3,6 +3,7 @@
 
 #include "stm32f4xx_hal.h"
 #include "bsp_uart.h"
+#include "std_math.hpp"
 
 /**
  * @brief 串口消息调制器
