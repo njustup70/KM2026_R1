@@ -2,10 +2,11 @@
 #define STD_MSG_UP70
 
 #include "stm32f4xx_hal.h"
-#include <assert.h>
 
 #define BSP_SQRT2 1.41421356237f
 #define BSP_SQRT3 1.73205080757f
+
+typedef uint8_t byte;
 
 
 class Vec2;

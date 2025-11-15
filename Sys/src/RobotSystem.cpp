@@ -80,10 +80,17 @@ void RobotSystem::LedBandControl()
     
 }
 
-
+/**
+ * @brief 跟踪某个变量
+ * @details 本方法以200Hz调用，所以track_hz将决定分频倍数
+ */
 template <typename T>
-void Monitor::Track(T targ)
+void Monitor::Track(T targ, uint8_t track_hz)
 {
+    // 检查参数合法性
+    assert(track_hz > 0 && track_hz <= 200);
+    
+    
     type_info type = typeid(targ);
     uint8_t targ_size = sizeof(targ); 
 

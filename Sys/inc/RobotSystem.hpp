@@ -26,18 +26,40 @@ class Positioner
 
 
 /**
- * @brief 用于监控机器人的各项状态，还有调试、日志等功能
+ * @brief 用于监控机器人的各项状态，还有调试、日志等功能]
+ * @warning 本类也属于：单例
  */
 class Monitor
 {
 private:
-    
-    void PrintLog();
+    typedef struct
+    {
+        void *track_addr;       // 变量地址
+        void *buf_addr;         // 将其变量值存入的缓存地址
+        uint8_t bytes;          // 变量的字节数
+    }MonitorLinkage;
+
+    /// @brief 最多监测32个Bool
+    static byte watch_buf[4];
+
+    /// @brief 最多追踪32Byte的数据
+    static byte track_buf[32];
+
+    uint8_t watch_count = 0;
+    uint8_t track_count = 0;
 
 public:
-    
     Monitor(){};
     ~Monitor(){};
+
+    BspUart_Instance host_uart;         // 发送到上位机的串口实例
+    BspUart_Instance farcon_uart;       // 发送到遥控器的串口实例
+
+    /**
+     * @brief 监视器的初始化函数
+     * @note 上位机有两种情况，一种是视觉组的工控机，一种是调试时候的电脑
+     */
+    void Init(UART_HandleTypeDef *huart_host, UART_HandleTypeDef *huart_farc, bool vofa_mode = false);
 
     /// @brief 发送日志
     void Log(const char* format, ...);
@@ -54,9 +76,10 @@ public:
     /**
      * @brief 跟踪某个变量
      * @note 调用本函数后，其将被编码并加入机器人状态码中
+     * @param track_hz 跟踪频率，单位Hz，最大为200Hz
      */
     template <typename T>
-    void Track(T targ);
+    void Track(T targ, uint8_t track_hz);
 
     /**
      * @brief 运行方法
@@ -64,10 +87,19 @@ public:
      * @details 内含发送日志信息、发送机器人状态码、监控维护模块等功能
      */
     void Run();
+
+    /// @brief 发送监控信息
+    void LogWatch();
+
+    /// @brief 发送跟踪信息
+    void LogTrack();
 };
 
 
-
+/**
+ * @brief 机器人系统
+ * @warning 本类也属于：单例
+ */
 class RobotSystem
 {   
     private:
