@@ -41,3 +41,5 @@ build/
 .cache/
 
 .vscode/
+
+MDK-ARM/RTE/_GeneralFramework/RTE_Components.h
