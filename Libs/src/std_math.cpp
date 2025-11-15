@@ -125,7 +125,22 @@ Vec3 Vec2::ToVec3()
     return v;
 }
 ///////////////////////////////////////////          COLOR        /////////////////////////////////////////////////////
-Color Color::Red = Color(64.0f, 0.0f, 0.0f);   // 红色（r=1, g=0, b=0）
-Color Color::Green = Color(0.0f, 64.0f, 0.0f); // 绿色（r=0, g=1, b=0）
-Color Color::Blue = Color(0.0f, 0.0f, 64.0f);  // 蓝色（r=0, g=0, b=1）
+Color Color::Red = Color(255.0f, 0.0f, 0.0f);   // 红色（r=1, g=0, b=0）
+Color Color::Green = Color(0.0f, 255.0f, 0.0f); // 绿色（r=0, g=1, b=0）
+Color Color::Blue = Color(0.0f, 0.0f, 255.0f);  // 蓝色（r=0, g=0, b=1）
+Color Color::White = Color(255.0f, 255.0f, 255.0f);  // 白色（r=1, g=1, b=1）
 
+/*********      限幅     **********/
+
+float Limit_ABS(float targ_num, float limit_mx)
+{
+    if (targ_num > limit_mx)
+    {
+        return limit_mx;
+    }
+    if (targ_num < -limit_mx)
+    {
+        return -limit_mx;
+    }
+    return targ_num;
+}

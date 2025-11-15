@@ -62,6 +62,8 @@ class MotorDM
         void SetPosi(float pos);
         // 设置位置和速度
         void SetPosi(float pos, float spd);
+        // 设置位置限制
+        void SetPosiLim(float posi_max, float posi_min);
 };
 
 
