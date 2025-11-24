@@ -48,22 +48,28 @@
 /* USER CODE BEGIN Variables */
 
 /* USER CODE END Variables */
-osThreadId RobotMainTaskHandle;
-osThreadId FastControlTaskHandle;
-osThreadId SlowControlTaskHandle;
+osThreadId ApplicationTaskHandle;
+osThreadId ControlTaskHandle;
 osThreadId RobotSystemTaskHandle;
-osThreadId TestTaskHandle;
+osThreadId StateCoreTaskHandle;
+osThreadId Coroutine_0_TasHandle;
+osThreadId Coroutine_1_TasHandle;
+osThreadId Coroutine_2_TasHandle;
+osThreadId Coroutine_3_TasHandle;
 
 /* Private function prototypes -----------------------------------------------*/
 /* USER CODE BEGIN FunctionPrototypes */
 
 /* USER CODE END FunctionPrototypes */
 
-void RobotMain(void const * argument);
-void FastControl(void const * argument);
-void SlowControl(void const * argument);
+void Application(void const * argument);
+void Control(void const * argument);
 void RobotSystem(void const * argument);
-void Test(void const * argument);
+void StateCore(void const * argument);
+void Coroutine_0(void const * argument);
+void Coroutine_1(void const * argument);
+void Coroutine_2(void const * argument);
+void Coroutine_3(void const * argument);
 
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
 
@@ -109,25 +115,37 @@ void MX_FREERTOS_Init(void) {
   /* USER CODE END RTOS_QUEUES */
 
   /* Create the thread(s) */
-  /* definition and creation of RobotMainTask */
-  osThreadDef(RobotMainTask, RobotMain, osPriorityBelowNormal, 0, 256);
-  RobotMainTaskHandle = osThreadCreate(osThread(RobotMainTask), NULL);
+  /* definition and creation of ApplicationTask */
+  osThreadDef(ApplicationTask, Application, osPriorityBelowNormal, 0, 512);
+  ApplicationTaskHandle = osThreadCreate(osThread(ApplicationTask), NULL);
 
-  /* definition and creation of FastControlTask */
-  osThreadDef(FastControlTask, FastControl, osPriorityAboveNormal, 0, 512);
-  FastControlTaskHandle = osThreadCreate(osThread(FastControlTask), NULL);
-
-  /* definition and creation of SlowControlTask */
-  osThreadDef(SlowControlTask, SlowControl, osPriorityNormal, 0, 512);
-  SlowControlTaskHandle = osThreadCreate(osThread(SlowControlTask), NULL);
+  /* definition and creation of ControlTask */
+  osThreadDef(ControlTask, Control, osPriorityAboveNormal, 0, 256);
+  ControlTaskHandle = osThreadCreate(osThread(ControlTask), NULL);
 
   /* definition and creation of RobotSystemTask */
-  osThreadDef(RobotSystemTask, RobotSystem, osPriorityNormal, 0, 1024);
+  osThreadDef(RobotSystemTask, RobotSystem, osPriorityNormal, 0, 256);
   RobotSystemTaskHandle = osThreadCreate(osThread(RobotSystemTask), NULL);
 
-  /* definition and creation of TestTask */
-  osThreadDef(TestTask, Test, osPriorityNormal, 0, 256);
-  TestTaskHandle = osThreadCreate(osThread(TestTask), NULL);
+  /* definition and creation of StateCoreTask */
+  osThreadDef(StateCoreTask, StateCore, osPriorityIdle, 0, 512);
+  StateCoreTaskHandle = osThreadCreate(osThread(StateCoreTask), NULL);
+
+  /* definition and creation of Coroutine_0_Tas */
+  osThreadDef(Coroutine_0_Tas, Coroutine_0, osPriorityIdle, 0, 128);
+  Coroutine_0_TasHandle = osThreadCreate(osThread(Coroutine_0_Tas), NULL);
+
+  /* definition and creation of Coroutine_1_Tas */
+  osThreadDef(Coroutine_1_Tas, Coroutine_1, osPriorityIdle, 0, 128);
+  Coroutine_1_TasHandle = osThreadCreate(osThread(Coroutine_1_Tas), NULL);
+
+  /* definition and creation of Coroutine_2_Tas */
+  osThreadDef(Coroutine_2_Tas, Coroutine_2, osPriorityLow, 0, 128);
+  Coroutine_2_TasHandle = osThreadCreate(osThread(Coroutine_2_Tas), NULL);
+
+  /* definition and creation of Coroutine_3_Tas */
+  osThreadDef(Coroutine_3_Tas, Coroutine_3, osPriorityLow, 0, 128);
+  Coroutine_3_TasHandle = osThreadCreate(osThread(Coroutine_3_Tas), NULL);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -135,48 +153,34 @@ void MX_FREERTOS_Init(void) {
 
 }
 
-/* USER CODE BEGIN Header_RobotMain */
+/* USER CODE BEGIN Header_Application */
 /**
-  * @brief  Function implementing the RobotMainTask thread.
+  * @brief  Function implementing the ApplicationTask thread.
   * @param  argument: Not used
   * @retval None
   */
-/* USER CODE END Header_RobotMain */
-void RobotMain(void const * argument)
+/* USER CODE END Header_Application */
+void Application(void const * argument)
 {
-  /* USER CODE BEGIN RobotMain */
-  RobotMainCpp();
-  /* USER CODE END RobotMain */
+  /* USER CODE BEGIN DEFAULT_TASK_FUNCTION */
+  /* Infinite loop */
+  ApplicationCpp();
+  /* USER CODE END DEFAULT_TASK_FUNCTION */
 }
 
-/* USER CODE BEGIN Header_FastControl */
+/* USER CODE BEGIN Header_Control */
 /**
-* @brief Function implementing the FastControlTask thread.
+* @brief Function implementing the ControlTask thread.
 * @param argument: Not used
 * @retval None
 */
-/* USER CODE END Header_FastControl */
-void FastControl(void const * argument)
+/* USER CODE END Header_Control */
+void Control(void const * argument)
 {
-  /* USER CODE BEGIN FastControl */
+  /* USER CODE BEGIN Control */
   /* Infinite loop */
-  FastControlCpp();
-  /* USER CODE END FastControl */
-}
-
-/* USER CODE BEGIN Header_SlowControl */
-/**
-* @brief Function implementing the SlowControlTask thread.
-* @param argument: Not used
-* @retval None
-*/
-/* USER CODE END Header_SlowControl */
-void SlowControl(void const * argument)
-{
-  /* USER CODE BEGIN SlowControl */
-  /* Infinite loop */
-  SlowControlCpp();
-  /* USER CODE END SlowControl */
+  ControlCpp();
+  /* USER CODE END Control */
 }
 
 /* USER CODE BEGIN Header_RobotSystem */
@@ -194,19 +198,91 @@ void RobotSystem(void const * argument)
   /* USER CODE END RobotSystem */
 }
 
-/* USER CODE BEGIN Header_Test */
+/* USER CODE BEGIN Header_StateCore */
 /**
-* @brief Function implementing the TestTask thread.
+* @brief Function implementing the StateCoreTask thread.
 * @param argument: Not used
 * @retval None
 */
-/* USER CODE END Header_Test */
-void Test(void const * argument)
+/* USER CODE END Header_StateCore */
+void StateCore(void const * argument)
 {
-  /* USER CODE BEGIN Test */
+  /* USER CODE BEGIN StateCore */
   /* Infinite loop */
-  TestCpp();
-  /* USER CODE END Test */
+  StateCoreCpp();
+  /* USER CODE END StateCore */
+}
+
+/* USER CODE BEGIN Header_Coroutine_0 */
+/**
+* @brief Function implementing the Coroutine_0_Tas thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_Coroutine_0 */
+void Coroutine_0(void const * argument)
+{
+  /* USER CODE BEGIN Coroutine_0 */
+  /* Infinite loop */
+  for(;;)
+  {
+    osDelay(1);
+  }
+  /* USER CODE END Coroutine_0 */
+}
+
+/* USER CODE BEGIN Header_Coroutine_1 */
+/**
+* @brief Function implementing the Coroutine_1_Tas thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_Coroutine_1 */
+void Coroutine_1(void const * argument)
+{
+  /* USER CODE BEGIN Coroutine_1 */
+  /* Infinite loop */
+  for(;;)
+  {
+    osDelay(1);
+  }
+  /* USER CODE END Coroutine_1 */
+}
+
+/* USER CODE BEGIN Header_Coroutine_2 */
+/**
+* @brief Function implementing the Coroutine_2_Tas thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_Coroutine_2 */
+void Coroutine_2(void const * argument)
+{
+  /* USER CODE BEGIN Coroutine_2 */
+  /* Infinite loop */
+  for(;;)
+  {
+    osDelay(1);
+  }
+  /* USER CODE END Coroutine_2 */
+}
+
+/* USER CODE BEGIN Header_Coroutine_3 */
+/**
+* @brief Function implementing the Coroutine_3_Tas thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_Coroutine_3 */
+void Coroutine_3(void const * argument)
+{
+  /* USER CODE BEGIN Coroutine_3 */
+  /* Infinite loop */
+  for(;;)
+  {
+    osDelay(1);
+  }
+  /* USER CODE END Coroutine_3 */
 }
 
 /* Private application code --------------------------------------------------*/

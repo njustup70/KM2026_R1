@@ -81,7 +81,7 @@
           </BeforeMake>
           <AfterMake>
             <RunUserProg1>0</RunUserProg1>
-            <RunUserProg2>0</RunUserProg2>
+            <RunUserProg2>1</RunUserProg2>
             <UserProg1Name></UserProg1Name>
             <UserProg2Name></UserProg2Name>
             <UserProg1Dos16Mode>0</UserProg1Dos16Mode>
@@ -868,24 +868,9 @@
           <GroupName>Apps</GroupName>
           <Files>
             <File>
-              <FileName>Test.cpp</FileName>
+              <FileName>MainFrame.cpp</FileName>
               <FileType>8</FileType>
-              <FilePath>..\Apps\src\Test.cpp</FilePath>
-            </File>
-            <File>
-              <FileName>InstruLogic.cpp</FileName>
-              <FileType>8</FileType>
-              <FilePath>..\Apps\src\InstruLogic.cpp</FilePath>
-            </File>
-            <File>
-              <FileName>AutoLogic.cpp</FileName>
-              <FileType>8</FileType>
-              <FilePath>..\Apps\src\AutoLogic.cpp</FilePath>
-            </File>
-            <File>
-              <FileName>Interfaces.cpp</FileName>
-              <FileType>8</FileType>
-              <FilePath>..\Apps\src\Interfaces.cpp</FilePath>
+              <FilePath>..\Apps\src\MainFrame.cpp</FilePath>
             </File>
           </Files>
         </Group>
@@ -967,7 +952,15 @@
               <FileType>8</FileType>
               <FilePath>..\Sys\src\Monitor.cpp</FilePath>
             </File>
+            <File>
+              <FileName>SysDefs.hpp</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\Sys\inc\SysDefs.hpp</FilePath>
+            </File>
           </Files>
+        </Group>
+        <Group>
+          <GroupName>::CMSIS</GroupName>
         </Group>
         <Group>
           <GroupName>Middlewares/Library/DSP Library/DSP Library</GroupName>
@@ -1030,7 +1023,7 @@
                 <NoWarn>2</NoWarn>
                 <uSurpInc>2</uSurpInc>
                 <useXO>2</useXO>
-                <ClangAsOpt>0</ClangAsOpt>
+                <ClangAsOpt>1</ClangAsOpt>
                 <VariousControls>
                   <MiscControls></MiscControls>
                   <Define></Define>
@@ -1066,9 +1059,6 @@
               </FileOption>
             </File>
           </Files>
-        </Group>
-        <Group>
-          <GroupName>::CMSIS</GroupName>
         </Group>
       </Groups>
     </Target>

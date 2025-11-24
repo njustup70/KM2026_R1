@@ -13,13 +13,13 @@ extern "C" {
 
 /******     RTOS函数        ******/
 /// @brief 高频率的控制任务（100Hz ~ 1000Hz）
-void FastControlCpp();
+void ControlCpp();
 
 /// @brief 低频率的控制任务（100Hz以下）
-void SlowControlCpp();
+void StateCoreCpp();
 
-/// @brief 机器人主要进程
-void RobotMainCpp();
+/// @brief 应用管理进程
+void ApplicationCpp();
 
 /// @brief 机器人主任务
 void RobotSystemCpp();
