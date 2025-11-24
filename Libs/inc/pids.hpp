@@ -25,12 +25,14 @@ extern "C"
         float Kd;      // 微分系数
         float Kf = 0.0f;      // 前馈系数
         float delta_t = 0.0f; // 时间间隔
+        float _delta_t_protect = 0.05f; // 保护性时间间隔，防止频率过低
+
         int reverse;   // 反向控制标志
         uint32_t dwt_dt;    // 自动DT用的DWT句柄
 
         // 前馈用参数
         float Tc = 1;       // 时间常数
-        float K = 1;        // 环节增益
+        float K = 5;        // 环节增益
         float u;
         float u_prev;
         float u_prev_2;
@@ -38,7 +40,7 @@ extern "C"
         // 限制参数
         float inte_lim;    // 积分限幅
         float out_lim;      // 输出限幅
-        float kd_filter_rate; // Kd低通滤波系数
+        float kd_filter_rate = 0.9f; // Kd低通滤波系数
         
         /// @brief 举个例子吧：假设死区起始为80，结束为160，那么误差 < 80输出0，误差 > 160正常输出，80 ~ 160之间线性映射
         float deadband_start = 0; // 死区起始值
@@ -80,7 +82,7 @@ extern "C"
         float control_value;   // 内部维护控制量累加值
 
         // 构造函数，带默认参数
-        PidGeneral(){}; // 默认构造函数
+        PidGeneral(){};
         
         // 初始化函数，带完整参数
         void Init(float kp, float ki, float kd, int reverse = false);
@@ -90,8 +92,7 @@ extern "C"
         void ForwardLize(Forward_Typedef fwd_type, float kf, float K = 1.0f, float Tc = 1.0f);
         /// @brief 手动设置时间间隔（同时禁用自动时间微分计算） 
         void ManualDt(float dt);
-
-
+        
         /// @brief 设置参数
         void SetParam(float kp, float ki, float kd);
         /// @brief 设置限幅
@@ -101,9 +102,13 @@ extern "C"
         /// @brief 设置死区控制
         void SetDeadband(float start, float end);
 
+        /// @brief 获取
+        float GetDt();
+
         // 计算PID输出（供外部调用） 
         float Calc(float targ, float real, float output_lim = 0);
-        void Reset();                                       // 重置PID状态
+        // 重置PID状态
+        void Reset();
     };
 
 typedef PidGeneral Pids; // 兼容C代码中的PIDs类型定义

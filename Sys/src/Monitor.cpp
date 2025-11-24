@@ -10,66 +10,14 @@ const static uint8_t LogPort = 0x01;    // 日志使用的端口号
 const static uint8_t WatchPort = 0x02;  // 监视使用的端口号
 const static uint8_t TrackPort = 0x03;  // 跟踪使用的端口号
 
-/**
- * @brief 跟踪某个变量
- */
-template <typename T>
-void Monitor::Track(T& targ)
+
+template<typename T>
+static void ConcatToBuf(byte* buf, size_t& used_bytes, void* value)
 {
-    using namespace std;
-
-    // 检查追踪越界
-    if (track_count >= 8)
-    {
-        LogError("Monitor: Track list full!\n");
-        return;
-    }
-
-    // 存储其类型信息
-    const type_info& targ_type = typeid(targ);
-    if (targ_type == typeid(uint8_t))
-    {
-        track_type[track_count] = track_uint8;
-    }
-    else if (targ_type == typeid(int8_t))
-    {
-        track_type[track_count] = track_int8;
-    }
-    else if (targ_type == typeid(uint16_t))
-    {
-        track_type[track_count] = track_uint16;
-    }
-    else if (targ_type == typeid(int16_t))
-    {
-        track_type[track_count] = track_int16;
-    }
-    else if (targ_type == typeid(uint32_t))
-    {
-        track_type[track_count] = track_uint32;
-    }
-    else if (targ_type == typeid(int32_t))
-    {
-        track_type[track_count] = track_int32;
-    }
-    else if (targ_type == typeid(float))
-    {
-        track_type[track_count] = track_float;
-    }
-    else
-    {
-        LogError("Monitor: Unknown Track type!\n");
-        return;
-    }
-
-    // 存储其地址
-    track_list[track_count] = (void*)&targ;
-
-    track_count++;
+    T targ_var = *(T*)value;
+    size_t char_use = snprintf((char*)buf + used_bytes, 63 - used_bytes, "%d", targ_var);
+    used_bytes += char_use;
 }
-
-
-
-
 
 static byte track_send_buf[64];
 /**
@@ -79,6 +27,7 @@ static byte track_send_buf[64];
 void Monitor::LogTrack()
 {
     memset(track_send_buf, 0, 64);
+    size_t used_bytes = 0;
 
     for(int i = 0; i < track_count; i++)
     {
@@ -86,53 +35,48 @@ void Monitor::LogTrack()
         {
             case track_uint8:
             {
-                uint8_t var = *(uint8_t*)track_list[i];
-                sprintf((char*)track_send_buf, "%d", i, var);
+                ConcatToBuf<uint8_t>(track_send_buf, used_bytes, track_list[i]);
                 break;
             }
             case track_int8:
             {
-                int8_t var = *(int8_t*)track_list[i];
-                sprintf((char*)track_send_buf, "%d", i, var);
+                ConcatToBuf<int8_t>(track_send_buf, used_bytes, track_list[i]);
                 break;
             }
             case track_uint16:
             {
-                uint16_t var = *(uint16_t*)track_list[i];
-                sprintf((char*)track_send_buf, "%d", i, var);
+                ConcatToBuf<uint16_t>(track_send_buf, used_bytes, track_list[i]);
                 break;
             }
             case track_int16:
             {
-                int16_t var = *(int16_t*)track_list[i];
-                sprintf((char*)track_send_buf, "%d", i, var);
+                ConcatToBuf<int16_t>(track_send_buf, used_bytes, track_list[i]);
                 break;
             }
             case track_uint32:
             {
-                uint32_t var = *(uint32_t*)track_list[i];
-                sprintf((char*)track_send_buf, "%d", i, var);
+                ConcatToBuf<uint32_t>(track_send_buf, used_bytes, track_list[i]);
                 break;
             }
             case track_int32:
             {
-                int32_t var = *(int32_t*)track_list[i];
-                sprintf((char*)track_send_buf, "%d", i, var);
+                ConcatToBuf<int32_t>(track_send_buf, used_bytes, track_list[i]);
                 break;
             }
             case track_float:
             {
                 float var = *(float*)track_list[i];
-                sprintf((char*)track_send_buf, "%.2f", i, var);
+                uint8_t char_use = snprintf((char*)track_send_buf + used_bytes, 63 - used_bytes, "%.2f", var);
+                used_bytes += char_use;
                 break;
             }
         }
         // 添加逗号","
         if(i != track_count - 1)
         {
-            size_t len = strlen((char*)track_send_buf);
-            track_send_buf[len] = ',';
-            track_send_buf[len + 1] = '\0';
+            track_send_buf[used_bytes] = ',';
+            track_send_buf[used_bytes + 1] = '\0';
+            used_bytes += 1;
         }
         else // 结束时添加换行符"\n"
         {

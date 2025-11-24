@@ -6,12 +6,24 @@
 #include "string.h"
 
 class StateCore;        // 为了能引用，进行前向声明
-class StateBlocks;
+class StateBlock;
+
+#define SINGLETON(x)                \
+public:                             \
+static x& GetInstance()             \
+{                                   \
+    static x instance;              \
+    return instance;                \
+}                                   \
+private:                            \
+x(const x&) = delete;               \
+x& operator=(const x&) = delete;    \
+x()
 
 
 #define PASTE2(a,b) a##b
 #define NEW_STATE(core, name) \
-    StateBlocks PASTE2(St_, name)(#name, PASTE2(Robo, name)); \
+    StateBlock PASTE2(St_, name)(#name, PASTE2(Robo, name)); \
     core.AddState(&PASTE2(St_, name));
 
 
@@ -22,7 +34,7 @@ class StateBlocks;
 typedef struct 
 {
     bool *condition;                // 条件
-    StateBlocks *nextState;         // 下一个状态
+    StateBlock *nextState;         // 下一个状态
 }StateLink;
 
 
@@ -31,28 +43,56 @@ typedef struct
  * @warning 状态块是少有的在构造函数中初始化的类，因此绝不能被定义成全局变量
  * 因为这会使得其在HAL库初始化之前就被初始化，从而引发不可预知的错误
  */
-class StateBlocks
+class StateBlock
 {
     public:
-    StateBlocks(){};
-    StateBlocks(const char *name, void (*StateAction)(StateCore *core))
+    StateBlock(){};
+    StateBlock(const char *name)
     {
         strncpy(this->name, name, 15);
         this->name[15] = 0; // 确保字符串结尾
-        this->StateAction = StateAction;
         linkNums = 0;
     };
     char name[16];                      // 状态名称
-    uint8_t id;                         // 状态ID，由StateCore在AddState时赋值  
+    uint8_t id;                         // 状态ID，由StateGraph在创建时赋值
     void (*StateAction)(StateCore *core);          // 状态函数
     StateLink links[16];                 // 状态链接
     uint8_t linkNums;                   // 状态链接数量
 
     bool Complete;                      // 运行完成标志
-    StateBlocks* incore;          // 对应在状态机内部的那个同位StateCore
 
-    void AddLink(bool *condition, StateBlocks *nextState);
+    bool LinkTo(bool *condition, StateBlock& nextState);
     uint8_t Transition();
+};
+
+
+/**
+ * @brief 状态图，包含了一系列状态块 
+ */
+class StateGraph
+{
+    friend class StateCore;
+    private:
+    void (*GlobalAction)(StateCore *core);    // 全局状态函数
+
+    public:
+    char name[16];                  // 状态图名称
+    StateBlock states[24];          // 状态块数组（上限24个）
+    uint8_t stateNums;              // 状态块数量
+
+    uint8_t executor_at_id = 0;     // 当前执行的状态ID
+    StateBlock& current_state = states[0]; // 当前状态块引用
+    
+    public:
+    StateGraph(const char *name){
+        stateNums = 0;
+        strncpy(this->name, name, 16);
+        this->name[15] = 0;          // 确保字符串结尾
+    };
+    void SetGlobalAct(void (*GlobalAction)(StateCore *core));
+    bool Degenerate(void (*DegenAction)(StateCore *core));
+
+    StateBlock& AddState(const char *name);
 };
 
 
@@ -61,25 +101,47 @@ class StateBlocks
  */
 class StateCore
 {
+    SINGLETON(StateCore){};
+
+    private:
+    /// @brief 状态机核心是否启动
+    bool _enabled = false;
+    /// @brief dwt计时器用句柄
+    uint32_t _dwt_tick;
+    /// @brief 两次状态切换的时间间隔，单位秒
+    float _dt;                   
+
     public:
-    StateCore(){};
 
-    uint32_t dwt_tick;          // dwt计时器用句柄
-    float dt;                   // 两次状态切换的时间间隔，单位秒
-    StateBlocks states[24];     // 状态块数组（上限24个）
-    uint8_t stateNums;          // 状态块数量
-    uint8_t at_state_id;        // 当前状态ID [0, 23]
-
-    void Degenerate(void);                                  // 进入状态机简并运行模式
-    void (*GlobalAction)(StateCore *core) = nullptr;          // 全局状态函数
-    
-    void RegistGlobalAction(void (*GlobalAction)(StateCore *core));
-    void CoreGraph(BspUart_Instance uart_inst);
-    void AddState(StateBlocks *state);
+    /// @brief 循环运行状态机核心 
     void Run(void);
+
+    /// @brief 启动状态机核心，可指定初始状态图
+    void Enable(uint8_t first_graph = 0);
+    
+    /// @brief 注册状态图
+    void RegistGraph(StateGraph& graph);
+    
+    /// @brief 所掌控的状态图
+    StateGraph* graphs[4];
+    /// @brief 当前所处状态图
+    uint8_t at_graph_id;
+    /// @brief 注册的状态图数量
+    uint8_t graph_nums = 0;
+    
+    /// @brief 根据状态图输出Mermaid代码
+    static void CoreGraph(const StateGraph& graph);
 };
 
-__weak void RoboWorking(StateCore *core);
-__weak void RoboEnd(StateCore *core);
+
+namespace Seq
+{
+    void Wait(float sec);
+    void WaitUntil(bool& condition, float timeout_sec = 3600.0f);
+}
+
+
+
+
 
 #endif

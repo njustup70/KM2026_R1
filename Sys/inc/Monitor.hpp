@@ -4,6 +4,7 @@
 #include "msg_coder.hpp"
 #include "typeinfo"
 #include "stdarg.h"
+#include "SysDefs.hpp"
 
 /**
  * @brief 用于监控机器人的各项状态，还有调试、日志等功能]
@@ -11,6 +12,8 @@
  */
 class Monitor
 {
+    SINGLETON(Monitor) {};
+
 private:
     typedef enum
     {
@@ -21,37 +24,34 @@ private:
         track_uint32,
         track_int32,
         track_float,
-    }Track_t;
+    } Track_t;
 
     typedef struct
     {
-        void *track_addr;       // 变量地址
-        void *buf_addr;         // 将其变量值存入的缓存地址
-        uint8_t bytes;          // 变量的字节数
-    }MonitorLinkage;
+        void *track_addr; // 变量地址
+        void *buf_addr;   // 将其变量值存入的缓存地址
+        uint8_t bytes;    // 变量的字节数
+    } MonitorLinkage;
 
     /// @brief 最多监测32个Bool
     static byte watch_buf[4];
-
     /// @brief 最多追踪32Byte的数据
     static byte track_buf[32];
-
     /// @brief 最多向Vofa发送64Byte数据
     static byte vofa_buf[64];
 
     // 变量的地址和类型存储在这里
-    void* track_list[8];
+    void *track_list[8];
     Track_t track_type[8];
 
     uint8_t watch_count = 0;
     uint8_t track_count = 0;
 
 public:
-    Monitor(){};
-    ~Monitor(){};
+    ~Monitor() {};
 
-    UartMsgCoder host_coder;            // 发送到上位机的编码器
-    UartMsgCoder farcon_coder;          // 发送到遥控器的编码器
+    UartMsgCoder host_coder;   // 发送到上位机的编码器
+    UartMsgCoder farcon_coder; // 发送到遥控器的编码器
 
     /**
      * @brief 监视器的初始化函数
@@ -67,16 +67,16 @@ public:
     void Run();
 
     /// @brief 发送日志
-    void Log(const char* format, ...);
+    void Log(const char *format, ...);
 
     /// @brief 发送警告
-    void LogWarning(const char* format, ...);
+    void LogWarning(const char *format, ...);
 
     /// @brief 发送错误
-    void LogError(const char* format, ...);
+    void LogError(const char *format, ...);
 
     /// @brief 监控某个模块的状态变化
-    void Watch(bool& targ_status, bool is_neccessary = false);
+    void Watch(bool &targ_status, bool is_neccessary = false);
 
     /**
      * @brief 跟踪某个变量
@@ -84,7 +84,58 @@ public:
      * @param track_hz 跟踪频率，单位Hz，最大为200Hz
      */
     template <typename T>
-    void Track(T& targ);
+    void Track(T &targ)
+    {
+        using namespace std;
+
+        // 检查追踪越界
+        if (track_count >= 8)
+        {
+            LogError("Monitor: Track list full!\n");
+            return;
+        }
+
+        // 存储其类型信息
+        const type_info &targ_type = typeid(targ);
+        if (targ_type == typeid(uint8_t))
+        {
+            track_type[track_count] = track_uint8;
+        }
+        else if (targ_type == typeid(int8_t))
+        {
+            track_type[track_count] = track_int8;
+        }
+        else if (targ_type == typeid(uint16_t))
+        {
+            track_type[track_count] = track_uint16;
+        }
+        else if (targ_type == typeid(int16_t))
+        {
+            track_type[track_count] = track_int16;
+        }
+        else if (targ_type == typeid(uint32_t))
+        {
+            track_type[track_count] = track_uint32;
+        }
+        else if (targ_type == typeid(int32_t))
+        {
+            track_type[track_count] = track_int32;
+        }
+        else if (targ_type == typeid(float))
+        {
+            track_type[track_count] = track_float;
+        }
+        else
+        {
+            LogError("Monitor: Unknown Track type!\n");
+            return;
+        }
+
+        // 存储其地址
+        track_list[track_count] = (void *)&targ;
+
+        track_count++;
+    }
 
     /// @brief 发送监控信息
     void LogWatch();
@@ -92,7 +143,5 @@ public:
     /// @brief 发送跟踪信息
     void LogTrack();
 };
-
-
 
 #endif

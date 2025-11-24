@@ -13,7 +13,7 @@ static void MotorDji_SendCurrent(CAN_HandleTypeDef *hcan, int16_t motor_0, int16
 
 
 /// @brief 存储已经注册的电机实例的指针，便于回调函数查表处理
-static MotorDji* MotorPointList[1 + 16] = {nullptr}; 	 // 电机ID从1开始，所以0号不使用
+static MotorDJI* MotorPointList[1 + 16] = {nullptr}; 	 // 电机ID从1开始，所以0号不使用
 // 顺序记录已经注册的电机ID，便于遍历所有电机（比如3号和6号注册了，但是位置很散，查这个表有助于提升遍历效率）
 uint8_t MotorIndexList[16] = {0}, MotorIndexCount = 0; 
 
@@ -21,7 +21,7 @@ uint8_t MotorIndexList[16] = {0}, MotorIndexCount = 0;
  * @brief C620 / C610 电机额外初始化
  * @param Esc_Id 电机 ID（请查看C620 / C610说明书，注意其从 1 开始！）
  */
-void MotorDji::Init(CAN_HandleTypeDef *hcan, uint8_t motorESC_id, MotorDJIMode djimode, bool fastInit)
+void MotorDJI::Init(CAN_HandleTypeDef *hcan, uint8_t motorESC_id, MotorDJIMode djimode, bool fastInit)
 {
 	
 	// 首先，初始化其 速度环Pid类
@@ -56,7 +56,7 @@ void MotorDji::Init(CAN_HandleTypeDef *hcan, uint8_t motorESC_id, MotorDJIMode d
 
 
 /// @brief 更改电机控制模式
-void MotorDji::SwitchMode(MotorDJIMode new_mode)
+void MotorDJI::SwitchMode(MotorDJIMode new_mode)
 {
 	// 为确保安全，切换模式时，速度清零，目标位置设置为当前位置
 	targ_speed = 0;
@@ -67,7 +67,7 @@ void MotorDji::SwitchMode(MotorDJIMode new_mode)
 
 /// @brief 设置速度
 /// @param rpm 
-void MotorDji::SetSpeed(float rpm, float redu_ratio)
+void MotorDJI::SetSpeed(float rpm, float redu_ratio)
 {
 	if (mode != Speed_Control) return; 	// 不是速度模式就不执行
 	targ_speed = rpm * redu_ratio;				// 3508电机的减速比为 19:1
@@ -75,7 +75,7 @@ void MotorDji::SetSpeed(float rpm, float redu_ratio)
 
 /// @brief 设置位置
 /// @param pos 
-void MotorDji::SetPos(float pos)
+void MotorDJI::SetPos(float pos)
 {
 	if (mode != Pos_Control) return; 	// 不是位置模式就不执行
 	targ_position = pos;
@@ -88,7 +88,7 @@ void MotorDji::SetPos(float pos)
  * 类似于汽车的空挡
  * @warning 该函数会将控制模式切换为 None_Control, 使用后，需要重新设置控制模式
  */
-void MotorDji::Neutral()
+void MotorDJI::Neutral()
 {
 	targ_current = 0;
 	mode = None_Control;
@@ -98,17 +98,17 @@ void MotorDji::Neutral()
  * @brief 关闭电机控制
  * @warning 如果电机正在旋转，Disable之后指令停止发送，但是电流会保持，很容易导致电机疯转
  */
-void MotorDji::Disable()
+void MotorDJI::Disable()
 {
 	enabled = false; 		// 禁用电机控制
 }
 /// @brief 开启电机控制
-void MotorDji::Enable()
+void MotorDJI::Enable()
 {
 	enabled = true; 		// 启用电机控制
 }
 /// @brief 检查电机控制是否启用
-bool MotorDji::IsEnabled()
+bool MotorDJI::IsEnabled()
 {
 	return enabled; 		// 返回电机控制是否启用
 }
@@ -117,7 +117,7 @@ bool MotorDji::IsEnabled()
 /// @brief 判断电机所在的CAN段，用于发送
 /// @param motor_id 
 /// @return 所在的CAN段
-uint8_t MotorDji::GetCanSeg(uint8_t motor_id)
+uint8_t MotorDJI::GetCanSeg(uint8_t motor_id)
 {
 	if (motor_id >=1 && motor_id <= 4) return 0; // CAN1的1-4号电机
 	else if (motor_id >= 5 && motor_id <= 8) return 1; // CAN1的5-8号电机
@@ -130,7 +130,7 @@ uint8_t MotorDji::GetCanSeg(uint8_t motor_id)
  * @brief 控制所有已注册电机
  * @details 该函数会遍历所有已注册的电机实例，并调用其Control方法，最后根据返回的电流值发送CAN指令
  */
-void MotorDji::ControlAllMotors()
+void MotorDJI::ControlAllMotors()
 {
 	// 分四段：CAN1的1-4号电机，CAN1的5-8号电机，CAN2的1-4号电机，CAN2的5-8号电机
 	bool send_can_seg[4] = {false, false, false, false};
@@ -184,7 +184,7 @@ void MotorDji::ControlAllMotors()
  * @brief 控制本电机
  * @warning 不含发送指令！！
  */
-int16_t MotorDji::Control()
+int16_t MotorDJI::Control()
 {
 	if (enabled)
 	{
@@ -215,7 +215,7 @@ int16_t MotorDji::Control()
  * @name C620 / C610 速度环控制
  * @details 计算RPM对应的控制电流
  */
-void MotorDji::MotorDji_SpeedLoop()
+void MotorDJI::MotorDji_SpeedLoop()
 {
 	// 获取测量结构体
 	moto_measure_t *ptr = &measure;
@@ -228,13 +228,15 @@ void MotorDji::MotorDji_SpeedLoop()
 
 	// 限制爬坡率
 	float delta_current = targ_current_temp_f - targ_current;
-	if (delta_current > sloperate)
+	float slope_value = sloperate * speed_pid.GetDt();
+
+	if (delta_current > slope_value)
 	{
-		targ_current += sloperate;
+		targ_current += slope_value;
 	}
-	else if (delta_current < -sloperate)
+	else if (delta_current < -slope_value)
 	{
-		targ_current -= sloperate;
+		targ_current -= slope_value;
 	}
 	else
 	{
@@ -249,7 +251,7 @@ void MotorDji::MotorDji_SpeedLoop()
  * @name C620 / C610 位置环控制
  * @details 计算位置对应的控制电流
  */
-void MotorDji::MotorDji_PosLoop()
+void MotorDJI::MotorDji_PosLoop()
 {
 	// 获取测量结构体
 	moto_measure_t *ptr = &measure;
@@ -267,7 +269,7 @@ void MotorDji::MotorDji_PosLoop()
  * @param {uint8_t} *Data接收到的数据
  * @return {*}无
  */
-static void MotorDji_DecodeMeasure(MotorDji* motor_p, uint8_t *Data)
+static void MotorDji_DecodeMeasure(MotorDJI* motor_p, uint8_t *Data)
 {
 	// 获取测量信息的指针和其他参数
 	moto_measure_t *ptr = &motor_p->measure;
@@ -307,7 +309,7 @@ static void MotorDji_DecodeMeasure(MotorDji* motor_p, uint8_t *Data)
  * @param {uint8_t} *Data接收到的数据
  * @return {*}无
  */
-static void MotorDji_DecodeInitOffset(MotorDji* motor_p, uint8_t *Data)
+static void MotorDji_DecodeInitOffset(MotorDJI* motor_p, uint8_t *Data)
 {
 	moto_measure_t *ptr = &motor_p->measure;
 	ptr->angle = (uint16_t)(Data[0] << 8 | Data[1]);
@@ -356,7 +358,7 @@ void MotorDji_RxCallback(CAN_RxHeaderTypeDef *RxHeader, uint8_t *RxData, CAN_Han
 
 	// 利用全局的电机实例列表 来获取对应的电机实例
 	if (motor_id > 16 || MotorPointList[motor_id] == nullptr) return; 			// 如果电机ID不合法或未注册，直接返回
-	MotorDji &motor = *MotorPointList[motor_id]; 								// 获取对应的电机实例
+	MotorDJI &motor = *MotorPointList[motor_id]; 								// 获取对应的电机实例
 
 	// 更新电机反馈信息
 	motor.measure.msg_cnt++ <= 50 ? MotorDji_DecodeInitOffset(&motor, RxData) : MotorDji_DecodeMeasure(&motor, RxData);

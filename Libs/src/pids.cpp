@@ -170,7 +170,10 @@ float PidGeneral::CalcPos(float targ, float real, float output_lim)
     error = targ - real;
 
     // 自适应时间间隔
-    if (AutoDt) delta_t = DWT_GetDeltaTime(&dwt_dt); // 单位为秒
+    if (AutoDt) delta_t = DWT_GetDeltaTime(&dwt_dt);                    // 单位为秒
+    if (delta_t > 10 * _delta_t_protect) delta_t = _delta_t_protect;         // 保护性Dt，防止频率过低导致计算错误
+    // 根据Dt配置保护性Dt
+    _delta_t_protect = 0.9f * _delta_t_protect + 0.1f * delta_t;
 
     // 为Kd计算经过一阶低通滤波的误差
     kd_error = kd_error + kd_filter_rate * (error - kd_error);
@@ -226,7 +229,10 @@ float PidGeneral::CalcInc(float targ, float real, float output_lim)
     error = targ - real;
 
     // 自适应时间间隔
-    if (AutoDt) delta_t = DWT_GetDeltaTime(&dwt_dt); // 单位为秒
+    if (AutoDt) delta_t = DWT_GetDeltaTime(&dwt_dt);                    // 单位为秒
+    if (delta_t > 10 * _delta_t_protect) delta_t = _delta_t_protect;         // 保护性Dt，防止频率过低导致计算错误
+    // 根据Dt配置保护性Dt
+    _delta_t_protect = 0.9f * _delta_t_protect + 0.1f * delta_t;
 
     // 增量式PID的微分项低通滤波
     kd_error = kd_error + kd_filter_rate * (error - kd_error);
@@ -254,14 +260,19 @@ float PidGeneral::CalcInc(float targ, float real, float output_lim)
  * @brief 计算增量式PID的输出（内部维护累加值和限幅），带微分滤波器
  * @param targ_pid PID结构体指针
  * @param error 当前误差
+ * @warning PID的频率要是低于20Hz，显然不可能保证各项正确了；将采用保护性Dt(Dt_protect工作正常时间累计)
  * @return 经过累加和限幅后的控制量
  */
 float PidGeneral::CalcIncAuto(float targ, float real, float output_lim)
 {
     error = targ - real;
-    
+
     // 自适应时间间隔
-    if (AutoDt) delta_t = DWT_GetDeltaTime(&dwt_dt); // 单位为秒
+    if (AutoDt) delta_t = DWT_GetDeltaTime(&dwt_dt);                    // 单位为秒
+    if (delta_t > 10 * _delta_t_protect) delta_t = _delta_t_protect;         // 保护性Dt，防止频率过低导致计算错误
+    // 根据Dt配置保护性Dt
+    _delta_t_protect = 0.9f * _delta_t_protect + 0.1f * delta_t;
+
 
     // 增量式PID的微分项低通滤波
     kd_error = kd_error + kd_filter_rate * (error - kd_error);
@@ -316,6 +327,11 @@ float PidGeneral::CalcIncAuto(float targ, float real, float output_lim)
 
     return reterval;
 
+}
+
+float PidGeneral::GetDt()
+{
+    return delta_t;
 }
 
 

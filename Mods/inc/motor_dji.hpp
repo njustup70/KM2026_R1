@@ -44,13 +44,13 @@ typedef enum
 
 
 /// @brief 电机类：C620 / C610
-class MotorDji
+class MotorDJI
 {
 private:
 	bool enabled = false; 				// 是否启用电机控制，若为否，发送0电流指令或不发送指令
 	uint16_t current_limit = 8000;		// 电流限幅
 	uint16_t speed_limit = 20000;		// 速度限幅
-	uint16_t sloperate = 500;			// 电流爬坡率
+	uint32_t sloperate = 600000;			// 电流爬坡率 / s
 
 	/** 	  方法		**/
 	void MotorDji_SpeedLoop();
@@ -58,8 +58,8 @@ private:
 	uint8_t GetCanSeg(uint8_t motor_id);
 	
 public:
-	MotorDji(){};
-	~MotorDji(){};
+	MotorDJI(){};
+	~MotorDJI(){};
 
 	/** 	  方法		**/
 	void Init(CAN_HandleTypeDef *hcan, uint8_t motorESC_id, MotorDJIMode djimode, bool fastInit = true);
@@ -75,6 +75,7 @@ public:
 	/** 	静态方法	**/
 	static void ControlAllMotors();
 
+
 	/** 	信息流变量	**/
 	moto_measure_t measure;	// 电机反馈信息结构体
 	float ReadRPM_LPF_rate = 1.0f; // 电机转速低通滤波系数
@@ -83,7 +84,6 @@ public:
 	float current_LPS_rate = 1.0f; 		// 电流变化低通滤波系数（一般不用）
 	uint8_t at_can_seg = 0;				// 当前电机所在的CAN段，用于发送电流 注：0-3分别对应CAN1的1-4号电机，5-8号电机，CAN2的1-4号电机，5-8号电机
 	
-
 	/** 	控制用变量	**/
 	
 	Pids speed_pid; 				// 速度环PID
@@ -96,9 +96,14 @@ public:
 	MotorDJIMode mode = None_Control;	// 电机当前控制模式
 };
 
+namespace MotorDJIConst
+{
+	const static float redu_M3508 = 19.0f;	// M3508电机的减速比
+	const static float redu_M2006 = 36.0f;	// M2006电机的减速比
+}
 
-typedef MotorDji MotorC610;		// 本库对C620和C610的支持是通用的
-typedef MotorDji MotorC620;		
+typedef MotorDJI MotorC610;		// 本库对C620和C610的支持是通用的
+typedef MotorDJI MotorC620;		
 
 
 void get_total_angle(moto_measure_t *p);
