@@ -1,6 +1,7 @@
 #include "Monitor.hpp"
 #include "stdarg.h"
 #include "stdio.h"
+#include "System.hpp"
 
 const static char error_head[7] = "[ERR]:";
 const static char warning_head[7] = "[WRN]:";
@@ -26,6 +27,8 @@ static byte track_send_buf[64];
  */
 void Monitor::LogTrack()
 {
+    if (track_count < 1)   return; // 没有跟踪变量，直接返回
+
     memset(track_send_buf, 0, 64);
     size_t used_bytes = 0;
 
@@ -87,30 +90,42 @@ void Monitor::LogTrack()
     }
 
     // 发送编码后的数据
-    host_coder.SendEncodedMsg(track_send_buf, strlen((char*)track_send_buf));   
+    host_coder.SendRawMsg(track_send_buf, strlen((char*)track_send_buf));   
 }
 
+
+
+static char err_log_buf[72] = {0};
 /**
  * @brief 发送错误日志
  * @note 默认不向遥控器发送错误日志，只向上位机发送
- * @warning 发送长度不超过64字节
+ * @warning 总发送长度不超过72字节
  */
 void Monitor::LogError(const char* format, ...)
 {
     // 解析可变参数列表
     va_list args;
     va_start(args, format);
-    char log_buf[70];
     
-    // 填充错误头
-    memcpy(log_buf, error_head, 6);
-    vsnprintf(log_buf + 6, 64, format, args);
+    // 清空缓冲区
+    memset(err_log_buf, 0, sizeof(err_log_buf));
+    
+    // 填充错误头和时间戳
+    uint8_t used_bytes = snprintf(err_log_buf, 24, "[ERR][%.2f]", System.runtime_tick);
+    vsnprintf(err_log_buf + used_bytes, 72 - used_bytes, format, args);
     va_end(args);
 
+    // 最后一位写 换行符（如果没越界）
+    if (strlen(err_log_buf) < 72)
+    {
+        err_log_buf[strlen(err_log_buf)] = '\n';
+    }
+
     // 发送日志到上位机
-    host_coder.SendMsg(0x01, (uint8_t*)log_buf, strlen(log_buf));
+    host_coder.SendRawMsg((uint8_t*)err_log_buf, strlen(err_log_buf));
 }
 
+static char wrn_log_buf[72] = {0};
 /**
  * @brief 发送警告日志
  * @note 同上
@@ -120,17 +135,26 @@ void Monitor::LogWarning(const char* format, ...)
     // 解析可变参数列表
     va_list args;
     va_start(args, format);
-    char log_buf[70];
     
-    // 填充警告头
-    memcpy(log_buf, warning_head, 6);
-    vsnprintf(log_buf + 6, 64, format, args);
+    // 清空缓冲区
+    memset(wrn_log_buf, 0, sizeof(wrn_log_buf));
+    
+    // 填充警告头和时间戳
+    uint8_t used_bytes = snprintf(wrn_log_buf, 24, "[WRN][%.2f]", System.runtime_tick);
+    vsnprintf(wrn_log_buf + used_bytes, 72 - used_bytes, format, args);
     va_end(args);
 
+    // 最后一位写 换行符（如果没越界）
+    if (strlen(wrn_log_buf) < 72)
+    {
+        wrn_log_buf[strlen(wrn_log_buf)] = '\n';
+    }
+    
     // 发送日志到上位机
-    host_coder.SendMsg(0x01, (uint8_t*)log_buf, strlen(log_buf));
+    host_coder.SendRawMsg((uint8_t*)wrn_log_buf, strlen(wrn_log_buf));
 }
 
+static char nrm_log_buf[72] = {0};
 /**
  * @brief 发送日志
  * @note 同上
@@ -140,15 +164,34 @@ void Monitor::Log(const char* format, ...)
     // 解析可变参数列表
     va_list args;
     va_start(args, format);
-    char log_buf[70];
     
-    // 填充日志头
-    memcpy(log_buf, log_head, 6);
-    vsnprintf(log_buf + 6, 64, format, args);
+    // 清空缓冲区
+    memset(nrm_log_buf, 0, sizeof(nrm_log_buf));
+    
+    // 填充日志头和时间戳
+    uint8_t used_bytes = snprintf(nrm_log_buf, 24, "[LOG][%.2f]", System.runtime_tick);
+    vsnprintf(nrm_log_buf + used_bytes, 72 - used_bytes, format, args);
     va_end(args);
 
+    // 最后一位写 换行符（如果没越界）
+    if (strlen(nrm_log_buf) < 72)
+    {
+        nrm_log_buf[strlen(nrm_log_buf)] = '\n';
+    }
+
     // 发送日志到上位机
-    host_coder.SendMsg(0x01, (uint8_t*)log_buf, strlen(log_buf));
+    host_coder.SendRawMsg((uint8_t*)nrm_log_buf, strlen(nrm_log_buf));
+}
+
+
+void Monitor::Watch(WatchInfo info)
+{
+    // 将监视信息存入监视缓冲区
+    if (watch_count < 24)
+    {
+        watch_buf[watch_count] = info;
+        watch_count++;
+    }
 }
 
 

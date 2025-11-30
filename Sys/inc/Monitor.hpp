@@ -12,8 +12,17 @@
  */
 class Monitor
 {
-    SINGLETON(Monitor) {};
+    friend class SystemType;      // 允许系统类访问私有成员
+    SINGLETON(Monitor){};
 
+public:
+    /// @brief 用于监视的结构体
+    typedef struct WatchInfo
+    {
+        const bool* targ;
+        char warning_info[24];
+        bool is_neccessary;
+    };
 private:
     typedef enum
     {
@@ -33,12 +42,12 @@ private:
         uint8_t bytes;    // 变量的字节数
     } MonitorLinkage;
 
-    /// @brief 最多监测32个Bool
-    static byte watch_buf[4];
+    /// @brief 最多监测24个Bool
+    WatchInfo watch_buf[24];
     /// @brief 最多追踪32Byte的数据
-    static byte track_buf[32];
+    byte track_buf[32];
     /// @brief 最多向Vofa发送64Byte数据
-    static byte vofa_buf[64];
+    byte vofa_buf[64];
 
     // 变量的地址和类型存储在这里
     void *track_list[8];
@@ -48,8 +57,6 @@ private:
     uint8_t track_count = 0;
 
 public:
-    ~Monitor() {};
-
     UartMsgCoder host_coder;   // 发送到上位机的编码器
     UartMsgCoder farcon_coder; // 发送到遥控器的编码器
 
@@ -68,15 +75,18 @@ public:
 
     /// @brief 发送日志
     void Log(const char *format, ...);
+    // void Log(const char *format);       // 空参数重载
 
     /// @brief 发送警告
     void LogWarning(const char *format, ...);
+    // void LogWarning(const char *format); // 空参数重载
 
     /// @brief 发送错误
     void LogError(const char *format, ...);
+    // void LogError(const char *format);   // 空参数重载
 
     /// @brief 监控某个模块的状态变化
-    void Watch(bool &targ_status, bool is_neccessary = false);
+    void Watch(WatchInfo info);
 
     /**
      * @brief 跟踪某个变量

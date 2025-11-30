@@ -14,6 +14,7 @@
 #include "SysDefs.hpp"
 #include "std_cpp.h"
 #include "typeinfo"
+#include "Monitor.hpp"
 
 namespace Systems
 {
@@ -28,16 +29,11 @@ namespace Systems
 
     typedef enum
     {
-        PREPARE,            // 刚开机，经过允许操作，将开始自检
-        SELF_CHECK,         // 自检中
-
+        ORIGIN,            // 刚开机，经过允许操作，将开始自检
+        SELF_CHECK,         // 
         READY,              // 自检完成，且无问题
-        READY_WARNING,      // 自检完成，但有非关键问题
-        READY_ERROR,        // 自检完成，存在关键问题
 
         WORKING,            // 机器人正在正常工作
-        WORKING_WARNING,    // 机器人工作中，存在非关键问题
-        WORKING_ERROR,      // 机器人工作中，存在关键问题
 
         STOP,               // 机器人停止工作
     }SysStatus;
@@ -84,25 +80,82 @@ class SystemType
 {   
     friend void RobotSystemCpp();
     friend void ApplicationCpp();
+    friend void StateCoreCpp();
 
-    SINGLETON(SystemType){};
-    void LedBandControl();
+    SINGLETON(SystemType):Display(*this){};
+    
 
     private:
-    void _UpdateLedBand();
-    void _UpdateApplications();
+    void _LedBandControl();
+    void _LedBandDisplayControl();
 
-    Systems::SysStatus status = Systems::PREPARE;           // 机器人当前系统状态
+    void _Update_LedBand();
+    void _Update_Applications();
+    void _Update_SelfCheck(); 
+
+    class _LedDisplayAPI
+    {
+        friend class SystemType;
+        private:
+        SystemType& entity;
+        bool display_overlay = false;    // 是否启用覆盖显示
+
+        typedef enum
+        {
+            SysLEDDisp_None,
+            SysLEDDisp_WarningBlink,
+            SysLEDDisp_ErrorBlink,
+        }SysLEDDispType;
+
+        uint8_t display_type = 0;           // 显示类型
+        
+
+        uint8_t blink_times = 0;            // 闪烁次数
+        uint16_t blink_interval = 0;        // 闪烁间隔，单位ms
+        uint32_t blink_cnt = 0;             // 闪烁计数器
+
+        public:
+        _LedDisplayAPI(SystemType& sys_entity) : entity(sys_entity) {};
+
+        /**
+         * @brief 警告闪烁LED
+         * @param times 闪烁次数
+         * @param interval 闪烁间隔，单位ms，默认400ms
+         */
+        void WarningBlink(uint8_t times, uint16_t interval = 300);
+
+        /**
+         * @brief 错误快闪LED
+         * @param times 闪烁次数
+         * @param interval 闪烁间隔，单位ms，默认200ms
+         */
+        void ErrorBlink(uint8_t times, uint16_t interval = 200);
+
+    }Display;
+    
+
+    
+
+    /// @brief 机器人当前系统状态
+    Systems::SysStatus status = Systems::ORIGIN;           
+    /// @brief 机器人所在阵营
+    uint8_t camp = Systems::Camp_Blue;
+
     
     LedWs2812*              led_band = nullptr;             // 仅指 "系统灯"
     Odometer_Ops9*          odometer = nullptr;             // 物理里程计
     Positioner              posner;
-    
+
     bool is_retrying = false;                               // 是否处于重试状态（从RetryZone出发）
     Application* app_list[24];                              // 系统中的应用实例列表
 
 
-    public:
+public:
+    bool start_selfcheck_flag = false;               // 开始自检标志位
+    bool system_ready_flag = false;                  // 系统准备就绪标志位
+    bool system_start_to_work_flag = false;         // 系统开始工作标志位
+
+
     /// @brief 机器人全局位置，单位m，场地坐标系
     Vec3    position;
     Vec3*   pos_source;                     // 位置来源引用（外部提供）
@@ -110,8 +163,11 @@ class SystemType
 
     float runtime_tick;                    // 全局时间戳，单位s
 
+    /// @brief 全局唯一的监控核心
+    Monitor& monit = Monitor::GetInstance();
     /// @brief 全局唯一的自动状态机核心
     const StateCore& core = StateCore::GetInstance();
+    
 
     void Init(bool Sc = true);
     

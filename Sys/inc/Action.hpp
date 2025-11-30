@@ -1,7 +1,7 @@
 #ifndef ACTION_HPP
 #define ACTION_HPP
 
-#include "RobotSystem.hpp"
+#include "System.hpp"
 
 /// @brief 序列化宏定义，在某个状态函数中实现序列动作
 #define SEQLIZE                                            \

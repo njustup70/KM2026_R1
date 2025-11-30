@@ -4,7 +4,7 @@
 #include "cmsis_os.h"
 #include "bsp_dwt.h"
 #include "motor_dji.hpp"
-#include "RobotSystem.hpp"
+#include "System.hpp"
 #include "Action.hpp"
 #include "RtosCpp.hpp"
 #include "Chassis.hpp"
@@ -33,7 +33,7 @@ void ApplicationCpp()
     while (1)
     {   
         // 更新所有应用
-        System._UpdateApplications();
+        System._Update_Applications();
         
         /***    最大循环频率：200Hz     ***/
         osDelayUntil(&AppTick, 5);    // 200Hz
