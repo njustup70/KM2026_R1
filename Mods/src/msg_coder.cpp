@@ -11,6 +11,9 @@ static UartMsgCoder *UartMsgPointList[16] = {nullptr}; // 最多支持16个实�
 uint8_t UartMsgPointListCount = 0;                     // 当前串口调制器实例数量
 
 static void UartMsgCoder_RxCallback(UART_HandleTypeDef *huart, uint8_t *rxData, uint8_t size);
+static void UartMsgCoder_General_RxCallback(UART_HandleTypeDef *huart, uint8_t *rxData, uint8_t size);
+
+
 
 /**
  * @brief 初始化串口消息调制器
@@ -21,44 +24,39 @@ void UartMsgCoder::Init(UART_HandleTypeDef *huart)
     UartMsgPointList[UartMsgPointListCount++] = this; // 注册该调制器实例到全局列表中
 
     // 初始化（即注册）该调制器的串口实例
-    BspUart_InstRegist(&uart_inst, huart, 64, BspUartType_DMA, BspUartType_DMA, UartMsgCoder_RxCallback);
+    BspUart_InstRegist(&uart_inst, huart, 64, BspUartType_DMA, BspUartType_DMA, UartMsgCoder_General_RxCallback);
 }
 
+
 /**
- * @brief 串口接收回调函数
+ * @brief 串口接收（总）回调函数
  * @param huart 串口句柄
- * @param rxData 接收到的数据
+ * @param rxData 接收到的数据s
  * @param size 接收到的数据长度
+ * @details 会依次调用每一个注册了的回调函数
  */
-static void UartMsgCoder_RxCallback(UART_HandleTypeDef *huart, uint8_t *rxData, uint8_t size)
+static void UartMsgCoder_General_RxCallback(UART_HandleTypeDef *huart, uint8_t *rxData, uint8_t size)
 {
-    total++;
     // 遍历所有注册的调制器实例，根据huart通道，找到对应的实例
     for (int i = 0; i < UartMsgPointListCount; i++)
     {
-        UartMsgCoder *targ_coder = UartMsgPointList[i]; // 取出实例
-        if (targ_coder->uart_inst.huart == huart)
+        // 取出实例
+        UartMsgCoder& coder = *(UartMsgPointList[i]); 
+
+        // 对比是否是对应的串口通道
+        if (coder.uart_inst.huart == huart)
         {
-            uint8_t data[64] = {0};                                              // 临时数据缓冲区
-            memcpy(data, rxData + 1, size - 2);                                  // 复制有效数据（去掉帧头、帧类型和帧尾）
-            uint8_t frame_head = targ_coder->CalculateFrameHead(data, size - 2); // 计算帧头校验值
-            uint8_t frame_tail = frame_head;                                     // 帧尾（与帧头相同）
-
-            // 仅测试使用
-            uint8_t frame_type = rxData[1];
-
-            // 校验帧头和帧尾
-            if (frame_head != rxData[0] || frame_tail != rxData[size - 1])
-                return; // 校验失败，直接返回
-            effective++;
-            ratio = (float)effective / total;
-
-            // 校验通过，设置帧参数
-            targ_coder->SetFrameParam(frame_head, rxData[1], (data + 1), size - 3, frame_tail); // 设置帧参数
-            break;                                                                              // 找到对应实例后跳出循环
+            // 如果有用户自定义的回调函数，则调用它
+            if (coder._coder_callback != nullptr)
+            {
+                coder._coder_callback(huart, rxData, size);
+            }
+            break; // 找到对应实例后跳出循环
         }
     }
 }
+
+
 
 /**
  * @brief 编码主机消息
@@ -139,15 +137,17 @@ int UartMsgCoder::DecodeMsg(uint8_t *buf)
  * @param length 数据长度
  * @return 发送成功返回 true，失败返回 false
  */
-bool UartMsgCoder::SendEncodedMsg(uint8_t *encoded_data, int length)
+bool UartMsgCoder::SendRawMsg(uint8_t *encoded_data, int length)
 {
-    if (encoded_data == nullptr || length == 0)
+    if (encoded_data == nullptr || length == 0 || coder_ocupied)
     {
         return false;
     }
 
+    coder_ocupied = true;
     // 使用BspUart发送数据
     BspUart_Transmit(uart_inst, encoded_data, length);
+    coder_ocupied = false;
     return true;
 }
 
@@ -170,7 +170,7 @@ bool UartMsgCoder::SendMsg(uint8_t frame_type, uint8_t *data, int data_len)
 
     if (encoded_len > 0)
     {
-        return SendEncodedMsg(encoded_buf, encoded_len);
+        return SendRawMsg(encoded_buf, encoded_len);
     }
     return false;
 }
@@ -235,4 +235,26 @@ void UartMsgCoder::Uint16ToBytes(uint16_t value, uint8_t *bytes)
 uint16_t UartMsgCoder::BytesToUint16(uint8_t *bytes)
 {
     return (uint16_t)(bytes[0]) | ((uint16_t)(bytes[1]) << 8);
+}
+
+
+/**
+ * @brief 串口接收回调函数 - 复读收到的数据
+ */
+void UartMsgCoder::EchoRx(UART_HandleTypeDef *huart, uint8_t *rxData, uint8_t size)
+{
+    // 遍历所有注册的调制器实例，根据huart通道，找到对应的实例
+    for (int i = 0; i < UartMsgPointListCount; i++)
+    {
+        UartMsgCoder *targ_coder = UartMsgPointList[i]; // 取出实例
+        if (targ_coder->uart_inst.huart == huart)
+        {
+            uint8_t data[64] = {0};                                              // 临时数据缓冲区
+            memcpy(data, rxData, size);                                  // 复制有效数据
+            
+            // 复读回去
+            targ_coder->SendRawMsg(data, size);
+            break;                                                                              // 找到对应实例后跳出循环
+        }
+    }
 }
