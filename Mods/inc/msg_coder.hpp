@@ -14,6 +14,8 @@ typedef struct
     uint8_t frame_tail; // 帧尾
 } FrameStruct;
 
+static void UartMsgCoder_General_RxCallback(UART_HandleTypeDef *huart, uint8_t *rxData, uint8_t size);
+
 /**
  * @brief 串口消息调制器
  * @note 只有遇到自定义通信的时候才会用到单独的调制器实例
