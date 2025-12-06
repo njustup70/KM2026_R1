@@ -49,7 +49,7 @@ void SystemType::Run()
     runtime_tick = DWT_GetTimeline_Sec();
 
     static int temp_cnt = 0;
-    if (temp_cnt++ >= 100)
+    if (temp_cnt++ >= 1)
     {
         Monitor::GetInstance().LogTrack();
         temp_cnt = 0;

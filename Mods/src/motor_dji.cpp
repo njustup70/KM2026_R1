@@ -96,6 +96,15 @@ void MotorDJI::Neutral()
 }
 
 /**
+ * @brief 设置电流限幅
+ * @param curr_lim 电流限幅值
+ */
+void MotorDJI::CurrentLimSet(MotorDJIConst::CurLim curr_lim)
+{
+	_current_limit = curr_lim;
+}
+
+/**
  * @brief 关闭电机控制
  * @warning 如果电机正在旋转，Disable之后指令停止发送，但是电流会保持，很容易导致电机疯转
  */
