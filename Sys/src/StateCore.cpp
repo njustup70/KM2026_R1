@@ -48,6 +48,7 @@ StateBlock& StateGraph::AddState(const char *name)
         // 初始化
         targ = StateBlock(name);
         targ.id = stateNums;
+        targ.Complete = false;
 
         // 增加状态数量
         stateNums++;
@@ -66,18 +67,15 @@ StateBlock& StateGraph::AddState(const char *name)
 bool StateGraph::Degenerate(void (*DegenAction)(StateCore *core))
 {
     // 固定两个状态
-    stateNums = 2;
 
     // 第一个状态：工作状态
-    states[0] = StateBlock("working");
-    states[0].id = 0;
-    states[0].StateAction = DegenAction;
-    states[0].LinkTo(&(states[0].Complete), states[1]);
+    StateBlock& state_work = AddState("working");
+    state_work.StateAction = DegenAction;
+    state_work.LinkTo(&(states[0].Complete), states[1]);
 
     // 第二个状态：结束状态
-    states[1] = StateBlock("end");
-    states[1].id = 1;
-    states[1].StateAction = nullptr; // 什么都不做
+    StateBlock& state_end = AddState("end");
+    state_end.StateAction = nullptr; // 什么都不做
 
     return true;
 }
@@ -102,10 +100,11 @@ void StateCore::Run()
     if (graph.GlobalAction != nullptr) graph.GlobalAction(this);
     
     /**
-     * @warning 这个写法代表着，一般只有状态函数完全执行完了才会进行状态转移
+     * @note 这个写法代表着，一般只有状态函数完全执行完了才会进行状态转移
      * 所以后面应该会加入 在中间打断动作 的机制（确保动作打断是经过作者设计的）
+     * @warning 只有非空状态函数才会被执行 
      */
-    state.StateAction(this);
+    if (state.StateAction != nullptr) state.StateAction(this);
 
     // 进行状态转移
     graph.executor_at_id = state.Transition();

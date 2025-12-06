@@ -51,7 +51,6 @@ void SystemType::Run()
     static int temp_cnt = 0;
     if (temp_cnt++ >= 100)
     {
-        Monitor::GetInstance().Log("What the fuck?");
         Monitor::GetInstance().LogTrack();
         temp_cnt = 0;
     }
