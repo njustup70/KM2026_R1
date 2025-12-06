@@ -327,7 +327,7 @@ bool ChassisType::_Walking()
     move_vec = move_vec.Rotate(-System.position.z);
 
     // 检查是否到达目标位置, 如果是则返回完成
-    if (move_vec.Length() < 0.05f)    // 5cm范围内视为到达
+    if (move_vec.Length() < 0.01f)    // 5cm范围内视为到达
     {
         Move(Vec2(0, 0));           // 停止移动
         _walking = false;
@@ -335,7 +335,7 @@ bool ChassisType::_Walking()
     }
 
     // 计算移动速度
-    float safe_velo = sqrt(2 * _max_accel * move_vec.Length()); 
+    float safe_velo = sqrt(1 * _max_accel * move_vec.Length()); 
     float out_velo = 3.0f * move_vec.Length();
     // 最终的速度应该为三者中的最小值
     float final_velo = fminf(safe_velo, fminf(out_velo, _max_velo));
@@ -373,7 +373,7 @@ bool ChassisType::_Rotating()
     float rotate_diff = (targ_ges.z - System.position.z);
 
     // 检查是否到达目标位置, 如果是则返回完成
-    if (fabs(rotate_diff) < 0.01f)    // 0.01rad范围内视为到达
+    if (fabs(rotate_diff) < 0.007f)    // 0.007rad范围内视为到达
     {
         Rotate(0);           // 停止
         _rotating = false;
@@ -381,7 +381,7 @@ bool ChassisType::_Rotating()
     }
     
     // 计算旋转速度 （注意绝对值）
-    float safe_omega = sqrt(2 * _max_beta * fabs(rotate_diff)); 
+    float safe_omega = sqrt(1 * _max_beta * fabs(rotate_diff)); 
     float out_omega = 3.0f * fabs(rotate_diff);
 
     // 最终的速度应该为三者中的最小值

@@ -142,8 +142,8 @@ class SystemType
     uint8_t camp = Systems::Camp_Blue;
 
     
-    LedWs2812*              led_band = nullptr;             // 仅指 "系统灯"
-    Odometer_Ops9*          odometer = nullptr;             // 物理里程计
+    LedWs2812*              led_band = nullptr;     // 仅指 "系统灯"
+    
     Positioner              posner;
 
     bool is_retrying = false;                               // 是否处于重试状态（从RetryZone出发）
@@ -151,9 +151,11 @@ class SystemType
 
 
 public:
-    bool start_selfcheck_flag = false;               // 开始自检标志位
-    bool system_ready_flag = false;                  // 系统准备就绪标志位
-    bool system_start_to_work_flag = false;         // 系统开始工作标志位
+    bool start_selfcheck_flag = false;                  // 开始自检标志位
+    bool system_ready_flag = false;                     // 系统准备就绪标志位
+    bool system_start_to_work_flag = false;             // 系统开始工作标志位
+
+    Odometer_Ops9           odometer;               // 物理里程计
 
 
     /// @brief 机器人全局位置，单位m，场地坐标系

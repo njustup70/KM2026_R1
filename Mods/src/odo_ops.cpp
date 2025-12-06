@@ -70,7 +70,7 @@ void Odometer_Ops9::Init(UART_HandleTypeDef *huart, bool rev_x, bool rev_y,
 
 
 
-
+uint8_t test_data[28];
 
 static void OdometerOps9_RxCallback(UART_HandleTypeDef *huart, uint8_t *rxData, uint8_t size)
 {
@@ -78,7 +78,9 @@ static void OdometerOps9_RxCallback(UART_HandleTypeDef *huart, uint8_t *rxData, 
 
     if (size == 28) // 确认数据长度正确
     {
-        memcpy(&(targ_odom->odom_data), rxData, 28); 
+        memcpy(&(targ_odom->odom_data), rxData, 28);
+        memcpy(test_data, rxData, 28);
+
         // 这里可以添加对数据的验证，比如检查帧头和帧尾
         if (targ_odom->odom_data.frame_head == 0x0A0D && targ_odom->odom_data.frame_tail == 0x0D0A)
         {

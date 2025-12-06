@@ -184,13 +184,32 @@ namespace Seq
      * @brief 等待直到条件满足或超时
      * @param condition 指向布尔条件的指针
      * @param timeout_sec 超时时间，单位秒，默认300秒
-     * @details 利用osDelayUntil实现
+     * @details 利用阻塞+让步实现
      */
     void WaitUntil(bool& condition, float timeout_sec)
     {
         uint32_t start_tick = xTaskGetTickCount();
         uint32_t timeout_ticks = (uint32_t)(timeout_sec * 1000);
 
-        osDelayUntil(&start_tick, timeout_ticks);
+        // 存储当前任务优先级
+        osPriority original_priority = osThreadGetPriority(osThreadGetId());
+        // 降低任务优先级，避免死循环占用过多CPU时间
+        osThreadSetPriority(osThreadGetId(), osPriorityIdle);
+
+        while (!condition)
+        {
+            // 检查超时
+            uint32_t current_tick = xTaskGetTickCount();
+            if ((current_tick - start_tick) >= timeout_ticks)
+            {
+                break; // 超时退出
+            }
+
+            // 让出CPU时间片，避免死循环占用过多资源
+            osThreadYield();
+        }
+
+        // 恢复任务优先级
+        osThreadSetPriority(osThreadGetId(), original_priority);
     }
 }
