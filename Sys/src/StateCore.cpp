@@ -3,6 +3,7 @@
 #include "stdio.h"
 #include "Monitor.hpp"
 #include "cmsis_os.h"
+
 /**
  * @brief 为状态块添加状态链接
  */
@@ -182,7 +183,7 @@ namespace Seq
     
     /**
      * @brief 等待直到条件满足或超时
-     * @param condition 指向布尔条件的指针
+     * @param condition 指向布尔条件的引用
      * @param timeout_sec 超时时间，单位秒，默认300秒
      * @details 利用阻塞+让步实现
      */
@@ -211,5 +212,37 @@ namespace Seq
 
         // 恢复任务优先级
         osThreadSetPriority(osThreadGetId(), original_priority);
+    }
+
+    namespace _Private
+    {
+        // 私有代理函数的实现
+        void WaitUntil_Impl(CheckFunctionPtr check_func_ptr, void* context, float timeout_sec)
+        {
+            uint32_t start_tick = xTaskGetTickCount();
+            uint32_t timeout_ticks = (uint32_t)(timeout_sec * 1000);
+
+            // 存储当前任务优先级
+            osThreadId current_thread_id = osThreadGetId();
+            osPriority original_priority = osThreadGetPriority(current_thread_id);
+            // 降低任务优先级，避免死循环占用过多CPU时间
+            osThreadSetPriority(osThreadGetId(), osPriorityIdle);
+            
+            // 使用传入的函数指针和上下文来检查条件
+            while (!check_func_ptr(context)) 
+            {
+                // 检查超时
+                uint32_t current_tick = xTaskGetTickCount();
+                if ((current_tick - start_tick) >= timeout_ticks)
+                {
+                    break; 
+                }
+
+                osThreadYield();
+            }
+
+            // 恢复任务优先级
+            osThreadSetPriority(current_thread_id, original_priority);
+        }
     }
 }
