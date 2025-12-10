@@ -37,6 +37,8 @@ namespace MotorDJIConst
 		CurLim_Mid = 2000,
 		CurLim_Normal = 8000,
 	};
+
+	static uint16_t prescaler_value = 1;
 }
 
 
@@ -112,6 +114,7 @@ public:
 	void SetPos(float pos);
 	
 	void CurrentLimSet(MotorDJIConst::CurLim curr_lim);
+	void SpeedLimSet(uint16_t rpm_lim);
 
 	void Neutral();
 	void Disable();
