@@ -873,6 +873,11 @@
               <FileType>8</FileType>
               <FilePath>..\Apps\src\MainFrame.cpp</FilePath>
             </File>
+            <File>
+              <FileName>IndustPC.cpp</FileName>
+              <FileType>8</FileType>
+              <FilePath>..\Apps\src\IndustPC.cpp</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>

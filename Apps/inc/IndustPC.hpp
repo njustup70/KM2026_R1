@@ -40,6 +40,7 @@ private:
         msg.data[0] = IndustPCConst::ToPC_Head;
         msg.data[1] = frame_head;
         memcpy(msg.data, &data, sizeof(data));
+        return msg;
     };
 
     bool _enabled = false;

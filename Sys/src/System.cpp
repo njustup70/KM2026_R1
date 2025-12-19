@@ -22,7 +22,7 @@ void SystemType::Init(bool Sc)
     sys_ledband.BiasFactor = Vec3(0.843f, 1.0f, 0.843f); 
 
     // 里程计初始化
-    odometer.Init(&huart6, true, false, false, true);
+    // odometer.Init(&huart6, true, false, false, true);
 
     // 自动开始自检
     if (Sc) status = Systems::SELF_CHECK;
