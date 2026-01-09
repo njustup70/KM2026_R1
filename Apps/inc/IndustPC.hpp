@@ -39,11 +39,11 @@ private:
         IndustPCMsg msg;
         msg.data[0] = IndustPCConst::ToPC_Head;
         msg.data[1] = frame_head;
-        memcpy(msg.data, &data, sizeof(data));
+        memcpy(msg.data + 2, &data, sizeof(data));
         return msg;
     };
 
-    bool _enabled = false;
+    bool _enabled = true;
 
 
 public:
