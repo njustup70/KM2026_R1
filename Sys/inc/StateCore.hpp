@@ -141,6 +141,41 @@ namespace Seq
 {
     void Wait(float sec);
     void WaitUntil(bool& condition, float timeout_sec = 3600.0f);
+    
+    using CheckFunctionPtr = bool(*)(void*);
+
+    namespace _Private 
+    {
+        /**
+         * @brief 等待直到（私有代理函数）
+         * @param check_func_ptr: 实际检查函数的地址
+         * @param context: 传递给检查函数的Lambda闭包
+         * @param timeout_sec: 超时时间，单位秒
+         * @note 注意：Lambda 对象 'condition' 是在栈上创建的，它的生命周期仅在 WaitUntil 期间有效。
+         */
+        void WaitUntil_Impl(CheckFunctionPtr check_func_ptr, void* context, float timeout_sec);
+    }
+    
+
+    /**
+     * @brief 等待直到（表达式重载）
+     * @param condition 布尔条件表达式 (Lambda/Functor)
+     * @param timeout_sec 超时时间，单位秒
+     */
+    template<typename ConditionFunc>
+    void WaitUntil(ConditionFunc condition, float timeout_sec = 3600.0f)
+    {
+        // 注意：Lambda 闭包对象会被传递到这里作为 context
+        static auto callback_adapter = [](void* context) -> bool {
+            // 将 void* 转换回原始的 Lambda 指针
+            ConditionFunc* lambda_ptr = static_cast<ConditionFunc*>(context);
+            // 执行 Lambda 返回结果
+            return (*lambda_ptr)();
+        };
+
+        // 调用私有代理
+        _Private::WaitUntil_Impl(callback_adapter, &condition, timeout_sec);
+    }
 }
 
 

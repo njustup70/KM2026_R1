@@ -3,6 +3,7 @@
 #include "stdio.h"
 #include "Monitor.hpp"
 #include "cmsis_os.h"
+
 /**
  * @brief 为状态块添加状态链接
  */
@@ -48,6 +49,7 @@ StateBlock& StateGraph::AddState(const char *name)
         // 初始化
         targ = StateBlock(name);
         targ.id = stateNums;
+        targ.Complete = false;
 
         // 增加状态数量
         stateNums++;
@@ -66,18 +68,15 @@ StateBlock& StateGraph::AddState(const char *name)
 bool StateGraph::Degenerate(void (*DegenAction)(StateCore *core))
 {
     // 固定两个状态
-    stateNums = 2;
 
     // 第一个状态：工作状态
-    states[0] = StateBlock("working");
-    states[0].id = 0;
-    states[0].StateAction = DegenAction;
-    states[0].LinkTo(&(states[0].Complete), states[1]);
+    StateBlock& state_work = AddState("working");
+    state_work.StateAction = DegenAction;
+    state_work.LinkTo(&(states[0].Complete), states[1]);
 
     // 第二个状态：结束状态
-    states[1] = StateBlock("end");
-    states[1].id = 1;
-    states[1].StateAction = nullptr; // 什么都不做
+    StateBlock& state_end = AddState("end");
+    state_end.StateAction = nullptr; // 什么都不做
 
     return true;
 }
@@ -102,10 +101,11 @@ void StateCore::Run()
     if (graph.GlobalAction != nullptr) graph.GlobalAction(this);
     
     /**
-     * @warning 这个写法代表着，一般只有状态函数完全执行完了才会进行状态转移
+     * @note 这个写法代表着，一般只有状态函数完全执行完了才会进行状态转移
      * 所以后面应该会加入 在中间打断动作 的机制（确保动作打断是经过作者设计的）
+     * @warning 只有非空状态函数才会被执行 
      */
-    state.StateAction(this);
+    if (state.StateAction != nullptr) state.StateAction(this);
 
     // 进行状态转移
     graph.executor_at_id = state.Transition();
@@ -183,15 +183,66 @@ namespace Seq
     
     /**
      * @brief 等待直到条件满足或超时
-     * @param condition 指向布尔条件的指针
+     * @param condition 指向布尔条件的引用
      * @param timeout_sec 超时时间，单位秒，默认300秒
-     * @details 利用osDelayUntil实现
+     * @details 利用阻塞+让步实现
      */
     void WaitUntil(bool& condition, float timeout_sec)
     {
         uint32_t start_tick = xTaskGetTickCount();
         uint32_t timeout_ticks = (uint32_t)(timeout_sec * 1000);
 
-        osDelayUntil(&start_tick, timeout_ticks);
+        // 存储当前任务优先级
+        osPriority original_priority = osThreadGetPriority(osThreadGetId());
+        // 降低任务优先级，避免死循环占用过多CPU时间
+        osThreadSetPriority(osThreadGetId(), osPriorityIdle);
+
+        while (!condition)
+        {
+            // 检查超时
+            uint32_t current_tick = xTaskGetTickCount();
+            if ((current_tick - start_tick) >= timeout_ticks)
+            {
+                break; // 超时退出
+            }
+
+            // 让出CPU时间片，避免死循环占用过多资源
+            osThreadYield();
+        }
+
+        // 恢复任务优先级
+        osThreadSetPriority(osThreadGetId(), original_priority);
+    }
+
+    namespace _Private
+    {
+        // 私有代理函数的实现
+        void WaitUntil_Impl(CheckFunctionPtr check_func_ptr, void* context, float timeout_sec)
+        {
+            uint32_t start_tick = xTaskGetTickCount();
+            uint32_t timeout_ticks = (uint32_t)(timeout_sec * 1000);
+
+            // 存储当前任务优先级
+            osThreadId current_thread_id = osThreadGetId();
+            osPriority original_priority = osThreadGetPriority(current_thread_id);
+            // 降低任务优先级，避免死循环占用过多CPU时间
+            osThreadSetPriority(osThreadGetId(), osPriorityIdle);
+            
+            // 使用传入的函数指针和上下文来检查条件
+            while (!check_func_ptr(context)) 
+            {
+                // 检查超时
+                uint32_t current_tick = xTaskGetTickCount();
+                if ((current_tick - start_tick) >= timeout_ticks)
+                {
+                    break; 
+                }
+
+                osThreadYield();
+            }
+
+            // 恢复任务优先级
+            osThreadSetPriority(current_thread_id, original_priority);
+        }
     }
 }

@@ -21,6 +21,9 @@ void SystemType::Init(bool Sc)
     // 颜色偏置因子（用于校正颜色）
     sys_ledband.BiasFactor = Vec3(0.843f, 1.0f, 0.843f); 
 
+    // 里程计初始化
+    odometer.Init(&huart6, true, false, false, true);
+
     // 自动开始自检
     if (Sc) status = Systems::SELF_CHECK;
 }
@@ -49,9 +52,8 @@ void SystemType::Run()
     runtime_tick = DWT_GetTimeline_Sec();
 
     static int temp_cnt = 0;
-    if (temp_cnt++ >= 100)
+    if (temp_cnt++ >= 1)
     {
-        Monitor::GetInstance().Log("What the fuck?");
         Monitor::GetInstance().LogTrack();
         temp_cnt = 0;
     }

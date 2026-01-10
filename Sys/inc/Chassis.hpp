@@ -32,36 +32,6 @@ class ChasAPIHandle
 };
 
 
-// class MoveAct : public BaseAction
-// {
-//     private:
-//         // 基于内部选择的移动方式
-//         bool MoveAt();
-//         bool MoveAlong();
-
-//     public:
-//         Vec2 target_pos = Vec2(0, 0);   // 目标位置，单位m，场地坐标系
-//         float max_velo = 1.0f;          // 最大速度，单位m/s
-//         float max_accel = 2.0f;         // 最大加速度，单位m/s^2
-
-//         typedef enum
-//         {
-//             AtPos,          // 移动到指定位置
-//             AlongPath,      // 沿指定路径移动
-//         }MoveType;
-        
-//         // 设置移动动作类型
-//         MoveType movetype = AtPos;
-//         // 构造函数
-//         MoveAct(){};
-        
-//         // 覆写虚函数
-//         virtual bool OnUpdate() override;
-//         // 重置参数
-//         void Reset(Vec2 new_target);
-// };
-
-
 /**
  * @brief 底盘类
  * @note 底盘类中大部分是实现类的接口，更多复杂的算法都不在这里
@@ -76,9 +46,9 @@ class ChassisType : public Application
         /// @param 最大加速度，单位m/s^2
         float _max_accel = 4.0f;       
         /// @param 最大线速度，单位m/s
-        float _max_velo = 0.5f;
+        float _max_velo = 1.5f;
         /// @param 最大角速度，单位rad/s
-        float _max_omega = 0.5f;
+        float _max_omega = 0.3f;
         /// @param 最大角加速度，单位rad/s^2
         float _max_beta = 2.0f;
 
@@ -87,11 +57,13 @@ class ChassisType : public Application
         bool _rotating = false;             // 是否正RotateTo
         bool _is_pos_locked = false;        // 常锁位置环
         bool _is_yaw_locked = false;        // 常锁姿态环
+        bool _rev = false;                 // 电机是否反向（有时，电机的顺逆时针是相反的）
 
 
         
         /// @param 四个电机的目标速度，单位m/s
         float _motor_spd[4];
+        uint8_t _start_id = 1;              // 电机起始ID，向后共使用4个
         
         /// @param 安全锁定计时器
         int _safe_lock_tick = 0;
@@ -109,6 +81,9 @@ class ChassisType : public Application
         bool _Walking();
         /// @brief 转到某角度具体实现
         bool _Rotating();
+
+        /// @brief 失能刹车
+        void _DisableBrake();
 
 
         Vec3 targ_ges = Vec3(0, 0, 0);      // 期望姿态，车体右手系，x向前，y向左，z从上向下看逆时针，单位m，rad
@@ -148,27 +123,18 @@ class ChassisType : public Application
         float move_precision = 0.05f;       // 最小移动精度，单位m
         float rotate_precision = 0.02f;     // 最小旋转精度，单位rad    （0.017453 rad / 度）
 
-        /**         直接接口    (Direct)        **/
-        void Config();
+        /**         接口    (API)        **/
+        void Config(bool rev = false, uint8_t start_id = 1);
         void Enable();
         void Disable(); 
         /// @brief 直接设置底盘速度（一个通用的开环行为）
-        void Move(Vec3 Spd);
-        void Move(Vec2 Spd);
+        void Move(Vec3 Spd, uint32_t duration = 100);
+        void Move(Vec2 Spd, uint32_t duration = 100);
         void Rotate(float omega);
 
         void MoveAt(Vec2 Pos);
         void RotateAt(float yaw);
         // const ChasAPIHandle& MoveAt(Vec2 Pos);
-        
-        /**         抛出接口    (Launch)        **/
-        /// @brief 相对当前位置移动
-        BaseAction* MoveLocal(Vec2 Pos);
-        /// @brief 移动到 指定位置
-        // BaseAction* MoveAt(Vec2 Pos);
-        BaseAction* MoveAt(Vec2 Pos, float MaxVelo, float MaxAccel);
-        /// @brief 沿路径移动
-        BaseAction* MoveAlong(Path path_t);
 };
 
 

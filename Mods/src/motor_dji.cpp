@@ -13,6 +13,7 @@ static void MotorDji_RxCallback(CAN_RxHeaderTypeDef *RxHeader, uint8_t *RxData, 
 static void MotorDji_SendCurrent(CAN_HandleTypeDef *hcan, int16_t motor_0, int16_t motor_1, int16_t motor_2, int16_t motor_3, bool more = false);
 
 
+
 /// @brief 存储已经注册的电机实例的指针，便于回调函数查表处理
 static MotorDJI* MotorPointList[1 + 16] = {nullptr}; 	 // 电机ID从1开始，所以0号不使用
 // 顺序记录已经注册的电机ID，便于遍历所有电机（比如3号和6号注册了，但是位置很散，查这个表有助于提升遍历效率）
@@ -96,6 +97,25 @@ void MotorDJI::Neutral()
 }
 
 /**
+ * @brief 设置电流限幅
+ * @param curr_lim 电流限幅值
+ */
+void MotorDJI::CurrentLimSet(MotorDJIConst::CurLim curr_lim)
+{
+	_current_limit = curr_lim;
+}
+
+/**
+ * @brief 设置速度限幅
+ */
+void MotorDJI::SpeedLimSet(uint16_t rpm_lim)
+{
+	// 检查速度限幅是否合理
+	if (rpm_lim < 0) return;
+	_speed_limit = rpm_lim;
+}
+
+/**
  * @brief 关闭电机控制
  * @warning 如果电机正在旋转，Disable之后指令停止发送，但是电流会保持，很容易导致电机疯转
  */
@@ -133,6 +153,11 @@ uint8_t MotorDJI::_GetCanSeg(uint8_t motor_id)
  */
 void MotorDJI::ControlAllMotors()
 {
+	static uint16_t prescaler_cnt = 0;
+
+	if (prescaler_cnt++ < MotorDJIConst::prescaler_value) return;
+	prescaler_cnt = 0;
+
 	// 分四段：CAN1的1-4号电机，CAN1的5-8号电机，CAN2的1-4号电机，CAN2的5-8号电机
 	bool send_can_seg[4] = {false, false, false, false};
 	 // 存储所有电机的目标电流 
@@ -360,12 +385,12 @@ static void MotorDji_SendCurrent(CAN_HandleTypeDef *hcan, int16_t motor_0, int16
 	// 根据是否需要发送到ID大于4的电机，选择不同的ID
 	if (more)
 	{
-		BspCan_TxConfig txconf = BspCan_GetTxConfig(hcan, 0x1ff, BSPCAN_STD, BSPCAN_DATA, 8, 50);
+		BspCan_TxConfig txconf = BspCan_GetTxConfig(hcan, 0x1ff, BSPCAN_STD, BSPCAN_DATA, 8, 10);
 		BspCan_Transmit(txconf, motor_current_data);
 	}
 	else
 	{
-		BspCan_TxConfig txconf = BspCan_GetTxConfig(hcan, 0x200, BSPCAN_STD, BSPCAN_DATA, 8, 50);
+		BspCan_TxConfig txconf = BspCan_GetTxConfig(hcan, 0x200, BSPCAN_STD, BSPCAN_DATA, 8, 10);
 		BspCan_Transmit(txconf, motor_current_data);
 	}
 }

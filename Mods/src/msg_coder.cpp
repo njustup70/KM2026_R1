@@ -11,21 +11,6 @@ static UartMsgCoder *UartMsgPointList[16] = {nullptr}; // 最多支持16个实�
 uint8_t UartMsgPointListCount = 0;                     // 当前串口调制器实例数量
 
 static void UartMsgCoder_RxCallback(UART_HandleTypeDef *huart, uint8_t *rxData, uint8_t size);
-static void UartMsgCoder_General_RxCallback(UART_HandleTypeDef *huart, uint8_t *rxData, uint8_t size);
-
-
-
-/**
- * @brief 初始化串口消息调制器
- * @param huart 串口句柄
- */
-void UartMsgCoder::Init(UART_HandleTypeDef *huart)
-{
-    UartMsgPointList[UartMsgPointListCount++] = this; // 注册该调制器实例到全局列表中
-
-    // 初始化（即注册）该调制器的串口实例
-    BspUart_InstRegist(&uart_inst, huart, 64, BspUartType_DMA, BspUartType_DMA, UartMsgCoder_General_RxCallback);
-}
 
 
 /**
@@ -56,6 +41,18 @@ static void UartMsgCoder_General_RxCallback(UART_HandleTypeDef *huart, uint8_t *
     }
 }
 
+
+/**
+ * @brief 初始化串口消息调制器
+ * @param huart 串口句柄
+ */
+void UartMsgCoder::Init(UART_HandleTypeDef *huart)
+{
+    UartMsgPointList[UartMsgPointListCount++] = this; // 注册该调制器实例到全局列表中
+
+    // 初始化（即注册）该调制器的串口实例
+    BspUart_InstRegist(&uart_inst, huart, 64, BspUartType_DMA, BspUartType_DMA, UartMsgCoder_General_RxCallback);
+}
 
 
 /**

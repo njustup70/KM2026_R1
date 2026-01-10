@@ -24,6 +24,24 @@ else if (x < -y) 	\
 	x = -y;			\
 }
 
+
+namespace MotorDJIConst
+{
+	const static float redu_M3508 = 19.0f;	// M3508电机的减速比
+	const static float redu_M2006 = 36.0f;	// M2006电机的减速比
+
+	typedef enum CurLim
+	{
+		CurLim_Weak = 500,
+		CurLim_Safe = 1000,
+		CurLim_Mid = 2000,
+		CurLim_Normal = 8000,
+	};
+
+	static uint16_t prescaler_value = 1;
+}
+
+
 // 电机反馈信息结构体变量定义
 typedef struct
 {
@@ -94,6 +112,10 @@ public:
 	void SwitchMode(MotorDJIMode new_mode);
 	void SetSpeed(float rpm, float redu_ratio = 19.0f);			// 3508的默认减速比（用2006的时候记得改！）
 	void SetPos(float pos);
+	
+	void CurrentLimSet(MotorDJIConst::CurLim curr_lim);
+	void SpeedLimSet(uint16_t rpm_lim);
+
 	void Neutral();
 	void Disable();
 	void Enable();
@@ -129,11 +151,7 @@ public:
 	MotorDJIMode mode = None_Control;	// 电机当前控制模式
 };
 
-namespace MotorDJIConst
-{
-	const static float redu_M3508 = 19.0f;	// M3508电机的减速比
-	const static float redu_M2006 = 36.0f;	// M2006电机的减速比
-}
+
 
 typedef MotorDJI MotorC610;		// 本库对C620和C610的支持是通用的
 typedef MotorDJI MotorC620;		
