@@ -14,10 +14,11 @@ void IndustPC::Update()
 {
     // 持续上传里程计的数据给工控机（频率100Hz从200Hz分）
     static uint8_t send_presc_cnt = 0;
+    static IndustPCMsg msg;
     if (send_presc_cnt++ >= 1)
     {
         send_presc_cnt = 0;
-        IndustPCMsg msg = EncodeMsg(IndustPCConst::Odo_Code, ChassisType::GetInstance().chas_odom.pos);
+        msg = EncodeMsg(IndustPCConst::Odo_Code, ChassisType::GetInstance().chas_odom.pos);
         indupc_coder.SendRawMsg(msg.data, IndustPCConst::MsgLength);
     }
 }
