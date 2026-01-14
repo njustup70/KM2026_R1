@@ -11,7 +11,7 @@ static UartMsgCoder *UartMsgPointList[16] = {nullptr}; // 最多支持16个实�
 uint8_t UartMsgPointListCount = 0;                     // 当前串口调制器实例数量
 
 static void UartMsgCoder_RxCallback(UART_HandleTypeDef *huart, uint8_t *rxData, uint8_t size);
-static void UartMsgCoder_General_RxCallback(UART_HandleTypeDef *huart, uint8_t *rxData, uint8_t size);
+ void UartMsgCoder_General_RxCallback(UART_HandleTypeDef *huart, uint8_t *rxData, uint8_t size);
 
 
 
@@ -35,7 +35,7 @@ void UartMsgCoder::Init(UART_HandleTypeDef *huart)
  * @param size 接收到的数据长度
  * @details 会依次调用每一个注册了的回调函数
  */
-static void UartMsgCoder_General_RxCallback(UART_HandleTypeDef *huart, uint8_t *rxData, uint8_t size)
+ void UartMsgCoder_General_RxCallback(UART_HandleTypeDef *huart, uint8_t *rxData, uint8_t size)
 {
     // 遍历所有注册的调制器实例，根据huart通道，找到对应的实例
     for (int i = 0; i < UartMsgPointListCount; i++)

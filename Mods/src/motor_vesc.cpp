@@ -104,7 +104,7 @@ void MotorVESC::RxHandle(MotorVescRecvData vesc_recvs)
 // 设置电机转速
 void  MotorVESC::SetRPM(int RPM,float limit_mx)
 {
-    int rpm = Limit_ABS((float)RPM,limit_mx);
+    int rpm = Limit_ABS((float)RPM,limit_mx,-limit_mx);
    MotorVESC_SendCanTXBuffer( this,CAN_PACKET_SET_RPM, rpm);
 }
 

@@ -204,8 +204,9 @@ typedef struct ShootInfo
 * @name lim_abs
 * @brief 限幅函数
 * @param targ_num: 待限幅的数值
-* @param limit_mx: 限幅的绝对值上限
+* @param limit_max: 限幅上限
+* @param limit_min: 限幅下限
 */
-float Limit_ABS(float targ_num, float limit_mx);
+float Limit_ABS(float targ_num, float limit_max, float limit_min);
 
 #endif

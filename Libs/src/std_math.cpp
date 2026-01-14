@@ -132,15 +132,15 @@ Color Color::White = Color(255.0f, 255.0f, 255.0f);  // 白色（r=1, g=1, b=1�
 
 /*********      限幅     **********/
 
-float Limit_ABS(float targ_num, float limit_mx)
+float Limit_ABS(float targ_num, float limit_max, float limit_min)
 {
-    if (targ_num > limit_mx)
+    if (targ_num > limit_max)
     {
-        return limit_mx;
+        return limit_max;
     }
-    if (targ_num < -limit_mx)
+    if (targ_num < limit_min)
     {
-        return -limit_mx;
+        return limit_min;
     }
     return targ_num;
 }
