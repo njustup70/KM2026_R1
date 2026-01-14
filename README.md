@@ -4,45 +4,16 @@
 </div>
 
 <div align="center">
-<h1>南京理工大学Up70战队大疆A板电控框架</h1>
+<h1>南京理工大学Up70战队电控框架</h1>
 </div>
 
 ## 简介
-基于 ***DJI A Board*** 搭建的电控框架库，跟大多数嵌入式框架一样被分为了 `Bsp`、`Module`、`App`、`Sys`层。其中，`App`和`Sys`处于同一级。
+基于 ***DJI A Board*** 搭建的电控框架库，与大多数嵌入式框架一样分为 `Bsp`、`Module`、`Sys`、`App`层。
 
-用户基本无需更改App层以下的任何代码，即可搭建自己的逻辑框架 
+框架使用 全`C++` 进行组织，并严格面向对象 
 
-同时，用户在使用时，也 ***严禁更改非用户代码区的任何代码***
+## 使用
+用户 ***无需更改*** App层以下的任何代码，只需要通过调用 / 编写 `Application` 即可实现逻辑
 
-***本架构仍在持续更新中！！！请积极 <u>提 ISSUE</u> 和 <u>拉取最新代码</u>***
+> ***本架构仍在持续更新中！！！请积极提交 <u>ISSUE 和 PR</u>***
 
-## Fast StartUp
-### Build 构建
-将需要使用的库的`Build()`接口，放入`Interface.cpp`的`Interface::Buildlize()`中
-```cpp
-void Interface::Buildlize()
-{
-    Target::Build();
-}
-```
-
-### Update 维护
-将需要使用的库的`Update()`接口，放入`Interface.cpp`的对应循环线程中
-```cpp
-void Interface::Slow()
-{
-    Target::Update();
-}
-```
-
-### Logic 逻辑
-在`AutoLogic.cpp`和`InstruLogic.cpp`中编写逻辑
-```cpp
-void RoboWorking()
-{
-    SEQLIZE
-    {
-        ...
-    }
-}
-```
