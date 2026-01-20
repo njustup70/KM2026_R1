@@ -1,54 +1,42 @@
 #include "MainFrame.hpp"
-#include "System.hpp"
+// #include "RobotSystem.hpp"
 #include "Chassis.hpp"
 #include "Monitor.hpp"
 #include "std_cpp.h"
-
-ChassisType& chas = ChassisType::GetInstance();
-StateGraph grp("Test");
-StateCore& core = StateCore::GetInstance();
-
-void DegeAct(StateCore* core);
+#include "motor_dm.hpp"
+#include "GetBlock.hpp"
 
 /**
  * @brief 程序主入口
  * @warning 严禁阻塞
  */
-void MainFrameCpp()
+GetBlock& gblock_app = GetBlock::GetInstance();
+StateCore& core = StateCore::GetInstance();
+// 全局状态图（简并模式）
+StateGraph arm_test_graph("get_block_test_graph");
+
+
+void DM_Motor_Test_Action(StateCore* core)
 {
-    System.monit.Watch({&chas.motors[0].online, "Motor0_Offline!", true});
-    System.monit.Watch({&chas.motors[1].online, "Motor1_Offline!", true});
-    System.monit.Watch({&chas.motors[2].online, "Motor2_Offline!", true});
-    System.monit.Watch({&chas.motors[3].online, "Motor3_Offline!", true});
+    Seq::Wait(2.0f);
+    gblock_app.Inblock( H_40); //夹爪吸块
+    Seq::Wait(60.0f);
+    // Seq::Wait(2.0f);
+    // gblock_app.Block_out1();   
 
-    System.monit.Track(chas.motors[3].measure.speed_rpm);
-    System.monit.Track(chas.motors[3].targ_current);
 
-    chas.Config(true);
-
-    System.SetPositionSource(System.odometer.transform);
-
-    System.RegistApp(chas);
-    
-    grp.Degenerate(DegeAct);
-    core.RegistGraph(grp);
-    core.Enable(0);
 }
 
 
-
-void DegeAct(StateCore* core)
+void MainFrameCpp()
 {
-    Seq::WaitUntil(chas.enabled);
+    // 注册达妙电机测试应用
+    System.RegistApp(gblock_app);
+    // 配置状态图为简并模式（绑定测试逻辑）
+    arm_test_graph.Degenerate(DM_Motor_Test_Action);
 
-    // 先向前走2s
-    chas.MoveAt(Vec2(1.0f, 0));
-    chas.RotateAt(0);
+    // 注册状态图到状态机核心（启动测试）
+   core.RegistGraph(arm_test_graph);
 
-    Seq::Wait(4.0f);
-    // 再向左走2s
-    chas.MoveAt(Vec2(0, 1.0f));
-    chas.RotateAt(0);
-    
-    Seq::Wait(4.0f);
+    core.Enable(0);  // 启动状态机，选择第0个状态图   
 }

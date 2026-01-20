@@ -49,7 +49,7 @@ static uint8_t BspGpio_GetPinIndex(uint16_t GPIO_Pin)
 
 void BspGpio_ExtiHandlerRegist(BspGpio_Instance *inst, BspGpio_ExtiHandler handler_func)
 {
-    uint8_t index = BspGpio_GetPinIndex(inst->GPIO_Port);
+    uint8_t index = BspGpio_GetPinIndex(inst->Pin);
     
     // 检查索引是否在0-15范围内
     if (index < 16)

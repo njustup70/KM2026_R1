@@ -58,6 +58,8 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
+#define huang1_Pin GPIO_PIN_12
+#define huang1_GPIO_Port GPIOH
 
 /* USER CODE BEGIN Private defines */
 

@@ -187,6 +187,7 @@
             <RvdsVP>2</RvdsVP>
             <RvdsMve>0</RvdsMve>
             <RvdsCdeCp>0</RvdsCdeCp>
+            <nBranchProt>0</nBranchProt>
             <hadIRAM2>1</hadIRAM2>
             <hadIROM2>0</hadIROM2>
             <StupSel>8</StupSel>
@@ -872,6 +873,11 @@
               <FileName>MainFrame.cpp</FileName>
               <FileType>8</FileType>
               <FilePath>..\Apps\src\MainFrame.cpp</FilePath>
+            </File>
+            <File>
+              <FileName>GetBlock.cpp</FileName>
+              <FileType>8</FileType>
+              <FilePath>..\Apps\src\GetBlock.cpp</FilePath>
             </File>
           </Files>
         </Group>
