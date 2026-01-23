@@ -3,10 +3,25 @@
 #include "motor_dji.hpp"
 #include "string.h"
 #include "std_math.hpp"
+#include "gpio.h"
+#include "msg_coder.hpp"
+#include <string.h>
+
  float p_kp=0.5f,p_kd=0.01f,p_ki=0.0f;
 float s_kp=3.0f,s_kd=0.005f,s_ki=0.25f;
-
-
+uint8_t receive[64];
+uint8_t rx_length=0;
+ BspUart_Instance uart3_inst;
+ volatile bool new_offset = false;
+      /**矛头对接的位置偏差 **/
+    float left_mm=0.0f; //取矛头结构对接的左右偏差
+    float up_mm=0.0f; //取矛头结构对接的上下偏差
+    float target_left_mm=0.0f; //取矛头结构对接的目标左右偏差
+    float target_up_mm=0.0f; //取矛头结构对接的目标上下偏差
+   volatile uint32_t last_vision_tick=0; //上次视觉数据接收时间戳
+ void SetCallback(void (*Callback)(UART_HandleTypeDef *huart, uint8_t *rxData, uint8_t size));
+void uart_recallback(UART_HandleTypeDef *huart, uint8_t *rxData, uint8_t size);
+void MyUartRxcallback(UART_HandleTypeDef *huart, uint8_t *rxData, uint8_t size);
 void JawType::Start()
 {
 
@@ -19,31 +34,59 @@ void JawType::Start()
        jaw_djmotor[i].position_pid.SetLimit(0,speed[i],0.9f);
        jaw_djmotor[i].Enable();
     }
-  
+
+        BspUart_InstRegist(&uart3_inst, &huart3, 64, BspUartType_DMA, BspUartType_DMA, MyUartRxcallback);
+
    
+}
+void MyUartRxcallback(UART_HandleTypeDef *huart, uint8_t *rxData, uint8_t size)
+{
+    if(huart==&huart3)
+    {
+        std::memcpy(receive, rxData, static_cast<size_t>(size));
+        rx_length=size;
+        if(receive[0]==0xFA && receive[1]==0xB1)//帧头0xFA，帧id 0xB1的判断
+        {
+        //保存数据
+        std::memcpy(&left_mm, &receive[2], 4);
+        std::memcpy(&up_mm, &receive[6], 4);
+            // 死区处理
+            if(abs(left_mm) < 0.3f) left_mm = 0;
+            if(abs(up_mm) < 0.3f) up_mm = 0;
+         new_offset = true;
+        }
+      
+
+    }
+    
 }
 
 void JawType::Update()
 {
-          ControlJawRotate(90);
-        if (jaw_rotate_arrived)
-        {
-            ControlBaseRotate(90);
-            if (base_rotate_arrived)
-            {
-                ControlBaseMove(83);
-                if (base_move_arrived)
-                {
-                    ControlJawUpDown(2);
-                    if (jaw_updown_arrived)
-                    {
-                        ControlJawForwardBack(2);
-                    }
-                }
-            }
-        }
+   
+  //  BspUart_Transmit(uart3_inst, senddata, 6);
+if (!jaw_action)
+{
+    JawAction();//完成取杆动作
 }
+if (jaw_action)//取杆动作完成后再进行对接陶正
+{
+    if (new_offset)
+    {
+    new_offset = false;
+    //  更新瞬时目标 (物理位置 + 偏差)
+    float cur_left_mm = jaw_djmotor[4].measure.total_angle / (-147438.0f);
+    target_left_mm = cur_left_mm + left_mm;
+            
+    float cur_up_mm = jaw_djmotor[3].measure.total_angle / (-147438.0f);
+    target_up_mm = cur_up_mm - up_mm;
 
+    }
+    ControlJawRotate(0);
+    ControlJawForwardBack(target_left_mm);
+    ControlJawUpDown(target_up_mm);
+}
+}
 
     void JawType::Enable()
 {
@@ -63,11 +106,11 @@ void JawType::Update()
     */ 
    void JawType::ControlJawRotate(float position)
 {
-    if (!enabled)  return; // 如果取矛头结构未使能，直接返回
+   
     jaw_rotate_target_position = position*819.1;
     jaw_djmotor[0].SetPos(jaw_rotate_target_position);
     jaw_rotate_current_position = jaw_djmotor[0].measure.total_angle;
-    if (abs(jaw_rotate_current_position - jaw_rotate_target_position) < 5000) // 误差小于5000认为到达
+    if (abs(jaw_rotate_current_position - jaw_rotate_target_position) < 10000) // 误差小于10000认为到达
     {
         jaw_rotate_arrived = true;
     }
@@ -83,11 +126,11 @@ void JawType::Update()
     */
    void JawType::ControlBaseRotate(float position)
 {
-    if (!enabled)  return; // 如果取矛头结构未使能，直接返回
+    
     base_rotate_target_position = position*4095.5;
     jaw_djmotor[1].SetPos(base_rotate_target_position);
     base_rotate_current_position = jaw_djmotor[1].measure.total_angle;
-    if (abs(base_rotate_current_position - base_rotate_target_position) < 5000) // 误差小于5000认为到达
+    if (abs(base_rotate_current_position - base_rotate_target_position) < 10000) // 误差小于10000认为到达
     {
         base_rotate_arrived = true;
     }
@@ -103,12 +146,12 @@ void JawType::Update()
     */
    void JawType::ControlBaseMove(float position)
 {
-    if (!enabled)  return; // 如果取矛头结构未使能，直接返回
+    
     base_movre_target_position = position*1788.14535839;
     // BaseMoveLimit(0,85);
     jaw_djmotor[2].SetPos(base_movre_target_position);
     base_move_current_position = jaw_djmotor[2].measure.total_angle;
-    if (abs(base_move_current_position - base_movre_target_position) < 5000) // 误差小于5000认为到达
+    if (abs(base_move_current_position - base_movre_target_position) < 10000) // 误差小于10000认为到达
     {
         base_move_arrived = true;
     }
@@ -124,12 +167,12 @@ void JawType::Update()
     */
    void JawType::ControlJawUpDown(float position)
 {
-    if (!enabled)  return; // 如果取矛头结构未使能，直接返回
+   
     jaw_updown_target_position = position*-147438.0f;
     // JawUpDownLimit(0,40);
     jaw_djmotor[3].SetPos(jaw_updown_target_position);
     jaw_updown_current_position = jaw_djmotor[3].measure.total_angle;
-    if (abs(jaw_updown_current_position - jaw_updown_target_position) < 5000) // 误差小于5000认为到达
+    if (abs(jaw_updown_current_position - jaw_updown_target_position) < 10000) // 误差小于10000认为到达
     {
         jaw_updown_arrived = true;
     }
@@ -145,18 +188,49 @@ void JawType::Update()
     */
    void JawType::ControlJawForwardBack(float position)
 {
-    if (!enabled)  return; // 如果取矛头结构未使能，直接返回
+   
     jaw_forwardback_target_position = position*(-147438.0f);
     // JawForwardBackLimit(0,40);
     jaw_djmotor[4].SetPos(jaw_forwardback_target_position);
     jaw_forwardback_current_position = jaw_djmotor[4].measure.total_angle;
-    if (abs(jaw_forwardback_current_position - jaw_forwardback_target_position) < 5000) // 误差小于5000认为到达
+    if (abs(jaw_forwardback_current_position - jaw_forwardback_target_position) < 10000) // 误差小于10000认为到达
     {
         jaw_forwardback_arrived = true;
     }
     else
     {
         jaw_forwardback_arrived = false;
+    }
+}
+    /** 
+     * @brief 取矛头结构动作函数
+     * @note 该函数用于控制取矛头结构的动作顺序，包括上层夹爪的上下微调、底座的旋转以及上层夹爪的旋转。
+     * 当各个动作完成后，设置动作完成标志为true。
+    */
+void JawType::JawAction()
+{
+         ControlJawUpDown(-35);
+    if (jaw_updown_arrived)
+    {
+        ControlBaseRotate(90);
+        if (base_rotate_arrived)
+        {
+            ControlJawRotate(90);
+            if (jaw_rotate_arrived)
+            {
+                 jaw_action = true;
+            }
+        }
+    }
+}
+
+void JawType::RxDataProcess(uint8_t* rx_data)
+{
+    BoardData_t*frame = (BoardData_t*)rx_data;
+    if(frame->sof==0xFA&&frame->id==0xB1)
+    {
+        left_mm=frame->left_mm;
+        up_mm=frame->up_mm;
     }
 }
    /** 
