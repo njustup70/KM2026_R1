@@ -41,6 +41,14 @@ static void UartMsgCoder_General_RxCallback(UART_HandleTypeDef *huart, uint8_t *
     }
 }
 
+void UartMsgCoder::SetCallback(void (*Callback)(UART_HandleTypeDef *huart, uint8_t *rxData, uint8_t size))
+{
+    if (Callback != nullptr)
+    {
+        _coder_callback = Callback;
+    }
+}
+
 
 /**
  * @brief 初始化串口消息调制器
