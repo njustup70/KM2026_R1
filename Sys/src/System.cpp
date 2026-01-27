@@ -4,9 +4,10 @@
 #include "Chassis.hpp"
 #include "led_ws2812.hpp"
 #include "Monitor.hpp"
-
+#include "farcon.hpp"
 SystemType& System = SystemType::GetInstance();
 LedWs2812 sys_ledband;
+Farcon farcon;
 
 void SystemType::Init(bool Sc)
 {
@@ -23,7 +24,7 @@ void SystemType::Init(bool Sc)
 
     // 里程计初始化
     odometer.Init(&huart6, true, false, false, true);
-
+    farcon.init(&huart3);
     // 自动开始自检
     if (Sc) status = Systems::SELF_CHECK;
 }
