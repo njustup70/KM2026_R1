@@ -5,7 +5,7 @@
 #include "task.h"
 #include "cmsis_os.h"
 
-#include "bsp_dwt.h"
+#include "bsp_dwt.hpp"
 #include "motor_dji.hpp"
 #include "System.hpp"
 #include "Action.hpp"

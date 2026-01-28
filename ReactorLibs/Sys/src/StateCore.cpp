@@ -1,5 +1,5 @@
 #include "StateCore.hpp"
-#include "bsp_dwt.h"
+#include "bsp_dwt.hpp"
 #include "stdio.h"
 #include "Monitor.hpp"
 #include "cmsis_os.h"

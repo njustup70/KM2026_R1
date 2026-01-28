@@ -1,7 +1,7 @@
 #ifndef STD_MSG_UP70
 #define STD_MSG_UP70
 
-#include "stm32f4xx_hal.h"
+#include "bsp_halport.hpp"
 
 #define BSP_SQRT2 1.41421356237f
 #define BSP_SQRT3 1.73205080757f

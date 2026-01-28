@@ -5,8 +5,7 @@ extern "C"
 {
 #endif
 
-#include "stm32f4xx_hal.h"
-#include "tim.h"
+#include "bsp_halport.hpp"
 
 typedef struct BspTIMPWM_t
 {

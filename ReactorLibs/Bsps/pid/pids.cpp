@@ -1,7 +1,7 @@
 // filePath: pids.c
 
 #include "pids.hpp"
-#include "bsp_dwt.h"
+#include "bsp_dwt.hpp"
 #include "arm_math.h"
 
 float limit_ab(float a, float limit)

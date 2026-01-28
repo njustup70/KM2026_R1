@@ -1,5 +1,8 @@
-#include "bsp_log.h"
+#include "bsp_log.hpp"
 #include "SEGGER_RTT.h"
+#include "stdarg.h"
+#include "stdio.h"
+#include "string.h"
 
 typedef struct {
     const char* cmd_name;    // 命令名，如 "mdji"

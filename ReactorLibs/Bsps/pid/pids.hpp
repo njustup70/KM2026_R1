@@ -1,8 +1,8 @@
 #ifndef PIDS_HPP
 #define PIDS_HPP
 #ifdef __cplusplus
-#include "stm32f4xx_hal.h"
 
+#include "bsp_halport.hpp"
 
 extern "C"
 {

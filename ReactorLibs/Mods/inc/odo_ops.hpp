@@ -5,7 +5,7 @@
 #include "stdint.h"
 #include "string.h"
 #include "std_math.hpp"
-#include "bsp_uart.h"
+#include "bsp_uart.hpp"
 
 #define ACTION_USART_HANDLE huart6
 

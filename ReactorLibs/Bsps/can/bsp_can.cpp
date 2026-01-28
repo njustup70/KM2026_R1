@@ -1,7 +1,5 @@
-#include "bsp_can.h"
-#include "can.h"
-#include "main.h"
-#include "bsp_dwt.h"
+#include "bsp_can.hpp"
+#include "bsp_dwt.hpp"
 
 // 统计类变量
 uint32_t can_recv_times = 0; // CAN接收次数

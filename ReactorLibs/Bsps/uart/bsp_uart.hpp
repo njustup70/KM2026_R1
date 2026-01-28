@@ -5,8 +5,7 @@ extern "C"
 {
 #endif
 
-#include "stm32f4xx_hal.h"
-#include "usart.h"
+#include "bsp_halport.hpp"
 
 /**
  * @brief 串口工作模式定义

@@ -5,8 +5,7 @@ extern "C"
 {
 #endif
 
-#include "stm32f4xx_hal.h"
-#include "can.h"
+#include "bsp_halport.hpp"
 
 #define BSPCAN_STD 0 // 标准帧发送
 #define BSPCAN_EXT 1 // 扩展帧发送

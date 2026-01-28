@@ -19,8 +19,7 @@ extern "C"
 {
 #endif
 
-#include "main.h"
-#include "stdint.h"
+#include "bsp_halport.hpp"
 
 #define CPU_HERT_A_BOARD_MHZ 180
 #define CPU_HERT_C_BOARD_MHZ 168

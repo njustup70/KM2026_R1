@@ -2,7 +2,7 @@
 #define MOTOR_DM_HPP
 
 #include "stm32f4xx_hal.h"
-#include "bsp_can.h"
+#include "bsp_can.hpp"
 
 
 //   // 解析错误码

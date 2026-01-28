@@ -1,5 +1,5 @@
 #include "motor_vesc.hpp"
-#include "bsp_can.h"
+#include "bsp_can.hpp"
 #include <string.h>
 #include "can.h"
 #include "std_math.hpp"

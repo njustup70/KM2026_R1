@@ -1,4 +1,5 @@
-#include "bsp_uart.h"
+#include "bsp_uart.hpp"
+#include "string.h"
 
 #define BSPUART_MAX_CANINSTS 6          // 最多支持6个串口实例
 

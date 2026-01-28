@@ -1,6 +1,6 @@
 #include "led_ws2812.hpp"
 #include "arm_math.h"
-#include "bsp_dwt.h"
+#include "bsp_dwt.hpp"
 
 static LedWs2812* targ_led;
 

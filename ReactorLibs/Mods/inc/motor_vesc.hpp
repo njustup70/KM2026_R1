@@ -4,8 +4,7 @@
 extern "C" {
 #endif
 
-#include "bsp_can.h"
-#include "can.h"
+#include "bsp_can.hpp"
 
 
 /// @brief 电调上报的操作数ID类型

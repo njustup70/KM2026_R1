@@ -3,7 +3,7 @@
 #include "Chassis.hpp"
 #include "Monitor.hpp"
 #include "std_cpp.h"
-#include "bsp_log.h"
+#include "bsp_log.hpp"
 
 /**     测试用      **/
 #include "signator.hpp"

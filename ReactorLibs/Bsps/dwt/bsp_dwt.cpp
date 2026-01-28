@@ -5,8 +5,8 @@
  * @note 本库来源于湖南大学“跃鹿战队”开源电控库，为其开源项目的一部分
  */
 
-#include "bsp_dwt.h"
-#include "bsp_log.h"
+#include "bsp_dwt.hpp"
+#include "bsp_log.hpp"
 
 static DWT_Time_t SysTime;
 static uint32_t CPU_FREQ_Hz, CPU_FREQ_Hz_ms, CPU_FREQ_Hz_us;

@@ -1,6 +1,6 @@
 #pragma once
 #include "linear_math.hpp"
-#include "bsp_dwt.h"
+#include "bsp_dwt.hpp"
 
 /**
  * @brief 线性化的微分跟踪器
