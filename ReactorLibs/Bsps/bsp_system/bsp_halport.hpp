@@ -56,7 +56,13 @@
 
 namespace Hardware
 {
+    void Config_Hardwares();
+    void Config_Parameters();
+
     extern float MainFreq_MHz;
+
+    /// @note 如果本标志位被激活，日志会被同步发送到 UART_HOST
+    extern bool LogAtUart;
     
     /***---------------     框架CAN    ---------------***/
     /// @brief 框架所用CAN句柄

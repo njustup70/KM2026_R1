@@ -1,12 +1,19 @@
 #include "led_ws2812.hpp"
 #include "arm_math.h"
 #include "bsp_dwt.hpp"
+#include "bsp_log.hpp"
 
 static LedWs2812* targ_led;
 
 
 void LedWs2812::Init(TIM_HandleTypeDef *htim, uint32_t Channel, uint8_t LedNums)
 {
+    if (htim == nullptr)
+    {
+        BspLog_LogError("[WS2812]: Init at null timer!\r\n");
+        return;
+    }
+
     // 记录所用的PWM通道，灯数
     this->htim = htim;
     this->Channel = Channel;

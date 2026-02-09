@@ -53,6 +53,7 @@ static void CoroutineStub(void *arg)
  */
 void Reactor46H_Initialize()
 {
+    Hardware::Config_Hardwares();
     System.Init();
     MainFrameCpp();
 

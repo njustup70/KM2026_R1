@@ -14,12 +14,12 @@
 #ifndef _BSP_DWT_H
 #define _BSP_DWT_H
 
+#include "bsp_halport.hpp"
+
 #ifdef __cplusplus
 extern "C"
 {
 #endif
-
-#include "bsp_halport.hpp"
 
 #define CPU_HERT_A_BOARD_MHZ 180
 #define CPU_HERT_C_BOARD_MHZ 168

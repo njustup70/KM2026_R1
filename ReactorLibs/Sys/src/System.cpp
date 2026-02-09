@@ -27,7 +27,8 @@ void SystemType::Init(bool Sc)
     // 颜色偏置因子（用于校正颜色）
     sys_ledband.BiasFactor = Vec3(0.843f, 1.0f, 0.843f); 
 
-    farcon.init(&huart3);
+    farcon.init(Hardware::huart_farcon);
+    
     odometer->Init(Hardware::huart_odom, true, false, false, true);
     // 自动开始自检
     if (Sc) status = Systems::SELF_CHECK;

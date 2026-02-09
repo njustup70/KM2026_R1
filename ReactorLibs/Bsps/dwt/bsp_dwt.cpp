@@ -66,7 +66,7 @@ void DWT_Init(uint32_t CPU_Freq_MHz)
 
     DWT_CntUpdate();
 
-    BspLog_LogInfo("DWT Init at %d MHz\r\n", CPU_Freq_MHz);
+    BspLog_LogInfo("[DWT]: Init at %d MHz\r\n", CPU_Freq_MHz);
 }
 
 

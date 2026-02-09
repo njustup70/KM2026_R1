@@ -4,6 +4,8 @@ namespace Hardware
 {
     float MainFreq_MHz = 72.0f;
 
+    bool LogAtUart = false;
+
     /**-----    配置CAN总线     -----**/
     CAN_HandleTypeDef* hcan_main = nullptr;
     CAN_HandleTypeDef* hcan_sub = nullptr;
