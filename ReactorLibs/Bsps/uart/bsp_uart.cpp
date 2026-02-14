@@ -70,37 +70,37 @@ Handler BSP::UART::Apply(UART_HandleTypeDef *huart)
     return Handler(new_inst);
 }
 
-Handler::Handler(Instance *inst) : instance_(inst)
+Handler::Handler(Instance *inst) : instance(inst)
 {
 }
 
 void Handler::Transmit(const uint8_t *data, uint16_t len)
 {
     // 确保不是无效调用
-    if (instance_ == nullptr)
+    if (instance == nullptr)
     {
         BspLog_LogWarning("[Bsp] Invalid Transmit, Empty Handler!\n");
         return;
     }
 
-    instance_->Transmit(data, len);
+    instance->Transmit(data, len);
 }
 
 bool Handler::RegisterRx(uint16_t rx_setlen, RxCallback rx_callback)
 {
     // 确保不是无效调用
-    if (instance_ == nullptr)
+    if (instance == nullptr)
     {
         BspLog_LogWarning("[Bsp] Invalid RxRegist, Empty Handler!\n");
         return false;
     }
 
-    return instance_->RegisterRx(rx_setlen, rx_callback);
+    return instance->RegisterRx(rx_setlen, rx_callback);
 }
 
 bool Handler::IsValid() const
 {
-    return (instance_ != nullptr);
+    return (instance != nullptr);
 }
 
 /***---------    实例部分接口    ---------***/

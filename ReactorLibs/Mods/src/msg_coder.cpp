@@ -29,7 +29,7 @@ static void UartMsgCoder_General_RxCallback(UART_HandleTypeDef *huart, uint8_t *
         UartMsgCoder& coder = *(UartMsgPointList[i]); 
 
         // 对比是否是对应的串口通道
-        if (coder.uart_inst.huart == huart)
+        if (coder.uart_inst.instance->huart == huart)
         {
             // 如果有用户自定义的回调函数，则调用它
             if (coder._coder_callback != nullptr)
@@ -51,7 +51,10 @@ void UartMsgCoder::Init(UART_HandleTypeDef *huart)
     UartMsgPointList[UartMsgPointListCount++] = this; // 注册该调制器实例到全局列表中
 
     // 初始化（即注册）该调制器的串口实例
-    BspUart_InstRegist(&uart_inst, huart, 64, BspUartType_DMA, BspUartType_DMA, UartMsgCoder_General_RxCallback);
+    uart_inst = BSP::UART::Apply(huart);
+
+    // 注册DMA接收回调
+    uart_inst.RegisterRx(64, UartMsgCoder_General_RxCallback);
 }
 
 
@@ -142,8 +145,11 @@ bool UartMsgCoder::SendRawMsg(uint8_t *encoded_data, int length)
     }
 
     coder_ocupied = true;
+
     // 使用BspUart发送数据
-    BspUart_Transmit(uart_inst, encoded_data, length);
+    uart_inst.Transmit(encoded_data, length);
+
+
     coder_ocupied = false;
     return true;
 }
@@ -244,7 +250,7 @@ void UartMsgCoder::EchoRx(UART_HandleTypeDef *huart, uint8_t *rxData, uint8_t si
     for (int i = 0; i < UartMsgPointListCount; i++)
     {
         UartMsgCoder *targ_coder = UartMsgPointList[i]; // 取出实例
-        if (targ_coder->uart_inst.huart == huart)
+        if (targ_coder->uart_inst.instance->huart == huart)
         {
             uint8_t data[64] = {0};                                              // 临时数据缓冲区
             memcpy(data, rxData, size);                                  // 复制有效数据

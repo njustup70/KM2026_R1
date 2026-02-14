@@ -36,9 +36,8 @@ namespace BSP
             bool RegisterRx(uint16_t rx_setlen, RxCallback rx_callback);
 
             bool IsValid() const;
-
-        private:
-            Instance *instance_;
+            
+            Instance *instance;
         };
 
         /**

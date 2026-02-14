@@ -37,8 +37,6 @@
 #include "odo_ops.hpp"
 #include "bsp_dwt.hpp"
 
-static uint8_t dma_rx_buffer[30];               //存储action发的数据包，30个字节
-// static Odometer odometer_data;                  //里程计数据
 #define OPS9_RECV_FREQ 100                          // 说明书中的里程计接收频率，单位Hz
 
 static Odometer_Ops9* targ_odom = nullptr; // 全局指针，用于DMA回调访问类成员    
@@ -62,7 +60,10 @@ void Odometer_Ops9::Init(UART_HandleTypeDef *huart, bool rev_x, bool rev_y,
     this->swap_xy = swap_xy;
 
     // 注册串口实例
-    BspUart_InstRegist(&uart_inst, huart, 30, BspUartType_DMA, BspUartType_Normal, OdometerOps9_RxCallback);
+    uart_inst = BSP::UART::Apply(huart);
+    
+    // 注册DMA接收回调
+    uart_inst.RegisterRx(64, OdometerOps9_RxCallback);
 
     // 完成注册
     targ_odom = this;

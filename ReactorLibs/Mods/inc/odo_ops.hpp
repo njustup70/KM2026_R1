@@ -40,7 +40,7 @@ public:
     Odometer_Ops9(){};
     ~Odometer_Ops9(){};
 
-    BspUart_Instance uart_inst;     // 串口实例
+    BSP::UART::Handler uart_inst;     // 串口实例
     OdoData odom_data;              // 里程计数据
     uint32_t recv_times;            // 接收次数
     uint32_t err_recv;              // 接收错误次数

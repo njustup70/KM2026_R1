@@ -1,9 +1,5 @@
-#ifndef RTOSCPP_HPP
-#define RTOSCPP_HPP
+#pragma once
+#include "bsp_halport.hpp"
 
 __weak void MainFrameCpp(){};
 
-
-
-
-#endif
