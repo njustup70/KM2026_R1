@@ -56,8 +56,8 @@ void MainFrameCpp()
     monit.Track(test_motor_0.motor_adrc.debug_omega);        // 位置跟踪曲线
     monit.Track(test_motor_0.measure.total_angle);
 
-    monit.Track(test_motor_0.g_Identifier.rho_ru);                 // 电机的转动惯量
-    monit.Track(test_motor_0.g_Identifier.J_hat_);
+    // monit.Track(test_motor_0.g_Identifier.rho_ru);                 // 电机的转动惯量
+    // monit.Track(test_motor_0.g_Identifier.J_hat_);
 
     // monit.Perflize();  // 切换高性能模式
 }

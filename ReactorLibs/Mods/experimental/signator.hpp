@@ -279,12 +279,17 @@ class IVIdentifier
 public:
     /**
      * @brief 构造函数
+     */
+    IVIdentifier(){};
+
+    /**
+     * @brief 初始化函数
      * @param b0_nominal  ADRC控制器当前设置的b0值
      * @param fs          采样频率 (Hz)，例如 1000
      * @param cut_freq    高通滤波截止频率 (Hz)，用于去直流
      * @param forget_time 协方差统计的"记忆时间" (秒)
      */
-    IVIdentifier(float b0_nominal, float fs, float cut_freq, float forget_time);
+    void Init(float b0_nominal, float fs, float cut_freq, float forget_time);
 
     /**
      * @brief 1kHz 周期调用更新函数

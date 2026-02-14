@@ -263,8 +263,9 @@ float SquareInjector::AutoGetValue()
 /*************************************     IV辨识器      *************************************/ 
 
 // 构造函数初始化
-IVIdentifier::IVIdentifier(float b0_nominal, float fs, float cut_freq, float forget_time) : b0_(b0_nominal)
+void IVIdentifier::Init(float b0_nominal, float fs, float cut_freq, float forget_time)
 {
+    b0_ = b0_nominal;
     float dt = 1.0f / fs;
 
     // 配置高通滤波器
