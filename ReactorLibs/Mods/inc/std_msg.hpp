@@ -1,7 +1,6 @@
 #ifndef STD_MSG_HPP
 #define STD_MSG_HPP
 
-#include "stm32f4xx_hal.h"
 #include "std_math.hpp"
 
 typedef enum

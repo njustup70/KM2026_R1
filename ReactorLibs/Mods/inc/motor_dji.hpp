@@ -9,8 +9,7 @@
 // extern "C" {
 // #endif
 
-#include "stm32f4xx_hal.h"
-#include "bsp_can.h"
+#include "bsp_can.hpp"
 #include "pids.hpp"
 #include "adrc.hpp"
 

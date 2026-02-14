@@ -6,9 +6,9 @@
  */
 #include "motor_dji.hpp"
 #include "RtosCpp.hpp"
-#include "bsp_can.h"
-#include "bsp_dwt.h"
-#include "bsp_log.h"
+#include "bsp_can.hpp"
+#include "bsp_dwt.hpp"
+#include "bsp_log.hpp"
 #include "string.h"
 #include "stdio.h"
 

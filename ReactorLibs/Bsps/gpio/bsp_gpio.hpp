@@ -4,8 +4,7 @@
 extern "C"{
 #endif
 
-#include "stm32f4xx_hal.h"
-#include "gpio.h"
+#include "bsp_halport.hpp"
 
 #define BSPGPIO_MAX_INSTS 140 // 最多支持140个GPIO实例
 
@@ -24,7 +23,7 @@ void BspGpio_InstRegist(BspGpio_Instance *inst, GPIO_TypeDef *GPIO_Init,uint32_t
 
 
 uint32_t BspGpio_GetState(BspGpio_Instance *inst);
-void BspGpio_SetState(BspGpio_Instance *inst, uint32_t PinState);
+void BspGpio_SetState(BspGpio_Instance *inst, bool PinState);
 void BspGpio_TogglePin(BspGpio_Instance *inst);
 void BspGpio_LockPin(BspGpio_Instance *inst);
 

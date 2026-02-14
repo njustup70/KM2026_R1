@@ -5,10 +5,9 @@
 #include "task.h"
 #include "cmsis_os.h"
 
-#include "bsp_dwt.h"
+#include "bsp_dwt.hpp"
 #include "motor_dji.hpp"
 #include "System.hpp"
-#include "Action.hpp"
 #include "RtosCpp.hpp"
 #include "Chassis.hpp"
 #include "Monitor.hpp"
@@ -54,6 +53,7 @@ static void CoroutineStub(void *arg)
  */
 void Reactor46H_Initialize()
 {
+    Hardware::Config_Hardwares();
     System.Init();
     MainFrameCpp();
 

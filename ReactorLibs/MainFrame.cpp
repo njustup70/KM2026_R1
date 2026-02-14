@@ -3,7 +3,7 @@
 #include "Chassis.hpp"
 #include "Monitor.hpp"
 #include "std_cpp.h"
-#include "bsp_log.h"
+#include "bsp_log.hpp"
 
 /**     测试用      **/
 #include "signator.hpp"
@@ -39,7 +39,8 @@ void MainFrameCpp()
     core.RegistGraph(example_graph);
     core.Enable(0);         // 启动状态机核心，指定初始状态图为0号图
 
-    test_motor_0.Init(&hcan1, 1, PID_PosControl);
+    test_motor_0.Init(Hardware::hcan_main, 1, PID_PosControl);
+    
     test_motor_0.speed_pid.Init(10.0f, 0.0f, 0.0f);
     test_motor_0.position_pid.Init(0.035f, 0.0f, 0.0f);
 
@@ -58,7 +59,7 @@ void MainFrameCpp()
     monit.Track(test_motor_0.g_Identifier.rho_ru);                 // 电机的转动惯量
     monit.Track(test_motor_0.g_Identifier.J_hat_);
 
-    monit.Perflize();  // 切换高性能模式
+    // monit.Perflize();  // 切换高性能模式
 }
 
 void Action_of_Dege(StateCore* core)

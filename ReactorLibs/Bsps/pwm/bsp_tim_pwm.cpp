@@ -1,4 +1,4 @@
-#include "bsp_tim_pwm.h"
+#include "bsp_tim_pwm.hpp"
 
 
 static float GetFreq(struct BspTIMPWM_t pwm_inst)

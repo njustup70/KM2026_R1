@@ -5,9 +5,8 @@
 
 #ifndef _FARCON_HPP_
 #define _FARCON_HPP_
-#include "stm32f4xx_hal.h"
 
-#include "bsp_uart.h"
+#include "bsp_uart.hpp"
 
 #define pos_data_length 10
 class Farcon
@@ -69,7 +68,8 @@ private:
     // 只与数据有关，安全
 public:
     uint32_t timestamp;
-    BspUart_Instance uart_inst;
+    BSP::UART::Handler uart_inst;
+
     Farcon()
     {
         self_instance = this; 

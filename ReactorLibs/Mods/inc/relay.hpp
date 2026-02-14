@@ -5,8 +5,7 @@
 extern "C" {
 #endif
 
-#include "bsp_gpio.h"
-#include "stm32f4xx_hal.h"
+#include "bsp_gpio.hpp"
 
 #ifdef __cplusplus
 }

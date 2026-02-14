@@ -1,6 +1,4 @@
-#include "bsp_gpio.h"
-#include "main.h"
-#include "gpio.h"
+#include "bsp_gpio.hpp"
 
 static BspGpio_Instance *bspgpio_insts[BSPGPIO_MAX_INSTS] = {NULL}; 
 static int bspgpio_inst_count = 0; // 当前实例数量
@@ -82,9 +80,9 @@ uint32_t BspGpio_GetState(BspGpio_Instance *inst)
     return HAL_GPIO_ReadPin(inst->GPIO_Port, inst->Pin);
 }
 
-void BspGpio_SetState(BspGpio_Instance *inst, uint32_t PinState)
+void BspGpio_SetState(BspGpio_Instance *inst, bool PinState)
 {
-    HAL_GPIO_WritePin(inst->GPIO_Port, inst->Pin, PinState);
+    HAL_GPIO_WritePin(inst->GPIO_Port, inst->Pin, (GPIO_PinState)PinState);
 }
 
 void BspGpio_TogglePin(BspGpio_Instance *inst)

@@ -1,5 +1,5 @@
 #pragma once
-#include "stm32f4xx_hal.h"
+#include "bsp_halport.hpp"
 
 #ifdef __cplusplus
 extern "C"{

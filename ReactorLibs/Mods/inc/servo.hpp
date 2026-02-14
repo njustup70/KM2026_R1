@@ -1,7 +1,7 @@
 #ifndef SERVO_HPP
 #define SERVO_HPP
 
-#include "bsp_tim_pwm.h"
+#include "bsp_tim_pwm.hpp"
 
 class Servo
 {

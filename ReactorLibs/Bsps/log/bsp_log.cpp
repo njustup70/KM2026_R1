@@ -1,5 +1,9 @@
-#include "bsp_log.h"
+#include "bsp_log.hpp"
+#include "bsp_uart.hpp"
 #include "SEGGER_RTT.h"
+#include "stdarg.h"
+#include "stdio.h"
+#include "string.h"
 
 typedef struct {
     const char* cmd_name;    // 命令名，如 "mdji"
@@ -33,6 +37,8 @@ static void Process_Command(char *cmd_str);
 static shell_cmd_t cmd_table[MAX_SHELL_CMDS];
 static uint8_t cmd_count = 0;
 
+// 提前获取 UART 句柄，用于后续日志输出
+BSP::UART::Handler uart_log_handler;
 
 void BspLog_Init(void)
 {
@@ -41,16 +47,55 @@ void BspLog_Init(void)
     SEGGER_RTT_ConfigUpBuffer(0, NULL, NULL, 0, SEGGER_RTT_MODE_NO_BLOCK_SKIP);
     
     // 先打一个简单的字符串确认链路
-
     BspLog_LogOK("RTT System Online\r\n");
+
+    // 如果确定使用 UART 输出日志，可以在这里获取 huart_host 的句柄
+    if (Hardware::RTTLogAtUart)
+    {
+        uart_log_handler = BSP::UART::Apply(Hardware::huart_host);
+    }
 }
 
+/**
+ * @warning 串口日志发送
+ */
+static char log_tx_buf[96]; // 稍微加大一点缓冲区防止长日志截断
+static void LogToUart(const char* prefix, const char* fmt, va_list args)
+{
+    if (Hardware::RTTLogAtUart && Hardware::huart_host)
+    {
+        int len = 0;
+        int max_len = 511; // 留一个位置给 \0
+        
+        if (prefix)
+        {
+            int ret = snprintf(log_tx_buf + len, max_len - len, "%s", prefix);
+            if (ret > 0) len += ret;
+        }
+        
+        if (len < max_len)
+        {
+             int ret = vsnprintf(log_tx_buf + len, max_len - len, fmt, args);
+             if (ret > 0) len += ret;
+        }
+
+        if (len > 0)
+        {
+            // BspUart_Transmit_DMA(Hardware::huart_host, (uint8_t*)log_tx_buf, (uint8_t)len);
+            uart_log_handler.Transmit((uint8_t*)log_tx_buf, (uint8_t)len);
+        }
+    }
+}
 
 void BspLog_LogInfo(const char* fmt, ...)
 {
     va_list args;
     va_start(args, fmt);
     SEGGER_RTT_vprintf(0, fmt, &args);
+    va_end(args);
+
+    va_start(args, fmt);
+    LogToUart(NULL, fmt, args); 
     va_end(args);
 }
 
@@ -62,6 +107,10 @@ void BspLog_LogWarning(const char* fmt, ...)
     SEGGER_RTT_vprintf(0, fmt, &args);
     va_end(args);
     SEGGER_RTT_WriteString(0, RTT_RESET);
+
+    va_start(args, fmt);
+    LogToUart("[Warn] ", fmt, args);
+    va_end(args);
 }
 
 void BspLog_LogError(const char* fmt, ...)
@@ -72,6 +121,10 @@ void BspLog_LogError(const char* fmt, ...)
     SEGGER_RTT_vprintf(0, fmt, &args);
     va_end(args);
     SEGGER_RTT_WriteString(0, RTT_RESET);
+
+    va_start(args, fmt);
+    LogToUart("[Error] ", fmt, args);
+    va_end(args);
 }
 
 void BspLog_LogOK(const char* fmt, ...)
@@ -82,6 +135,10 @@ void BspLog_LogOK(const char* fmt, ...)
     SEGGER_RTT_vprintf(0, fmt, &args);
     va_end(args);
     SEGGER_RTT_WriteString(0, RTT_RESET);
+
+    va_start(args, fmt);
+    LogToUart("[Well] ", fmt, args);
+    va_end(args);
 }
 
 void BspLog_LogSpec(const char* fmt, ...)
@@ -92,6 +149,10 @@ void BspLog_LogSpec(const char* fmt, ...)
     SEGGER_RTT_vprintf(0, fmt, &args);
     va_end(args);
     SEGGER_RTT_WriteString(0, RTT_RESET);
+
+    va_start(args, fmt);
+    LogToUart("[Note] ", fmt, args);
+    va_end(args);
 }
 
 void BspLog_LogRespond(const char* fmt, ...)
@@ -102,6 +163,10 @@ void BspLog_LogRespond(const char* fmt, ...)
     SEGGER_RTT_vprintf(0, fmt, &args);
     va_end(args);
     SEGGER_RTT_WriteString(0, RTT_RESET);
+
+    va_start(args, fmt);
+    LogToUart("[Respond] ", fmt, args);
+    va_end(args);
 }
 
 

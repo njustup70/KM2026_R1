@@ -1,8 +1,7 @@
 #ifndef _STATEMACHINE_HPP_
 #define _STATEMACHINE_HPP_
 
-#include "stm32f4xx_hal.h"
-#include "bsp_uart.h"
+#include "bsp_uart.hpp"
 #include "string.h"
 
 class StateCore;        // 为了能引用，进行前向声明

@@ -1,8 +1,7 @@
 #ifndef MSG_CODER_HPP
 #define MSG_CODER_HPP
 
-#include "stm32f4xx_hal.h"
-#include "bsp_uart.h"
+#include "bsp_uart.hpp"
 #include "std_math.hpp"
 
 typedef struct
@@ -37,7 +36,7 @@ public:
     FrameStruct frame; 
 
     /// @brief 串口实例
-    BspUart_Instance uart_inst;
+    BSP::UART::Handler uart_inst;
 
     /// @brief 初始化函数
     void Init(UART_HandleTypeDef *huart);

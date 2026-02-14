@@ -13,5 +13,6 @@
         "**/*.ioc": false,
         "**/build": true,
         "**/MDK-ARM": true,
-    }
+    },
+    "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools"
 }
