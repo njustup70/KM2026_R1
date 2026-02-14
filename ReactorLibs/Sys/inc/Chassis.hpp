@@ -1,7 +1,6 @@
 #ifndef _CHASSIS_HPP_
 #define _CHASSIS_HPP_
 
-#include "stm32f4xx_hal.h"
 #include "std_math.hpp"
 #include "motor_dji.hpp"
 #include "System.hpp"

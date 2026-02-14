@@ -40,13 +40,13 @@ typedef struct
 typedef struct
 {
     UART_HandleTypeDef *huart;                      // 串口句柄
-    BspUart_TypeDef rxtype;                           // Rx工作模式
-    BspUart_TypeDef txtype;                           // Tx工作模式
+    BspUart_TypeDef rxtype;                         // Rx工作模式
+    BspUart_TypeDef txtype;                         // Tx工作模式
     BspUart_InstRxCallback rx_callback;             // 接收回调函数
 
     uint8_t rx_buffer[64];                          // 接收缓冲区（最大64Byte）
     uint8_t rx_byte;                                // 单次接收的字节数，IT模式下始终为1    
-    uint8_t rx_setlen;                             // 期望接收数据长度
+    uint8_t rx_setlen;                              // 期望接收数据长度
     uint8_t rx_len;                                 // 实际接收数据长度
 
     // 发送缓冲区指针（支持共享）

@@ -5,7 +5,6 @@
 
 #ifndef _FARCON_HPP_
 #define _FARCON_HPP_
-#include "stm32f4xx_hal.h"
 
 #include "bsp_uart.hpp"
 

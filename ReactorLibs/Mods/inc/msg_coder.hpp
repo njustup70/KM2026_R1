@@ -1,7 +1,6 @@
 #ifndef MSG_CODER_HPP
 #define MSG_CODER_HPP
 
-#include "stm32f4xx_hal.h"
 #include "bsp_uart.hpp"
 #include "std_math.hpp"
 
