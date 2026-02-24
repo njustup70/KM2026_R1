@@ -63,6 +63,9 @@ public:
 
 	void Enable();
 
+	/// @brief 解码后回调，允许子类在数据更新后立即执行逻辑（如ADRC观测）
+	virtual void PostDecodeCallback() {}
+
 	/** 	静态方法	**/
 	static void ControlAllMotors();
 	

@@ -34,9 +34,33 @@ void MotorDJI_Driver::Init(CAN_HandleTypeDef *hcan, uint8_t motorESC_id)
 	/// 一般一根CAN总线上最多有8个电机，所以CAN1分配到1-8号电机，CAN2分配到9-16号电机
 	if (motorESC_id <= 8 && motorESC_id >= 1)
 	{
-		MotorPointList[motorESC_id + CAN_OFFSET] = this; 					// 根据CAN总线分配到0-7或8-15
-		MotorIndexList[MotorIndexCount++] = motorESC_id + CAN_OFFSET; 		// 记录电机ID
-		at_can_seg = _GetCanSeg(motorESC_id + CAN_OFFSET); 					// 记录电机所在的CAN段
+		uint8_t slot = motorESC_id + CAN_OFFSET;
+
+		// 1. 检查当前实例是否已经在系统中注册过 (防止同一个对象占多个槽位)
+		for (uint8_t i = 0; i < MotorIndexCount; i++)
+		{
+			if (MotorPointList[MotorIndexList[i]] == this)
+			{
+				if (MotorIndexList[i] == slot) return; // 1a. 如果就是当前槽位，说明是重复调用Init，安全返回
+				else 
+				{
+					BspLog_LogError("MotorDJI ID:%d register failed! Instance already registered at slot %d", motorESC_id, MotorIndexList[i]);
+					return; // 1b. 同一对象尝试注册不同ID，拒绝
+				}
+			}
+		}
+
+		// 2. 检查目标槽位是否已被其他对象占用 (防止ID冲突)
+		if (MotorPointList[slot] != nullptr)
+		{
+			BspLog_LogError("MotorDJI ID:%d register failed! Slot already occupied by other instance", motorESC_id);
+			return;
+		}
+
+		// 3. 执行注册
+		MotorPointList[slot] = this;
+		MotorIndexList[MotorIndexCount++] = slot;
+		at_can_seg = _GetCanSeg(slot);
 	}
 
 	_motor_id = motorESC_id; 		// 记录电机ID
@@ -175,7 +199,7 @@ void _MotorDJI_DecodeMeasure(MotorDJI_Driver* motor_p, uint8_t *Data)
 
 void _MotorDJI_RecvQualityWatch(MotorDJI_Driver* motor_p)
 {
-    auto p = motor_p->_recv_quality;
+    auto& p = motor_p->_recv_quality;
 
     // 重置在线计时器（倒计时100ms）
 	motor_p->_online_cnt = 100;
@@ -251,8 +275,10 @@ static void MotorDji_SendCurrent(CAN_HandleTypeDef *hcan, int16_t motor_0, int16
 /// @param RxData 
 static void MotorDji_RxCallback(CAN_RxHeaderTypeDef *RxHeader, uint8_t *RxData, CAN_HandleTypeDef *hcan)
 {
-	// 注意 motor_id 和 motorESC_id 的区别
-	uint8_t motor_id = ((RxHeader->StdId) & 0xff) - 0x200 + CAN_OFFSET; // 获取电机ID（带CAN偏置，以区分 CAN1和CAN2的电机ID）
+	// 注意 motor_id 和 motorESC_id	// 计算电机 ID (反馈 ID 为 0x201~0x208)
+	// 此处使用 StdId - 0x200 得到 1~8 的 ID，再加 CAN_OFFSET 映射到 0~15 槽位
+	uint8_t motor_id = (RxHeader->StdId - 0x200) + CAN_OFFSET;
+ 	// 获取电机ID（带CAN偏置，以区分 CAN1和CAN2的电机ID）
 
 	// 利用全局的电机实例列表 来获取对应的电机实例
 	if (motor_id > 16 || MotorPointList[motor_id] == nullptr) return; 			// 如果电机ID不合法或未注册，直接返回
@@ -260,4 +286,7 @@ static void MotorDji_RxCallback(CAN_RxHeaderTypeDef *RxHeader, uint8_t *RxData, 
 
 	// 更新电机反馈信息
 	motor.measure.msg_cnt++ <= 50 ? _MotorDJI_DecodeInitOffset(&motor, RxData) : _MotorDJI_DecodeMeasure(&motor, RxData);
+
+	// 触发解码后回调（如ADRC观测）
+	motor.PostDecodeCallback();
 }
