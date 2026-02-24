@@ -50,7 +50,7 @@ private:
 	/// @brief 获取电机所在的CAN段，用于发送
 	uint8_t _GetCanSeg(uint8_t motor_id);
 
-    protected: virtual int16_t Control(){};	// 纯虚函数，强制子类实现
+    protected: virtual int16_t Control(){};
 public:
 	MotorDJI_Driver(){};
 

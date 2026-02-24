@@ -20,7 +20,7 @@ float MotorDJI_SlopeLim(float& cur, float& cur_temp, float slope_value, float dt
  */
 void MotorDJI::Init(CAN_HandleTypeDef *hcan, uint8_t motorESC_id)
 {
-	entity.Init(hcan, motorESC_id); 	// 初始化电机实体
+	MotorDJI_Driver::Init(hcan, motorESC_id); 	// 初始化电机实体
 }
 
 /// @brief 设置速度
@@ -52,7 +52,7 @@ void MotorDJI::Neutral()
 
 int16_t MotorDJI::Control()
 {
-	if (entity.enabled)
+	if (enabled)
 	{
 		if (mode == NoneC)
 		{
@@ -82,6 +82,7 @@ void MotorDJI::_CalcLoop()
 	
 	// 调用控制器，得到控制电流（单位：A）
 	float cur_temp = ctrler.Calc(targ_value);
+
 	// 转换为电流指令值（3508将 -20A ~ 20A 映射到了 -16384 ~ 16384）
 	cur_temp = AmpToICode(cur_temp);
 
@@ -91,71 +92,6 @@ void MotorDJI::_CalcLoop()
 	// 电流限幅
 	targ_current = StdMath::fclamp(targ_current, _current_limit);
 }
-
-/**
- * @brief 自整定过程
- */
-// void MotorDJI::SelfIdentify()
-// {
-// 	// 根据不同的辨识强度，采取不同的更新策略
-// 	static float last_update_tick = DWT_GetTimeline_Sec();
-// 	float current_tick = DWT_GetTimeline_Sec();
-
-// 	// 如果频率到了，并且系统有足够的动态
-// 	if (current_tick - last_update_tick >= idtf_interval && fabs(g_Identifier.rho_ru) > 0.1f)
-// 	{
-// 		float new_J = (1 - idtf_coeff) * motor_adrc.J + idtf_coeff * g_Identifier.J_hat_;
-
-// 		motor_adrc.J = new_J; 										// 更新ADRC的b0参数
-// 		motor_adrc.input_nltd_3rd.ResetR(fmax((motor_adrc.Kt * motor_adrc.max_current - motor_adrc.B) * 0.5f, 1e-5f) / motor_adrc.J);
-// 		motor_adrc.eso.b0 = motor_adrc.Kt / motor_adrc.J;
-
-// 		g_Identifier.b0_ = motor_adrc.eso.b0;			// 更新辨识器的b0参数
-// 		last_update_tick = current_tick;
-// 	}
-// }
-
-/**
- * @brief 设置电机动态辨识模式
- */
-// void MotorDJI::Dynamicle(MotorIdentifyIntensity intensity)
-// {
-// 	dynamic_identify = true;
-// 	idtf_intensity = intensity;
-// 	switch (idtf_intensity)
-// 	{
-// 		case Realtime:
-// 		{
-// 			idtf_interval = 0.5f;
-// 			idtf_coeff = 0.08f;
-// 			break;
-// 		}
-// 		case Dynamic:
-// 		{
-// 			idtf_interval = 0.5f;
-// 			idtf_coeff = 0.033f;
-// 			break;
-// 		}
-// 		case Fluid:
-// 		{
-// 			idtf_interval = 1.0f;
-// 			idtf_coeff = 0.02f;
-// 			break;
-// 		}
-// 		case Stable:
-// 		{
-// 			idtf_interval = 1.0f;
-// 			idtf_coeff = 0.01f;
-// 			break;
-// 		}
-// 		case Static:
-// 		{
-// 			idtf_interval = 1.0f;
-// 			idtf_coeff = 0.005f;
-// 			break;
-// 		}
-// 	}
-// }
 
 float MotorDJI_SlopeLim(float& cur, float& cur_temp, float slope_value, float dt)
 {
