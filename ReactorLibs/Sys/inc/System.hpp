@@ -5,7 +5,6 @@
 #include "motor_dm.hpp"
 #include "bsp_dwt.hpp"
 #include "StateCore.hpp"
-#include "msg_coder.hpp"
 #include "arm_math.h"
 #include "std_math.hpp"
 #include "cstdarg"

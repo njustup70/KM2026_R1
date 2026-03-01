@@ -75,7 +75,7 @@ public:
         self_instance = this; 
         timestamp = 0;
     }
-    static void Farcon_RxCallback(UART_HandleTypeDef *huart, uint8_t *rxData, uint8_t size)
+    static void Farcon_RxCallback(BSP::UART::UartID huart, uint8_t *rxData, uint8_t size)
     {
         // 校验包头和包尾
         if (rxData[0] == 0x75 && rxData[1] == 0x70 && rxData[2] == 0x37 && rxData[3] == 0x30 &&
@@ -97,7 +97,7 @@ public:
     uint8_t button_second_half[8];//KEY9到KEY16的状态，按下为1，松开是0
     uint8_t KFS_values[12];// KFS值分为四个：0表示初始状态，1表示R1块，2表示R2块，3表示假块
     int jy_data_origin[4];//摇杆映射值，都是从-100到100，依次是LX,LY,RX,RY
-    void init(UART_HandleTypeDef *huart);
+    void init(BSP::UART::UartID huart);
     void Farcon_Back_message(Farcon *farcon_instance);
 
     ~Farcon() {};

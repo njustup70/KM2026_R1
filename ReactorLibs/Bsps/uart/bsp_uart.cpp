@@ -1,7 +1,17 @@
 #include "bsp_uart.hpp"
+#include "bsp_halport.hpp"
 #include "bsp_log.hpp"
 #include "string.h"
+
 using namespace BSP::UART;
+
+::__UART_HandleTypeDef* BSP::UART::ToHalHandle(UartID id) {
+    return reinterpret_cast<UART_HandleTypeDef*>(id);
+}
+
+UartID BSP::UART::ToUartID(::__UART_HandleTypeDef* huart) {
+    return reinterpret_cast<UartID>(huart);
+}
 
 /// @brief 最大实例数量，取决于实际使用的 UART 数
 static constexpr uint8_t max_bspuart_inst_nums = 6;
@@ -24,7 +34,7 @@ static Instance *FindInstByHuart(UART_HandleTypeDef *huart)
 
     for (uint8_t i = 0; i < instance_count; i++)
     {
-        if (insts[i].IsUsing(huart))
+        if (insts[i].IsUsing(ToUartID(huart)))
         {
             return &insts[i];
         }
@@ -36,8 +46,10 @@ static Instance *FindInstByHuart(UART_HandleTypeDef *huart)
 /**
  * @brief 申请一个 UART 实例句柄
  */
-Handler BSP::UART::Apply(UART_HandleTypeDef *huart)
+Handler BSP::UART::Apply(UartID id)
 {
+    UART_HandleTypeDef *huart = ToHalHandle(id);
+    
     // 确保不是空的 UART 句柄
     if (huart == NULL)
     {
@@ -62,7 +74,7 @@ Handler BSP::UART::Apply(UART_HandleTypeDef *huart)
     }
     
     // 初始化新实例
-    insts[instance_count].Init(huart);
+    insts[instance_count].Init(id);
 
     // 返回新实例的 Handler
     Instance *new_inst = &insts[instance_count];
@@ -110,17 +122,17 @@ Instance::Instance()
     Init(nullptr);
 }
 
-Instance::Instance(UART_HandleTypeDef *huart)
+Instance::Instance(UartID id)
 {
-    Init(huart);
+    Init(id);
 }
 
 /**
  * @brief 初始化实例，重置所有成员变量
  */
-void Instance::Init(UART_HandleTypeDef *huart)
+void Instance::Init(UartID in_id)
 {
-    this->huart = huart;
+    this->id = in_id;
     this->rx_callback = nullptr;
     this->rx_setlen_ = 0;
     this->rx_registered_ = 0;
@@ -135,15 +147,15 @@ void Instance::Init(UART_HandleTypeDef *huart)
 }
 
 
-bool Instance::IsUsing(UART_HandleTypeDef *target_huart) const
+bool Instance::IsUsing(UartID target_id) const
 {
-    return (this->huart != NULL && this->huart == target_huart);
+    return (this->id != nullptr && this->id == target_id);
 }
 
 void Instance::Transmit(const uint8_t *data, uint16_t len)
 {
     // 确保不是空调用
-    if (this->huart == NULL)
+    if (this->id == nullptr)
     {
         BspLog_LogWarning("[Bsp] Invalid Transmit, Empty Instance!\n");
         return;
@@ -189,7 +201,7 @@ void Instance::Transmit(const uint8_t *data, uint16_t len)
 bool Instance::RegisterRx(uint16_t rx_setlen, RxCallback rx_callback)
 {
     // 确保参数有效
-    if (this->huart == NULL)
+    if (this->id == nullptr)
     {
         BspLog_LogWarning("[Bsp] RxRegist Failed, Empty Instance!");
         return false;
@@ -225,7 +237,7 @@ bool Instance::RegisterRx(uint16_t rx_setlen, RxCallback rx_callback)
 
     // 启动DMA接收
     memset(this->rx_buffer_, 0, sizeof(this->rx_buffer_));
-    if (HAL_UARTEx_ReceiveToIdle_DMA(this->huart, this->rx_buffer_, this->rx_setlen_) != HAL_OK)
+    if (HAL_UARTEx_ReceiveToIdle_DMA(ToHalHandle(this->id), this->rx_buffer_, this->rx_setlen_) != HAL_OK)
     {
         BspLog_LogError("[Bsp] Try Enable HAL_IdleRxCallback_DMA, but Failed!");
         this->rx_registered_ = 0;
@@ -235,9 +247,10 @@ bool Instance::RegisterRx(uint16_t rx_setlen, RxCallback rx_callback)
     }
 
     // 关闭DMA半满中断，避免在接收过程中被过早触发
-    if (this->huart->hdmarx != NULL)
+    UART_HandleTypeDef* h = ToHalHandle(this->id);
+    if (h->hdmarx != NULL)
     {
-        __HAL_DMA_DISABLE_IT(this->huart->hdmarx, DMA_IT_HT);
+        __HAL_DMA_DISABLE_IT(h->hdmarx, DMA_IT_HT);
     }
 
     return true;
@@ -248,7 +261,7 @@ bool Instance::RegisterRx(uint16_t rx_setlen, RxCallback rx_callback)
  */
 void Instance::TryStartTxDMA()
 {
-    if (this->huart == NULL)
+    if (this->id == nullptr)
     {
         BspLog_LogWarning("[Bsp] Unable to Start Tx DMA, Empty Instance!\n");
         return;
@@ -283,7 +296,7 @@ void Instance::TryStartTxDMA()
     // 启动DMA发送
     this->tx_fifo_.sending_len = send_len;
 
-    if (HAL_UART_Transmit_DMA(this->huart, &this->tx_fifo_.buffer[this->tx_fifo_.tail], send_len) == HAL_OK)
+    if (HAL_UART_Transmit_DMA(ToHalHandle(this->id), &this->tx_fifo_.buffer[this->tx_fifo_.tail], send_len) == HAL_OK)
     {
         this->tx_fifo_.is_busy = 1;
     }
@@ -300,7 +313,7 @@ void Instance::TryStartTxDMA()
 void Instance::OnTxCplt()
 {
     // 确保不是空调用
-    if (this->huart == NULL)
+    if (this->id == nullptr)
     {
         BspLog_LogError("[Bsp] Meet Empty UartInst in TxCplt Callback!\n");
         return;
@@ -330,7 +343,7 @@ void Instance::OnTxCplt()
 
     // 启动下一段DMA发送
     this->tx_fifo_.sending_len = send_len;
-    if (HAL_UART_Transmit_DMA(this->huart, &this->tx_fifo_.buffer[this->tx_fifo_.tail], send_len) == HAL_OK)
+    if (HAL_UART_Transmit_DMA(ToHalHandle(this->id), &this->tx_fifo_.buffer[this->tx_fifo_.tail], send_len) == HAL_OK)
     {
         this->tx_fifo_.is_busy = 1;
     }
@@ -343,7 +356,7 @@ void Instance::OnTxCplt()
 
 void Instance::OnRxEvent(uint16_t size)
 {
-    if (this->huart == NULL || this->rx_registered_ == 0 || this->rx_callback == nullptr)
+    if (this->id == nullptr || this->rx_registered_ == 0 || this->rx_callback == nullptr)
     {
         return;
     }
@@ -354,13 +367,14 @@ void Instance::OnRxEvent(uint16_t size)
         real_size = this->rx_setlen_;
     }
 
-    this->rx_callback(this->huart, this->rx_buffer_, real_size);
+    this->rx_callback(this->id, this->rx_buffer_, real_size);
 
     memset(this->rx_buffer_, 0, this->rx_setlen_);
-    HAL_UARTEx_ReceiveToIdle_DMA(this->huart, this->rx_buffer_, this->rx_setlen_);
-    if (this->huart->hdmarx != NULL)
+    UART_HandleTypeDef* h = ToHalHandle(this->id);
+    HAL_UARTEx_ReceiveToIdle_DMA(h, this->rx_buffer_, this->rx_setlen_);
+    if (h->hdmarx != NULL)
     {
-        __HAL_DMA_DISABLE_IT(this->huart->hdmarx, DMA_IT_HT);
+        __HAL_DMA_DISABLE_IT(h->hdmarx, DMA_IT_HT);
     }
 }
 

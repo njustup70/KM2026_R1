@@ -13,6 +13,7 @@
 #include "stdio.h"
 
 void MotorDJI_SlopeLim(float& cur, float& cur_temp, float slope_value, float dt);
+
 /**
  * @brief C620 / C610 电机额外初始化
  * @param Esc_Id 电机 ID（请查看C620 / C610说明书，注意其从 1 开始！）
@@ -171,7 +172,7 @@ void MotorDJI::Apply()
 	}
 
 	_ctrl_configured = true;
-	BspLog_LogSuccess("MotorDJI ID:%d Configured successfully.", motorESC_id);
+	BspLog_LogOK("MotorDJI ID: %d Configured successfully.", _motor_id);
 }
 
 void MotorDJI::PostDecodeCallback()

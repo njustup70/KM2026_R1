@@ -2,7 +2,7 @@
 
 #define USE_REAL_HAL
 
-
+#include "bsp_uart.hpp"
 
 /* ==================================================================
  * 场景 1：在 Main 分支（真实战场），有 CubeMX 环境
@@ -72,13 +72,13 @@ namespace Hardware
 
     /***---------------     框架串口    ---------------***/
     /// @brief 工控机串口
-    extern UART_HandleTypeDef* huart_host;
+    extern BSP::UART::UartID huart_host;
     /// @brief 遥控器串口
-    extern UART_HandleTypeDef* huart_farcon;
+    extern BSP::UART::UartID huart_farcon;
     /// @brief 里程计串口
-    extern UART_HandleTypeDef* huart_odom;
+    extern BSP::UART::UartID huart_odom;
     /// @brief 其他串口
-    extern UART_HandleTypeDef* huart_other;
+    extern BSP::UART::UartID huart_other;
 
     /***---------------     框架定时器    ---------------***/
     /// @brief WS2812灯带定时器

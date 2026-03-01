@@ -23,7 +23,7 @@ typedef struct
 /// @brief 电机类：C620 / C610
 class MotorDJI_Driver
 {
-private:
+protected:
 	friend void _MotorDJI_DecodeMeasure(MotorDJI_Driver* motor_p, uint8_t *Data);
     friend void _MotorDJI_RecvQualityWatch(MotorDJI_Driver* motor_p);
 
@@ -48,7 +48,7 @@ private:
     }_recv_quality;
 
 	/// @brief 获取电机所在的CAN段，用于发送
-	uint8_t _GetCanSeg(uint8_t motor_id);
+	private: uint8_t _GetCanSeg(uint8_t motor_id);
 
     protected: virtual int16_t Control(){};
 public:

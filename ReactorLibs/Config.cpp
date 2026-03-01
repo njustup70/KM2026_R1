@@ -11,9 +11,10 @@ void Hardware::Config_Hardwares()
     Hardware::hcan_sub = nullptr;
 
     /**-----    配置串口    -----**/
-    Hardware::huart_host = &huart1;
+    Hardware::huart_host = reinterpret_cast<BSP::UART::UartID>(&huart1);
     Hardware::huart_farcon = nullptr;
     Hardware::huart_odom = nullptr;
+    Hardware::huart_other = nullptr;
 
     /**-----    配置定时器    -----**/
     Hardware::htim_led = nullptr;

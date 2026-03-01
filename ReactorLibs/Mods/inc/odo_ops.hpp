@@ -62,7 +62,7 @@ public:
     bool rev_yaw;           // 激活时，yaw方向数据取反
     bool swap_xy;           // 激活时，x、y数据交换
 
-    void Init(UART_HandleTypeDef *huart, bool rev_x = false, bool rev_y = false,
+    void Init(BSP::UART::UartID huart, bool rev_x = false, bool rev_y = false,
             bool rev_yaw = false, bool swap_xy = false);
 };
 
@@ -81,7 +81,7 @@ static void update_odom(char a, float value);
 void odom_dma_init();
 // Vec3 odom_get_tf_vec(Odometer odom_sturct);
 
-void USER_UART_IRQHandler(UART_HandleTypeDef *huart);
+void USER_UART_IRQHandler(BSP::UART::UartID huart);
 // Odometer get_odometer_data();
 
 extern uint32_t odom_recvtimes;
