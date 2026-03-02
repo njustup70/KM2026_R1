@@ -1,4 +1,5 @@
 #include "bsp_halport.hpp"
+#include "bsp_hardware.hpp"
 
 /**
  * @brief 硬件与框架的 映射链接处 

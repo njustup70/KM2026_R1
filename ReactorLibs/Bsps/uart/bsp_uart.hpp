@@ -1,5 +1,6 @@
 #pragma once
 #include <cstdint>
+
 /*
  * @brief 发送缓冲区大小
  * 控制发送环形缓冲区的大小。

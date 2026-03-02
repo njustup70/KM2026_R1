@@ -1,4 +1,5 @@
 #include "bsp_halport.hpp"
+#include "bsp_hardware.hpp"
 
 namespace Hardware
 {

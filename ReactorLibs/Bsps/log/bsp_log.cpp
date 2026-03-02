@@ -4,6 +4,7 @@
 #include "stdarg.h"
 #include "stdio.h"
 #include "string.h"
+#include "bsp_hardware.hpp"
 
 typedef struct {
     const char* cmd_name;    // 命令名，如 "mdji"

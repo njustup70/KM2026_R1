@@ -13,6 +13,7 @@
 #include "std_cpp.h"
 #include "typeinfo"
 #include "Monitor.hpp"
+#include "bsp_hardware.hpp"
 
 namespace Systems
 {

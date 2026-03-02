@@ -12,6 +12,7 @@
 
 StateCore& core = StateCore::GetInstance();
 Monitor& monit = Monitor::GetInstance();
+UartTest& uart_test = UartTest::GetInstance();
 
 
 StateGraph example_graph("graph_name");
@@ -33,6 +34,8 @@ float B = 1.56e-5f; // 阻尼系数
  */
 void MainFrameCpp()
 {
+    System.RegistApp(uart_test);      
+
     // 配置状态图为简并模式
     example_graph.Degenerate(Action_of_Dege);
     

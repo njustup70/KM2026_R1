@@ -2,7 +2,10 @@
 
 #define USE_REAL_HAL
 
-#include "bsp_uart.hpp"
+/**
+ * @warning 本文件是 HAL 库的接口文件，因此，为避免污染，不应该被任何hpp文件引用
+ *      BSP层中的引用全部发生在cpp文件中，这可以有效将 `Mod` 层以及上与 `HAL` 隔离解耦
+ */
 
 /* ==================================================================
  * 场景 1：在 Main 分支（真实战场），有 CubeMX 环境
@@ -69,16 +72,6 @@ namespace Hardware
     extern CAN_HandleTypeDef* hcan_main;
     /// @brief 框架所用CAN句柄
     extern CAN_HandleTypeDef* hcan_sub;
-
-    /***---------------     框架串口    ---------------***/
-    /// @brief 工控机串口
-    extern BSP::UART::UartID huart_host;
-    /// @brief 遥控器串口
-    extern BSP::UART::UartID huart_farcon;
-    /// @brief 里程计串口
-    extern BSP::UART::UartID huart_odom;
-    /// @brief 其他串口
-    extern BSP::UART::UartID huart_other;
 
     /***---------------     框架定时器    ---------------***/
     /// @brief WS2812灯带定时器
