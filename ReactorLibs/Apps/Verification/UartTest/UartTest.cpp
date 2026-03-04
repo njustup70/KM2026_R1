@@ -16,13 +16,17 @@ void UartTest::Start()
     bool ok = portor_.Init(Hardware::huart_host, 0x10, OnPortRx);
     
     // 填充测试用的发送缓冲区：填充为 'A' ~ 'A'+63 模拟有规律的数据
-    for(int i = 0; i < 64; i++) {
+    for(int i = 0; i < 63; i++) 
+    {
         test_pkg_[i] = 'A' + (i % 26);
     }
+    test_pkg_[63] = '\n';
     
-    if(ok) {
+    if(ok) 
+    {
         BspLog_LogInfo("UartTest Started! Portor init OK (h_other).");
-    } else {
+    } else 
+    {
         BspLog_LogError("UartTest Start Failed! Portor Init failed.");
     }
     
@@ -50,9 +54,19 @@ void UartTest::Update()
         if (tick_cnt_ < 2000) {
             portor_.Send(test_pkg_, 64);
         } else {
+            stage_ = TestStage::STAGE_GAP;
+            tick_cnt_ = 0;
+            BspLog_LogInfo("\r\n=== [Stage 1] Bandwidth Test Finished ===");
+            BspLog_LogInfo("=== Stage Gap: 1s quiet time before Stage 2 ===");
+        }
+        break;
+
+    case TestStage::STAGE_GAP:
+        // 阶段间隔：静默 1 秒 (200帧)，避免上位机日志紧贴不易分辨
+        if (tick_cnt_ >= 200) {
             stage_ = TestStage::FIFO_TEST;
             tick_cnt_ = 0;
-            BspLog_LogInfo("=== [Stage 2] FIFO Burst Test Started ===");
+            BspLog_LogInfo("\r\n=== [Stage 2] FIFO Burst Test Started ===");
         }
         break;
 

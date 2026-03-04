@@ -63,7 +63,7 @@ void BspLog_Init(void)
 static char log_tx_buf[96]; // 稍微加大一点缓冲区防止长日志截断
 static void LogToUart(const char* prefix, const char* fmt, va_list args)
 {
-    if (Hardware::RTTLogAtUart && Hardware::huart_host)
+    if (Hardware::RTTLogAtUart && uart_log_handler.IsValid())
     {
         int len = 0;
         int max_len = 511; // 留一个位置给 \0
@@ -96,7 +96,7 @@ void BspLog_LogInfo(const char* fmt, ...)
     va_end(args);
 
     va_start(args, fmt);
-    LogToUart(NULL, fmt, args); 
+    LogToUart("[Info] ", fmt, args); 
     va_end(args);
 }
 

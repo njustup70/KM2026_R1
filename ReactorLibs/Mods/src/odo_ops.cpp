@@ -36,6 +36,7 @@
 
 #include "odo_ops.hpp"
 #include "bsp_dwt.hpp"
+#include "bsp_log.hpp"
 
 #define OPS9_RECV_FREQ 100                          // 说明书中的里程计接收频率，单位Hz
 
@@ -63,7 +64,10 @@ void Odometer_Ops9::Init(BSP::UART::UartID huart, bool rev_x, bool rev_y,
     uart_inst = BSP::UART::Apply(huart);
     
     // 注册DMA接收回调
-    uart_inst.RegisterRx(64, OdometerOps9_RxCallback);
+    if (uart_inst.RegisterRx(64, OdometerOps9_RxCallback))
+    {
+        BspLog_LogOK("[Ops-9] Inited!\n");
+    }
 
     // 完成注册
     targ_odom = this;
@@ -195,64 +199,64 @@ void stractString(char str1[], char str2[], int num)
 
 static void update_x(float new_x)
 {
-    char x[8] = "ACTX";
-    static union 
-    {
-        float X;
-        char data[4];
-    }NewSet;
+    // char x[8] = "ACTX";
+    // static union 
+    // {
+    //     float X;
+    //     char data[4];
+    // }NewSet;
     
-    NewSet.X = new_x;
+    // NewSet.X = new_x;
 
-    stractString(x, NewSet.data, 4);    //整合数据
+    // stractString(x, NewSet.data, 4);    //整合数据
     
-    for(int i = 0; i < 8; i++)    //串口把数据发送给action
-    {
-        HAL_UART_Transmit(&ACTION_USART_HANDLE, (uint8_t*)&x[i], 1, 1000);//内部自置等待上一笔数据发送完的flag
-    }
+    // for(int i = 0; i < 8; i++)    //串口把数据发送给action
+    // {
+    //     HAL_UART_Transmit(&ACTION_USART_HANDLE, (uint8_t*)&x[i], 1, 1000);//内部自置等待上一笔数据发送完的flag
+    // }
 
-    HAL_Delay(10);//应使用vTaskDelay
+    // HAL_Delay(10);//应使用vTaskDelay
 }
 
 /* 更新标定Y坐标 */
 static void update_y(float new_y)
 {
-    char y[8] = "ACTY";
-    static union 
-    {
-        float Y;
-        char data[4];
-    }NewSet;
+    // char y[8] = "ACTY";
+    // static union 
+    // {
+    //     float Y;
+    //     char data[4];
+    // }NewSet;
     
-    NewSet.Y = new_y;
+    // NewSet.Y = new_y;
 
-    stractString(y, NewSet.data, 4);    //整合数据
+    // stractString(y, NewSet.data, 4);    //整合数据
 
-    for(int i = 0; i < 8; i++)    //串口把数据发送给action
-    {
-        HAL_UART_Transmit(&ACTION_USART_HANDLE, (uint8_t*)&y[i], 1, 1000);//内部自置等待上一笔数据发送完的flag
-    }
+    // for(int i = 0; i < 8; i++)    //串口把数据发送给action
+    // {
+    //     HAL_UART_Transmit(&ACTION_USART_HANDLE, (uint8_t*)&y[i], 1, 1000);//内部自置等待上一笔数据发送完的flag
+    // }
 
-    HAL_Delay(10);//应使用vTaskDelay
+    // HAL_Delay(10);//应使用vTaskDelay
 }
 
 /* 更新标定yaw角 */
 static void update_yaw(float new_yaw)
 {
-    char yaw[8] = "ACTJ";//char型存疑
-    static union 
-    {
-        float J;
-        char data[4];
-    }NewSet;
-    NewSet.J = new_yaw;
-    stractString(yaw, NewSet.data, 4);//整合数据
+    // char yaw[8] = "ACTJ";//char型存疑
+    // static union 
+    // {
+    //     float J;
+    //     char data[4];
+    // }NewSet;
+    // NewSet.J = new_yaw;
+    // stractString(yaw, NewSet.data, 4);//整合数据
     
-    for(int i = 0; i < 8; i++)//串口把数据发送给action
-    {
-        HAL_UART_Transmit(&ACTION_USART_HANDLE, (uint8_t*)&yaw[i], 1, 1000);//内部自置等待上一笔数据发送完的flag，是否应该转换为uint8_t存疑
-    }
-    HAL_Delay(10);//应使用vTaskDelay
+    // for(int i = 0; i < 8; i++)//串口把数据发送给action
+    // {
+    //     HAL_UART_Transmit(&ACTION_USART_HANDLE, (uint8_t*)&yaw[i], 1, 1000);//内部自置等待上一笔数据发送完的flag，是否应该转换为uint8_t存疑
+    // }
+    // HAL_Delay(10);//应使用vTaskDelay
 }
 
 
@@ -265,16 +269,16 @@ static void update_yaw(float new_yaw)
   */
 static void update_odom(char a, float value)
 {
-    if(a == 'x')
-    {
-        update_x(value);
-    }
-    if(a == 'y')
-    {
-        update_y(value);
-    }
-    if(a == 'j')
-    {
-        update_yaw(value);
-    }
+    // if(a == 'x')
+    // {
+    //     update_x(value);
+    // }
+    // if(a == 'y')
+    // {
+    //     update_y(value);
+    // }
+    // if(a == 'j')
+    // {
+    //     update_yaw(value);
+    // }
 }

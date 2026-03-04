@@ -21,6 +21,7 @@ private:
     enum class TestStage {
         PREPARE,
         BANDWIDTH_TEST, // 满功率压测
+        STAGE_GAP,      // 阶段间隔（静默）
         FIFO_TEST,      // FIFO 突发压测
         DONE
     } stage_ = TestStage::PREPARE;

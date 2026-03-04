@@ -32,7 +32,7 @@ namespace BSP
         UartID ToUartID(::__UART_HandleTypeDef* huart);
 
         /// @brief 申请一个 UART 实例
-        Handler Apply(UartID id);
+        Handler Apply(UartID id, const char* file = __builtin_FILE(), int line = __builtin_LINE());
 
         class Handler
         {
@@ -43,7 +43,7 @@ namespace BSP
             void Transmit(const uint8_t *data, uint16_t len);
 
             /// @brief 注册接收回调（实例级，仅允许一次）
-            bool RegisterRx(uint16_t rx_setlen, RxCallback rx_callback);
+            bool RegisterRx(uint16_t rx_setlen, RxCallback rx_callback, const char* file = __builtin_FILE(), int line = __builtin_LINE());
 
             bool IsValid() const;
             
@@ -71,7 +71,7 @@ namespace BSP
             void Transmit(const uint8_t *data, uint16_t len);
 
             /// @brief 注册接收回调（实例级，仅允许一次）
-            bool RegisterRx(uint16_t rx_setlen, RxCallback rx_callback);
+            bool RegisterRx(uint16_t rx_setlen, RxCallback rx_callback, const char* file = __builtin_FILE(), int line = __builtin_LINE());
 
             bool IsUsing(UartID target_id) const;
 

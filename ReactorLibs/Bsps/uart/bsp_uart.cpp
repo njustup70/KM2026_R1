@@ -13,6 +13,19 @@ UartID BSP::UART::ToUartID(::__UART_HandleTypeDef* huart) {
     return reinterpret_cast<UartID>(huart);
 }
 
+/**
+ * @brief 提取文件名辅助函数
+ */
+static inline const char* GetFileName(const char* path) {
+    const char* filename = path;
+    for (const char* p = path; *p; ++p) {
+        if (*p == '/' || *p == '\\') {
+            filename = p + 1;
+        }
+    }
+    return filename;
+}
+
 /// @brief 最大实例数量，取决于实际使用的 UART 数
 static constexpr uint8_t max_bspuart_inst_nums = 6;
 
@@ -46,14 +59,14 @@ static Instance *FindInstByHuart(UART_HandleTypeDef *huart)
 /**
  * @brief 申请一个 UART 实例句柄
  */
-Handler BSP::UART::Apply(UartID id)
+Handler BSP::UART::Apply(UartID id, const char* file, int line)
 {
     UART_HandleTypeDef *huart = ToHalHandle(id);
     
     // 确保不是空的 UART 句柄
     if (huart == NULL)
     {
-        BspLog_LogError("[Bsp] Empty UartHandle When Apply!\n");
+        BspLog_LogError("[Bsp] Empty UartHandle When Apply! [%s:%d]\n", GetFileName(file), line);
         return Handler(nullptr);
     }
 
@@ -69,7 +82,7 @@ Handler BSP::UART::Apply(UartID id)
     // 如果实例数量已达上限，无法创建新实例
     if (instance_count >= max_bspuart_inst_nums)
     {
-        BspLog_LogError("[Bsp] Too Many Uart Instance!\n");
+        BspLog_LogError("[Bsp] Too Many Uart Instance! [%s:%d]\n", GetFileName(file), line);
         return Handler(nullptr);
     }
     
@@ -98,16 +111,16 @@ void Handler::Transmit(const uint8_t *data, uint16_t len)
     instance->Transmit(data, len);
 }
 
-bool Handler::RegisterRx(uint16_t rx_setlen, RxCallback rx_callback)
+bool Handler::RegisterRx(uint16_t rx_setlen, RxCallback rx_callback, const char* file, int line)
 {
     // 确保不是无效调用
     if (instance == nullptr)
     {
-        BspLog_LogWarning("[Bsp] Invalid RxRegist, Empty Handler!\n");
+        BspLog_LogError("[Bsp] Invalid RxRegist, Empty Handler! [%s:%d]\n", GetFileName(file), line);
         return false;
     }
 
-    return instance->RegisterRx(rx_setlen, rx_callback);
+    return instance->RegisterRx(rx_setlen, rx_callback, file, line);
 }
 
 bool Handler::IsValid() const
@@ -198,29 +211,29 @@ void Instance::Transmit(const uint8_t *data, uint16_t len)
  * @param rx_setlen 期望接收数据长度，也是DMA的最大长度
  * @param rx_callback 用户定义的接收回调函数
  */
-bool Instance::RegisterRx(uint16_t rx_setlen, RxCallback rx_callback)
+bool Instance::RegisterRx(uint16_t rx_setlen, RxCallback rx_callback, const char* file, int line)
 {
     // 确保参数有效
     if (this->id == nullptr)
     {
-        BspLog_LogWarning("[Bsp] RxRegist Failed, Empty Instance!");
+        BspLog_LogWarning("[Bsp] RxRegist Failed, Empty Instance! [%s:%d]\n", GetFileName(file), line);
         return false;
     }
     if (rx_callback == nullptr)
     {
-        BspLog_LogWarning("[Bsp] RxRegist Failed, Empty Callback!");
+        BspLog_LogWarning("[Bsp] RxRegist Failed, Empty Callback! [%s:%d]\n", GetFileName(file), line);
         return false;
     }
     if (rx_setlen == 0)
     {
-        BspLog_LogWarning("[Bsp] RxRegist Failed, Zero Length!");
+        BspLog_LogWarning("[Bsp] RxRegist Failed, Zero Length! [%s:%d]\n", GetFileName(file), line);
         return false;
     }
 
     // 每个实例只允许注册一次接收回调
     if (this->rx_registered_ != 0)
     {
-        BspLog_LogWarning("[Bsp] RxRegist Failed, This Uart Already has RxCallback!");
+        BspLog_LogWarning("[Bsp] RxRegist Failed, This Uart Already has RxCallback! [%s:%d]\n", GetFileName(file), line);
         return false;
     }
 
@@ -237,9 +250,10 @@ bool Instance::RegisterRx(uint16_t rx_setlen, RxCallback rx_callback)
 
     // 启动DMA接收
     memset(this->rx_buffer_, 0, sizeof(this->rx_buffer_));
+
     if (HAL_UARTEx_ReceiveToIdle_DMA(ToHalHandle(this->id), this->rx_buffer_, this->rx_setlen_) != HAL_OK)
     {
-        BspLog_LogError("[Bsp] Try Enable HAL_IdleRxCallback_DMA, but Failed!");
+        BspLog_LogError("[Bsp] Try Enable HAL_IdleRxCallback_DMA, but Failed!  [%s:%d]\n", GetFileName(file), line);
         this->rx_registered_ = 0;
         this->rx_setlen_ = 0;
         this->rx_callback = nullptr;

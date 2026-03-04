@@ -1,13 +1,10 @@
 #ifndef __ODO_OPS_HPP__
 #define __ODO_OPS_HPP__
 
-#include "main.h"
 #include "stdint.h"
 #include "string.h"
 #include "std_math.hpp"
 #include "bsp_uart.hpp"
-
-#define ACTION_USART_HANDLE huart6
 
 
 #pragma pack(2)

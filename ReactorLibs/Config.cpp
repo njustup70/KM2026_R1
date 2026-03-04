@@ -13,8 +13,8 @@ void Hardware::Config_Hardwares()
 
     /**-----    配置串口    -----**/
     Hardware::huart_host = reinterpret_cast<BSP::UART::UartID>(&huart1);
-    Hardware::huart_farcon = nullptr;
-    Hardware::huart_odom = nullptr;
+    Hardware::huart_farcon = reinterpret_cast<BSP::UART::UartID>(&huart3);
+    Hardware::huart_odom = reinterpret_cast<BSP::UART::UartID>(&huart6);
     Hardware::huart_other = nullptr;
 
     /**-----    配置定时器    -----**/
