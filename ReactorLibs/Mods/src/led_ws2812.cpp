@@ -26,8 +26,10 @@ void LedWs2812::Init(TIM_HandleTypeDef *htim, uint32_t Channel, uint8_t LedNums)
 
     // 初始化PWM
     PwmMaxValue = __HAL_TIM_GET_AUTORELOAD(this->htim);
+    
     // HIGH_WS2812 = PwmMaxValue * 0.67f;    // PWM高电平数值
-    // LOW_WS2812 = PwmMaxValue * 0.33f;           // PWM低电平数值   
+    // LOW_WS2812 = PwmMaxValue * 0.33f;           // PWM低电平数值 
+
     HIGH_WS2812 = PwmMaxValue * 0.67f;    // PWM高电平数值
     LOW_WS2812 = PwmMaxValue * 0.33f;           // PWM低电平数值   
 

@@ -1,4 +1,5 @@
 #include "bsp_halport.hpp"
+#include "bsp_hardware.hpp"
 
 namespace Hardware
 {
@@ -11,9 +12,10 @@ namespace Hardware
     CAN_HandleTypeDef* hcan_sub = nullptr;
 
     /**-----    配置串口    -----**/
-    UART_HandleTypeDef* huart_host = nullptr;
-    UART_HandleTypeDef* huart_farcon = nullptr;
-    UART_HandleTypeDef* huart_odom = nullptr;
+    BSP::UART::UartID huart_host = nullptr;
+    BSP::UART::UartID huart_farcon = nullptr;
+    BSP::UART::UartID huart_odom = nullptr;
+    BSP::UART::UartID huart_other = nullptr;
 
     /**-----    配置定时器    -----**/
     TIM_HandleTypeDef* htim_led = nullptr;

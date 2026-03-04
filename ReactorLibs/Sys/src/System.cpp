@@ -1,6 +1,6 @@
 #include "System.hpp"
 #include "bsp_dwt.hpp"
-#include "msg_coder.hpp"
+
 #include "Chassis.hpp"
 #include "led_ws2812.hpp"
 #include "Monitor.hpp"
@@ -29,7 +29,8 @@ void SystemType::Init(bool Sc)
 
     farcon.init(Hardware::huart_farcon);
     
-    odometer->Init(Hardware::huart_odom, true, false, false, true);
+    odometer.Init(Hardware::huart_odom, true, false, false, true);
+
     // 自动开始自检
     if (Sc) status = Systems::SELF_CHECK;
 }

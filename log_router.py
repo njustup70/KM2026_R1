@@ -11,22 +11,27 @@ from colorama import init, Fore, Style
 init(autoreset=True)
 
 # ================= 配置区域 =================
+# 是否显示每一行接收到的原始数据 (调试开关)
+DEBUG_SHOW_RAW_LINE = False
+
 # 转发给 VOFA+ 的 TCP 端口 (VOFA+ 选 TCP Client 连接此端口)
-TCP_HOST = '0.0.0.0'
+TCP_HOST = "0.0.0.0"
 TCP_PORT = 8888
 
 # 根据 bsp_log.cpp 定义的日志前缀与颜色映射
-# LogToUart 发送的是纯文本前缀，我们需要在此处重新上色
+# 只有匹配到以下前缀的文本，才被认为是日志在终端截留着色，否则一律当作波形转给 VOFA+
+# 您可以在这里面自定义需要截获的前缀和您期望设定的颜色
 LOG_STYLES = {
     "[Error] ": Fore.RED + Style.BRIGHT,
-    "[Warn] ":  Fore.YELLOW + Style.BRIGHT,
-    "[Well] ":  Fore.GREEN + Style.BRIGHT,
-    "[Note] ":  Fore.MAGENTA + Style.BRIGHT,   # 对应 STM32 的 Purple
-    "[Respond] ": Fore.CYAN + Style.BRIGHT,    # 对应 STM32 的 Blue
-    # 普通 LogInfo 可能没有前缀，或者你可以自定义
+    "[Warn] ": Fore.YELLOW + Style.BRIGHT,
+    "[Well] ": Fore.GREEN + Style.BRIGHT,
+    "[Note] ": Fore.MAGENTA + Style.BRIGHT,  # 对应 STM32 的 Purple
+    "[Respond] ": Fore.CYAN + Style.BRIGHT,  # 对应 STM32 的 Blue
+    "[Info] ": Fore.WHITE + Style.BRIGHT,  # 例子：添加对 Info 的白字拦截
 }
 
 # ===========================================
+
 
 class DataForwarder:
     def __init__(self):
@@ -40,7 +45,9 @@ class DataForwarder:
         try:
             self.server_socket.bind((TCP_HOST, TCP_PORT))
             self.server_socket.listen(1)
-            print(f"{Fore.CYAN}[System] TCP Server listening on port {TCP_PORT}. Connect VOFA+ via TCP Client mode.")
+            print(
+                f"{Fore.CYAN}[System] TCP Server listening on port {TCP_PORT}. Connect VOFA+ via TCP Client mode."
+            )
         except Exception as e:
             print(f"{Fore.RED}[System] Failed to bind TCP port: {e}")
             return
@@ -51,7 +58,7 @@ class DataForwarder:
                 client, addr = self.server_socket.accept()
                 print(f"{Fore.GREEN}[System] VOFA+ Connected from {addr}")
                 self.client_socket = client
-                
+
                 # 保持连接直到断开
                 while self.running:
                     try:
@@ -59,18 +66,18 @@ class DataForwarder:
                         # timeout=0 表示非阻塞，立即返回结果
                         # r 列表如果不为空，说明 client_socket 有数据（或断开信号）来了
                         r, _, _ = select.select([self.client_socket], [], [], 0)
-                        
+
                         if r:
                             # 只有当 select 说“有动静”时，才去 peek 数据
                             # 这样就不需要 MSG_DONTWAIT 标志了
                             data = self.client_socket.recv(16, socket.MSG_PEEK)
-                            if data == b'': 
+                            if data == b"":
                                 # 读到空数据意味着对端（VOFA+）关闭了连接
                                 raise ConnectionResetError
                     except (ConnectionResetError, OSError):
                         break
                     time.sleep(0.5)
-                
+
                 print(f"{Fore.YELLOW}[System] VOFA+ Disconnected")
                 if self.client_socket:
                     self.client_socket.close()
@@ -90,12 +97,15 @@ class DataForwarder:
 
     def stop(self):
         self.running = False
-        if self.client_socket: self.client_socket.close()
+        if self.client_socket:
+            self.client_socket.close()
         self.server_socket.close()
+
 
 def list_serial_ports():
     ports = serial.tools.list_ports.comports()
     return [port.device for port in ports]
+
 
 def main():
     # 1. 选择串口
@@ -107,7 +117,7 @@ def main():
     print("Available Ports:")
     for i, p in enumerate(ports):
         print(f"{i}: {p}")
-    
+
     try:
         idx = int(input("Select Port Index: "))
         port_name = ports[idx]
@@ -125,49 +135,46 @@ def main():
     try:
         ser = serial.Serial(port_name, baud_rate, timeout=0.1)
         print(f"{Fore.GREEN}[System] Opened {port_name} @ {baud_rate}")
-        print(f"{Fore.GREEN}[System] Logs will appear here. Waveforms forwarded to TCP :{TCP_PORT}")
+        print(
+            f"{Fore.GREEN}[System] Logs will appear here. Waveforms forwarded to TCP :{TCP_PORT}"
+        )
         print("-" * 40)
 
         buffer = b""
-        
+
         while True:
             # 读取一行数据 (以 \n 结尾)
             # 使用 readline 可以保证 Log 不会被截断，但要求波形数据也包含换行符
             # 如果波形是纯二进制流，可能需要改用 read() 配合 buffer 解析
             line_bytes = ser.readline()
-            
+
             if not line_bytes:
                 continue
 
             try:
                 # 尝试解码为字符串来判断前缀
-                line_str = line_bytes.decode('utf-8', errors='ignore')
+                line_str = line_bytes.decode("utf-8", errors="ignore")
 
-                print("Got line:", repr(line_str))  # 调试输出，查看实际收到的行内容
-                
+                if DEBUG_SHOW_RAW_LINE:
+                    print(f"[{Fore.BLUE}DEBUG{Fore.RESET}] Got line: {repr(line_str)}")
+
                 is_log = False
                 matched_color = Fore.WHITE
-                
-                # 检查是否匹配 bsp_log.cpp 中的前缀
+
+                # 检查是否匹配字典中用户定义的前缀
                 for prefix, color in LOG_STYLES.items():
                     if line_str.startswith(prefix):
                         is_log = True
                         matched_color = color
                         break
-                
-                # 额外逻辑：如果既不是Log前缀，也没有包含特定波形特征(如逗号)，
-                # 且看起来像是可打印字符，也可以当作普通 LogInfo
-                # 这里我们严格遵循：有前缀->Log，无前缀->转发给VOFA+
-                
+
                 if is_log:
                     # ==== 路径 1: 显示日志 ====
-                    # 去掉末尾换行符以便 print 控制
+                    # 匹配到了字典内的前缀，上预设颜色并去掉末尾换行符以便 print 控制
                     print(f"{matched_color}{line_str.strip()}")
                 else:
-                    # ==== 路径 2: 转发波形 ====
-                    # 直接将原始字节流转发，不进行 decode，保证效率和二进制兼容
-                    # 可以在这里打印一下 debug，但高频波形会刷屏，建议注释掉
-                    # print(f"[Data] {len(line_bytes)} bytes") 
+                    # ==== 路径 2: 转发波形/无配置颜色的普通字 ====
+                    # 没有前缀匹配，直接将原始字节流转发给 VOFA+
                     forwarder.send_waveform(line_bytes)
 
             except Exception as e:
@@ -179,8 +186,9 @@ def main():
         print(f"\n{Fore.YELLOW}Stopping...")
     finally:
         forwarder.stop()
-        if 'ser' in locals() and ser.is_open:
+        if "ser" in locals() and ser.is_open:
             ser.close()
+
 
 if __name__ == "__main__":
     main()

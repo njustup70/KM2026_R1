@@ -5,7 +5,6 @@
 #include "motor_dm.hpp"
 #include "bsp_dwt.hpp"
 #include "StateCore.hpp"
-#include "msg_coder.hpp"
 #include "arm_math.h"
 #include "std_math.hpp"
 #include "cstdarg"
@@ -14,6 +13,7 @@
 #include "std_cpp.h"
 #include "typeinfo"
 #include "Monitor.hpp"
+#include "bsp_hardware.hpp"
 
 namespace Systems
 {
@@ -142,7 +142,7 @@ class SystemType
 
     
     LedWs2812*              led_band = nullptr;             // 仅指 "系统灯"
-    Odometer_Ops9*          odometer = nullptr;             // 物理里程计
+    Odometer_Ops9           odometer;             // 物理里程计
     Positioner              posner;
 
     bool is_retrying = false;                               // 是否处于重试状态（从RetryZone出发）

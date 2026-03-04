@@ -7,7 +7,7 @@
 
 Farcon *Farcon::self_instance = nullptr;
 
-void Farcon::init(UART_HandleTypeDef *huart)
+void Farcon::init(BSP::UART::UartID huart)
 {
     // 注册串口实例
     uart_inst = BSP::UART::Apply(huart);

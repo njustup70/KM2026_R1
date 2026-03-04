@@ -1,10 +1,11 @@
 #ifndef MONITOR_HPP
 #define MONITOR_HPP
 
-#include "msg_coder.hpp"
 #include "typeinfo"
+#include "std_math.hpp"
 #include "stdarg.h"
 #include "SysDefs.hpp"
+#include "bsp_uart.hpp"
 
 /**
  * @brief 用于监控机器人的各项状态，还有调试、日志等功能]
@@ -44,6 +45,7 @@ private:
 
     /// @brief 最多监测24个Bool
     WatchInfo watch_buf[24];
+
     /// @brief 最多追踪32Byte的数据
     byte track_buf[32];
     /// @brief 最多向Vofa发送64Byte数据
@@ -59,14 +61,11 @@ private:
     bool high_performance_mode = false;         // 高性能模式标志位（1000Hz跟踪）
 
 public:
-    UartMsgCoder host_coder;                    // 发送到上位机的编码器
-    UartMsgCoder farcon_coder;                  // 发送到遥控器的编码器
-
     /**
      * @brief 监视器的初始化函数
      * @note 上位机有两种情况，一种是视觉组的工控机，一种是调试时候的电脑
      */
-    void Init(UART_HandleTypeDef *huart_host, UART_HandleTypeDef *huart_farc, bool vofa_mode = false);
+    void Init(BSP::UART::UartID huart_host, BSP::UART::UartID huart_farc, bool vofa_mode = false);
 
     /**
      * @brief 运行方法

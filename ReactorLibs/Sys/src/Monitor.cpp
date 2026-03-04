@@ -93,7 +93,7 @@ void Monitor::LogTrack()
     }
 
     // 发送编码后的数据
-    host_coder.SendRawMsg(track_send_buf, strlen((char*)track_send_buf));   
+    // host_coder.SendRawMsg(track_send_buf, strlen((char*)track_send_buf));   
 }
 
 
@@ -137,7 +137,7 @@ void Monitor::LogTrackJustFloat()
     used_bytes += 4;
 
     // 4. 发送原始二进制数据
-    host_coder.SendRawMsg(vofa_buf, used_bytes);
+    // host_coder.SendRawMsg(vofa_buf, used_bytes);
 }
 
 
@@ -169,7 +169,7 @@ void Monitor::LogError(const char* format, ...)
     }
 
     // 发送日志到上位机
-    host_coder.SendRawMsg((uint8_t*)err_log_buf, strlen(err_log_buf));
+    // host_coder.SendRawMsg((uint8_t*)err_log_buf, strlen(err_log_buf));
 }
 
 static char wrn_log_buf[72] = {0};
@@ -198,7 +198,7 @@ void Monitor::LogWarning(const char* format, ...)
     }
     
     // 发送日志到上位机
-    host_coder.SendRawMsg((uint8_t*)wrn_log_buf, strlen(wrn_log_buf));
+    // host_coder.SendRawMsg((uint8_t*)wrn_log_buf, strlen(wrn_log_buf));
 }
 
 static char nrm_log_buf[72] = {0};
@@ -227,7 +227,7 @@ void Monitor::Log(const char* format, ...)
     }
 
     // 发送日志到上位机
-    host_coder.SendRawMsg((uint8_t*)nrm_log_buf, strlen(nrm_log_buf));
+    // host_coder.SendRawMsg((uint8_t*)nrm_log_buf, strlen(nrm_log_buf));
 }
 
 
@@ -247,8 +247,8 @@ void Monitor::Perflize()
 }
 
 
-void Monitor::Init(UART_HandleTypeDef *huart_host, UART_HandleTypeDef *huart_farc, bool vofa_mode)
+void Monitor::Init(BSP::UART::UartID huart_host, BSP::UART::UartID huart_farc, bool vofa_mode)
 {
-    host_coder.Init(huart_host);
-    farcon_coder.Init(huart_farc);
+    // host_coder.Init(huart_host);
+    // farcon_coder.Init(huart_farc);
 }
