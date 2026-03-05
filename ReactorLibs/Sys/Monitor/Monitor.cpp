@@ -19,7 +19,7 @@ template<typename T>
 static void ConcatToBuf(byte* buf, size_t& used_bytes, void* value)
 {
     T targ_var = *(T*)value;
-    size_t char_use = snprintf((char*)buf + used_bytes, 63 - used_bytes, "%d", targ_var);
+    size_t char_use = snprintf((char*)buf + used_bytes, 63 - used_bytes, "%d", (int)targ_var);
     used_bytes += char_use;
 }
 
