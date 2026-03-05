@@ -16,7 +16,7 @@
 
 > **注意**：通常情况下，`Bsp` 层的库应在 `Mod` 及以上的层调用。
 
-### 1. 获取串口句柄 (`Handler`)
+### 获取串口句柄 (`Handler`)
 在上层代码中，直接使用 `Hardware` 命名空间预定义的 `UartID` 实例来申请 `Handler`。
 ```cpp
 #include "bsp_uart.hpp"
@@ -25,22 +25,22 @@
 auto uart_handler = BSP::UART::Apply(Hardware::huart_host);
 ```
 
-### 2. 发送数据 (`Transmit`)
+### 发送数据 (`Transmit`)
 直接调用 `Transmit` 即可。库会自动处理 FIFO 缓冲和 DMA 启动。
 ```cpp
 uint8_t data[] = {0x01, 0x02, 0x03};
 uart_handler.Transmit(data, sizeof(data));
 ```
 
-### 3. 注册并接收数据 (`RegisterRx`)
+### 注册并接收数据 (`RegisterRx`)
 定义一个回调函数，并将其注册到串口句柄中。
 ```cpp
-// 1. 定义回调函数
+// 定义回调函数
 void MyRxCallback(BSP::UART::UartID id, uint8_t *rxData, uint8_t size) {
     // 处理接收到的数据 (rxData)
 }
 
-// 2. 注册回调（设置最大单次接收长度）
+// 注册回调（设置最大单次接收长度）
 uart_handler.RegisterRx(64, MyRxCallback);
 ```
 
