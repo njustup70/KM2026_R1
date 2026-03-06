@@ -246,16 +246,6 @@ void Monitor::Log(const char* format, ...)
 }
 
 
-void Monitor::Watch(WatchInfo info)
-{
-    // 将监视信息存入监视缓冲区
-    if (watch_count < 24)
-    {
-        watch_buf[watch_count] = info;
-        watch_count++;
-    }
-}
-
 void Monitor::Perflize()
 {
     high_performance_mode = true;

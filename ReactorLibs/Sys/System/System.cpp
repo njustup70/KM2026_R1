@@ -61,6 +61,24 @@ void SystemType::Run()
     // RTT接收命令处理
     BspLog_RecvCMD();
 
+    // 零开销巡检所有 App 状态
+    for (int i = 0; i < 24; i++) {
+        if (app_list[i] != nullptr) {
+            App::Status s = app_list[i]->status;
+            if (s == App::Error) {
+                // TODO: 用一种不会刷屏的方法打印 Error，或者放到别处
+                // monit.LogError("App [%s] Fatal Error!", app_list[i]->name);
+                if (status == Systems::WORKING || status == Systems::READY) {
+                    status = Systems::STOP; 
+                    Display.ErrorBlink(24, 200);
+                }
+            } else if (s == App::Warning) {
+                // WarningBlink 等提示
+                Display.WarningBlink(3, 300);
+            }
+        }
+    }
+
     static int temp_cnt = 0;
     // 跟踪变量（非高性能模式下）
     if (!Monitor::GetInstance().high_performance_mode && temp_cnt++ >= 1)
@@ -108,13 +126,12 @@ void SystemType::_Update_LedBand()
 
 
 /**
- * @brief 自检（检查所有被Monitor给Watch的变量是否正常）
+ * @brief 自检（检查所有注册的 Application 的 WatchPoint 是否正常）
  */
 void SystemType::_Update_SelfCheck()
 {
     static uint16_t check_cnt = 0;
     static bool error_list[24] = {false};
-    static bool warning_list[24] = {false};
 
     if (start_selfcheck_flag && status == Systems::ORIGIN)
     {
@@ -125,14 +142,15 @@ void SystemType::_Update_SelfCheck()
     // 处于自检状态时，进行自检
     if (status != Systems::SELF_CHECK)   return;
 
-    /**     确保所有关键Watch在一秒内都持续为使能状态   **/
-    for (uint8_t i = 0; i < monit.watch_count; i++) 
+    /**     确保所有 App 的 WatchPoint 在一秒内都持续为 true   **/
+    for (uint8_t i = 0; i < 24; i++) 
     {
-        if(*monit.watch_buf[i].targ != true && check_cnt > 100)    // 遇到有不在线的
+        if (app_list[i] != nullptr)
         {
-            // 判断其严重程度
-            if (monit.watch_buf[i].is_neccessary)   error_list[i] = true;
-            else    warning_list[i] = true;
+            if(!app_list[i]->WatchPoint() && check_cnt > 100)    // 遇到有不在线的
+            {
+                error_list[i] = true;
+            }
         }
     }
 
@@ -141,18 +159,13 @@ void SystemType::_Update_SelfCheck()
     {
         // 检查是否有错误
         bool have_error = false;
-        for (uint8_t i = 0; i < monit.watch_count; i++)
+        for (uint8_t i = 0; i < 24; i++)
         {
             if (error_list[i])
             {
                 // 严重错误，直接报错
-                monit.LogError("Offline: %s\n", monit.watch_buf[i].warning_info);
+                monit.LogError("App [%s] Self-Check Failed!\n", app_list[i]->name);
                 have_error = true;
-            }
-            else if (warning_list[i])
-            {
-                // 一般错误，记录警告
-                monit.LogWarning("Offline: %s\n", monit.watch_buf[i].warning_info);
             }
         }
 
@@ -164,14 +177,12 @@ void SystemType::_Update_SelfCheck()
 
             // 重置错误列表
             memset(error_list, 0, sizeof(error_list));
-            memset(warning_list, 0, sizeof(warning_list));
             return;
         }
         else
         {
             // 自检完成，进入READY状态
             memset(error_list, 0, sizeof(error_list));
-            memset(warning_list, 0, sizeof(warning_list));
             status = Systems::READY;
             monit.Log("System Self-Check Passed!\n");
             check_cnt = 0;
@@ -357,7 +368,7 @@ bool SystemType::RegistApp(Application &app_inst)
 }
 
 /**
- * @brief 运行所有应用实例
+ * @brief 运行所有应用实例并更新健康状态缓存
  */
 void SystemType::_Update_Applications()
 {
@@ -367,6 +378,8 @@ void SystemType::_Update_Applications()
         {
             if (app_list[i]->CntFull())
             {
+                // 自动更新应用状态缓存，供零开销跨库查询
+                app_list[i]->status = app_list[i]->GetStatus();
                 app_list[i]->Update();
             }
         }

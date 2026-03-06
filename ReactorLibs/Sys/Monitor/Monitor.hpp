@@ -17,13 +17,6 @@ class Monitor
     SINGLETON(Monitor){};
 
 public:
-    /// @brief 用于监视的结构体
-    typedef struct WatchInfo
-    {
-        const bool* targ;
-        char warning_info[24];
-        bool is_neccessary;
-    };
 private:
     typedef enum
     {
@@ -43,9 +36,6 @@ private:
         uint8_t bytes;    // 变量的字节数
     } MonitorLinkage;
 
-    /// @brief 最多监测24个Bool
-    WatchInfo watch_buf[24];
-
     /// @brief 最多追踪32Byte的数据
     byte track_buf[32];
     /// @brief 最多向Vofa发送64Byte数据
@@ -55,7 +45,6 @@ private:
     void *track_list[8];
     Track_t track_type[8];
 
-    uint8_t watch_count = 0;
     uint8_t track_count = 0;
 
     bool high_performance_mode = false;         // 高性能模式标志位（1000Hz跟踪）
@@ -92,9 +81,6 @@ public:
     /// @brief 发送错误
     void LogError(const char *format, ...);
     // void LogError(const char *format);   // 空参数重载
-
-    /// @brief 监控某个模块的状态变化
-    void Watch(WatchInfo info);
 
     /**
      * @brief 跟踪某个变量
@@ -154,9 +140,6 @@ public:
 
         track_count++;
     }
-
-    /// @brief 发送监控信息
-    void LogWatch();
 
     /// @brief 发送跟踪信息
     void LogTrack();
