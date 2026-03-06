@@ -39,6 +39,7 @@ MDK-ARM/.vscode/
 build/
 .cache/
 .agents
+__pycache__/
 
 # 忽略CubeMX生成的所有文件
 /Middlewares/

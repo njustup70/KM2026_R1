@@ -24,10 +24,10 @@ void UartTest::Start()
     
     if(ok) 
     {
-        BspLog_LogInfo("UartTest Started! Portor init OK (h_other).");
+        BspLog_LogInfo("UartTest Started! Portor init OK (h_other).\n");
     } else 
     {
-        BspLog_LogError("UartTest Start Failed! Portor Init failed.");
+        BspLog_LogError("UartTest Start Failed! Portor Init failed.\n");
     }
     
     tick_cnt_ = 0;
@@ -45,7 +45,7 @@ void UartTest::Update()
         if (tick_cnt_ >= 200) {
             stage_ = TestStage::BANDWIDTH_TEST;
             tick_cnt_ = 0;
-            BspLog_LogInfo("=== [Stage 1] Bandwidth Test Started ===");
+            BspLog_LogInfo("=== [Stage 1] Bandwidth Test Started ===\n");
         }
         break;
 
@@ -56,8 +56,8 @@ void UartTest::Update()
         } else {
             stage_ = TestStage::STAGE_GAP;
             tick_cnt_ = 0;
-            BspLog_LogInfo("\r\n=== [Stage 1] Bandwidth Test Finished ===");
-            BspLog_LogInfo("=== Stage Gap: 1s quiet time before Stage 2 ===");
+            BspLog_LogInfo("\r\n=== [Stage 1] Bandwidth Test Finished ===\n");
+            BspLog_LogInfo("=== Stage Gap: 1s quiet time before Stage 2 ===\n");
         }
         break;
 
@@ -66,7 +66,7 @@ void UartTest::Update()
         if (tick_cnt_ >= 200) {
             stage_ = TestStage::FIFO_TEST;
             tick_cnt_ = 0;
-            BspLog_LogInfo("\r\n=== [Stage 2] FIFO Burst Test Started ===");
+            BspLog_LogInfo("\r\n=== [Stage 2] FIFO Burst Test Started ===\n");
         }
         break;
 
@@ -83,7 +83,7 @@ void UartTest::Update()
         } else {
             stage_ = TestStage::DONE;
             tick_cnt_ = 0;
-            BspLog_LogOK("UartTest Stages Completed. Idling.");
+            BspLog_LogOK("UartTest Stages Completed. Idling.\n");
         }
         break;
 
@@ -91,7 +91,7 @@ void UartTest::Update()
         // 测试完成，保持静默即可
         // 可以每隔 5 秒报下平安
         if(tick_cnt_ >= 1000) {
-            BspLog_LogInfo("UartTest is done and sleeping.");
+            BspLog_LogInfo("UartTest is done and sleeping.\n");
             tick_cnt_ = 0;
         }
         break;
