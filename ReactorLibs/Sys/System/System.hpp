@@ -2,7 +2,7 @@
 #include "led_ws2812.hpp"
 #include "odo_ops.hpp"
 #include "motor_dji.hpp"
-#include "motor_dm.hpp"
+// #include "motor_dm.hpp"
 #include "bsp_dwt.hpp"
 #include "StateCore.hpp"
 #include "arm_math.h"

@@ -8,8 +8,8 @@ namespace Hardware
     bool RTTLogAtUart = false;
 
     /**-----    配置CAN总线     -----**/
-    CAN_HandleTypeDef* hcan_main = nullptr;
-    CAN_HandleTypeDef* hcan_sub = nullptr;
+    BSP::CAN::CanID hcan_main = nullptr;
+    BSP::CAN::CanID hcan_sub = nullptr;
 
     /**-----    配置串口    -----**/
     BSP::UART::UartID huart_host = nullptr;

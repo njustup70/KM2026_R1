@@ -1,4 +1,5 @@
 #pragma once
+#include "bsp_can.hpp"
 
 #define USE_REAL_HAL
 
@@ -69,9 +70,9 @@ namespace Hardware
     
     /***---------------     框架CAN    ---------------***/
     /// @brief 框架所用CAN句柄
-    extern CAN_HandleTypeDef* hcan_main;
+    extern BSP::CAN::CanID hcan_main;
     /// @brief 框架所用CAN句柄
-    extern CAN_HandleTypeDef* hcan_sub;
+    extern BSP::CAN::CanID hcan_sub;
 
     /***---------------     框架定时器    ---------------***/
     /// @brief WS2812灯带定时器

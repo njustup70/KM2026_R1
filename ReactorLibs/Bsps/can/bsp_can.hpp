@@ -1,58 +1,58 @@
-#ifndef BSP_CAN_H
-#define BSP_CAN_H
+#pragma once
+#include <cstdint>
 
-#ifdef __cplusplus
-extern "C"
+#define BSPCAN_MAX_CANINSTS 24
+
+namespace BSP
 {
-#endif
+    namespace CAN
+    {
+        // ---- 不透明指针 ----
+        struct OpaqueCan;
+        /// @brief 不透明指针 CAN_HandleTypeDef* 的框架解耦替代
+        using CanID = OpaqueCan*;
 
-#include "bsp_halport.hpp"
+        // ---- 接收相关 ----
 
-#define BSPCAN_STD 0 // 标准帧发送
-#define BSPCAN_EXT 1 // 扩展帧发送
+        /// @brief 接收帧头信息（纯净类型，不含 HAL）
+        struct RxHeader
+        {
+            uint32_t id;        // 标准或扩展 ID
+            uint8_t  dlc;       // 数据长度
+            bool     is_ext;    // 是否扩展帧
+            bool     is_remote; // 是否远程帧
+        };
 
-#define BSPCAN_DATA 0 // 数据帧发送
-#define BSPCAN_REMOTE 1 // 远程帧发送
+        /// @brief 接收回调函数类型：来源实例 + 帧头 + 数据指针
+        using RxCallback = void(*)(CanID can, const RxHeader& header, uint8_t* data);
 
-#define BSPCAN_MAX_CANINSTS 24 // 最多支持24个实例
-#define CAN_1_USED
-#define CAN_2_USED
+        /// @brief CAN 接收实例（由使用者分配内存）
+        struct Instance
+        {
+            CanID      can_id;      // 哪条 CAN 总线
+            uint32_t   rx_id;       // 订阅的接收 ID
+            uint8_t    rx_is_ext;   // 接收 ID 是否扩展帧
+            RxCallback rx_callback; // 接收回调
+        };
 
-// 发送用的结构体
-typedef struct
-{
-    CAN_HandleTypeDef *hcan;    // CAN句柄
-    uint8_t IDE;                // 是否是扩展帧
-    uint8_t RTR;                // 是否是远程帧
-    uint32_t Id;                // 标准ID
-    uint32_t DLC;               // 数据长度
-    uint16_t timeout_ms;        // 超时时间（毫秒）
-}BspCan_TxConfig;
+        using HandleTypeDef = Instance*;
 
-// 定义接收回调函数类型
-typedef void (*BspCan_InstRxCallback)(CAN_RxHeaderTypeDef *rxHeader, uint8_t *rxData, CAN_HandleTypeDef *hcan);
-/// @brief BSPCAN实例及其句柄定义
-typedef struct
-{
-    CAN_HandleTypeDef *hcan; // CAN句柄，用哪路CAN看自己喜好了
-    uint32_t rx_id;          // 接收ID
-    uint8_t rx_isExtend;     // 是否扩展ID
-    uint32_t tx_id;          // 发送ID
-    uint8_t tx_isExtend;     // 是否扩展ID
+        /// @brief 注册 CAN 接收实例（内部自动配置过滤器 + 启动 CAN）
+        void Regist(HandleTypeDef inst, CanID can, uint32_t rx_id,
+                    uint8_t rx_is_ext, RxCallback callback,
+                    const char* file = __builtin_FILE(), int line = __builtin_LINE());
 
-    BspCan_InstRxCallback rx_callback; // 接收回调函数
-} BspCan_Instance;
-typedef BspCan_Instance *BspCan_HandleTypeDef;
+        // ---- 发送（独立，不绑实例） ----
 
-/******     函数    ******/
-void BspCan_InstRegist(BspCan_HandleTypeDef inst, CAN_HandleTypeDef *hcan, uint32_t rx_id, uint32_t tx_id,
-                        uint8_t rx_isExtend, uint8_t tx_isExtend, BspCan_InstRxCallback rx_callback);
-BspCan_TxConfig BspCan_GetTxConfig(CAN_HandleTypeDef *hcan , int id, uint8_t IDE, uint8_t RTR, uint32_t DLC, uint16_t timeout_ms);
-BspCan_TxConfig BspCan_GetTxConfigFast(CAN_HandleTypeDef *hcan , int id);
-void BspCan_Transmit(BspCan_TxConfig conf, uint8_t *data);
-
-
-#ifdef __cplusplus
+        /// @brief 发送 CAN 数据帧
+        /// @param can 目标 CAN 总线
+        /// @param id 发送的 CAN ID
+        /// @param is_ext 是否扩展帧 (0=标准帧, 1=扩展帧)
+        /// @param data 数据指针（最多8字节）
+        /// @param len 数据长度（1-8）
+        /// @param timeout_ms 超时时间（毫秒）
+        void Transmit(CanID can, uint32_t id, uint8_t is_ext,
+                      const uint8_t* data, uint8_t len,
+                      uint16_t timeout_ms = 10);
+    }
 }
-#endif
-#endif

@@ -8,7 +8,7 @@
 void Hardware::Config_Hardwares()
 {
     /**-----    配置CAN总线     -----**/
-    Hardware::hcan_main = &hcan1;
+    Hardware::hcan_main = reinterpret_cast<BSP::CAN::CanID>(&hcan1);
     Hardware::hcan_sub = nullptr;
 
     /**-----    配置串口    -----**/

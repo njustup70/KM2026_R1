@@ -40,6 +40,7 @@ build/
 .cache/
 .agents
 __pycache__/
+AGENTS.md
 
 # 忽略CubeMX生成的所有文件
 /Middlewares/
