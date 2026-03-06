@@ -37,8 +37,8 @@ void DWT_CntUpdate(void)
         if (cnt_now < CYCCNT_LAST)
             CYCCNT_RountCount++;        // 溢出则轮次计数加1
 
-        // 更新上一次计数值
-        CYCCNT_LAST = DWT->CYCCNT;
+        // 更新上一次计数值（使用已经获取的cnt_now，防止两次读取之间发生溢出）
+        CYCCNT_LAST = cnt_now;
         bit_locker = 0;
     }
 }
@@ -104,29 +104,36 @@ double DWT_GetDeltaTime64(uint32_t *cnt_last)
  */
 void DWT_SysTimeUpdate(void)
 {
-    // 如果DWT计数器溢出,则更新轮次计数
-    volatile uint32_t cnt_now = DWT->CYCCNT;
-    
     static uint64_t CNT_ms, CNT_us;
 
     // 检测是否发生溢出，如果是，更新轮数
     DWT_CntUpdate();
+    
+    // 获取当前计数值和轮次
+    volatile uint32_t cnt_now = DWT->CYCCNT;
+    uint32_t current_round = CYCCNT_RountCount;
+    
+    // 假设在DWT_CntUpdate执行完到这里获取计时器的时间里又发生了一次新的溢出
+    // 此时 DWT_CntUpdate 没有被调用，所以 CYCCNT_RountCount 并未增加，而 cnt_now 会变小
+    if (cnt_now < CYCCNT_LAST)
+    {
+        current_round++;
+    }
 
-    // 计算当前的系统时间（单位是晶振tick）
-    CYCCNT64 = (uint64_t)CYCCNT_RountCount * (uint64_t)UINT32_MAX + (uint64_t)cnt_now;
+    // 计算当前的系统时间（单位是晶振tick），一轮为 1ULL << 32 tick (由于包含 0 到 UINT32_MAX 的跳变)
+    CYCCNT64 = (uint64_t)current_round * (1ULL << 32) + (uint64_t)cnt_now;
 
     // 经过的秒数为：系统时间（单位是tick）除以CPU频率（整除）
     SysTime.s = CYCCNT64 / CPU_FREQ_Hz;
 
-    // 计算剩余的毫秒数（整除）
-    CNT_ms = CYCCNT64 - (SysTime.s * CPU_FREQ_Hz);
+    // 计算剩余的毫秒数（强制以64位整数类型计算乘法防溢出截断）
+    CNT_ms = CYCCNT64 - ((uint64_t)SysTime.s * CPU_FREQ_Hz);
     SysTime.ms = CNT_ms / CPU_FREQ_Hz_ms;
 
-    // 计算剩余的微秒数（整除）
-    CNT_us = CNT_ms - SysTime.ms * CPU_FREQ_Hz_ms;
+    // 计算剩余的微秒数
+    CNT_us = CNT_ms - ((uint64_t)SysTime.ms * CPU_FREQ_Hz_ms);
     SysTime.us = CNT_us / CPU_FREQ_Hz_us;
 }
-
 
 float DWT_GetTimeline_Sec(void)
 {
@@ -136,7 +143,6 @@ float DWT_GetTimeline_Sec(void)
 
     return DWT_Timeline;
 }
-
 
 float DWT_GetTimeline_MSec(void)
 {
