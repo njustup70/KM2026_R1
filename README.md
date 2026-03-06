@@ -3,11 +3,11 @@
     <img src="Imgs/Up70Art_Ramp.png" alt="Up70Char" width="240" height="120" >
 </div>
 <div align="center">
-<h1>Reactor-46Hex 电控框架</h1>
+<h1>Reactor70 电控框架</h1>
 </div>
 
 # 简介
-> 项目已更名为 `Reactor-46Hex`  
+> 项目已更名为 `Reactor70`  
 > 本框架为源框架 [GeneralFramework](https://github.com/njustup70/Reactor-46H/tree/master) 的后继版本  
 > 如需获取旧版本，请点击链接，切换到 原`master`分支
 
@@ -40,6 +40,6 @@
 - 新框架 具有极强的移植性，能够在改动硬件的前提下，完全不改动用户代码  
 只需要通过 *简单的移植工作*，即可在新的硬件平台上启动。
 - 新框架 **不再含有** 任何与 *硬件强绑定* 的代码，包括常见的`uproject`文件和`CubeMX.ioc`文件等
-- 新框架的配置方法，请参考队伍文档
+- 新框架的配置方法，请参考 ***队伍文档***
 
 
