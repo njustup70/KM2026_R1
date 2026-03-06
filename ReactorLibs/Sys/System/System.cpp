@@ -70,7 +70,7 @@ void SystemType::Run()
                 // monit.LogError("App [%s] Fatal Error!", app_list[i]->name);
                 if (status == Systems::WORKING || status == Systems::READY) {
                     status = Systems::STOP; 
-                    Display.ErrorBlink(24, 200);
+                    // Display.ErrorBlink(24, 200);
                 }
             } else if (s == App::Warning) {
                 // WarningBlink 等提示
@@ -83,7 +83,7 @@ void SystemType::Run()
     // 跟踪变量（非高性能模式下）
     if (!Monitor::GetInstance().high_performance_mode && temp_cnt++ >= 1)
     {
-        Monitor::GetInstance().LogTrack();
+        Monitor::GetInstance().TrackLog();
         temp_cnt = 0;
     }
 }
@@ -93,7 +93,7 @@ void SystemType::PerformanceRun()
     // 高性能模式下，1000Hz跟踪变量
     if (Monitor::GetInstance().high_performance_mode)
     {
-        Monitor::GetInstance().LogTrackJustFloat();
+        Monitor::GetInstance().TrackLogJustFloat();
     }
 }
 

@@ -3,10 +3,7 @@
 #include "string.h"
 #include "stdio.h"
 #include "System.hpp"
-
-const static char error_head[7] = "[ERR]:";
-const static char warning_head[7] = "[WRN]:";
-const static char log_head[7] = "[LOG]:";
+#include "bsp_log.hpp"
 
 const static uint8_t LogPort = 0x01;    // 日志使用的端口号
 const static uint8_t WatchPort = 0x02;  // 监视使用的端口号
@@ -28,7 +25,7 @@ static byte track_send_buf[64];
  * @brief 发送监控信息
  * @note 先用着，写得草率点，后面再改
  */
-void Monitor::LogTrack()
+void Monitor::TrackLog()
 {
     if (track_count < 1)   return; // 没有跟踪变量，直接返回
 
@@ -102,7 +99,7 @@ void Monitor::LogTrack()
 
 
 
-void Monitor::LogTrackJustFloat()
+void Monitor::TrackLogJustFloat()
 {
     if (track_count < 1) return;
 
@@ -115,7 +112,7 @@ void Monitor::LogTrackJustFloat()
     {
         float temp_val = 0.0f;
 
-        // 1. 统一类型转换为 float
+        // 统一类型转换为 float
         // JustFloat 协议要求通道数据必须是 32bit float
         switch (track_type[i])
         {
@@ -129,17 +126,17 @@ void Monitor::LogTrackJustFloat()
             default: break;
         }
 
-        // 2. 内存拷贝 (4字节)
+        // 内存拷贝 (4字节)
         // STM32 是小端序(Little Endian)，VOFA+ 也是小端序，直接拷贝即可
         memcpy(&vofa_buf[used_bytes], &temp_val, 4);
         used_bytes += 4;
     }
 
-    // 3. 追加帧尾 (00 00 80 7f)
+    // 追加帧尾 (00 00 80 7f)
     memcpy(&vofa_buf[used_bytes], justfloat_tail, 4);
     used_bytes += 4;
 
-    // 4. 发送原始二进制数据
+    // 发送原始二进制数据
     if (host_uart.IsValid())
     {
         host_uart.Transmit(vofa_buf, used_bytes);
@@ -164,21 +161,12 @@ void Monitor::LogError(const char* format, ...)
     memset(err_log_buf, 0, sizeof(err_log_buf));
     
     // 填充错误头和时间戳
-    uint8_t used_bytes = snprintf(err_log_buf, 24, "[ERR][%.2f]", System.runtime_tick);
+    uint8_t used_bytes = snprintf(err_log_buf, 12, "[%.2f]", System.runtime_tick);
     vsnprintf(err_log_buf + used_bytes, 72 - used_bytes, format, args);
     va_end(args);
 
-    // 最后一位写 换行符（如果没越界）
-    if (strlen(err_log_buf) < 72)
-    {
-        err_log_buf[strlen(err_log_buf)] = '\n';
-    }
-
-    // 发送日志到上位机
-    if (host_uart.IsValid())
-    {
-        host_uart.Transmit((uint8_t*)err_log_buf, strlen(err_log_buf));
-    }
+    // 发送日志到上位机，BspLog会自动加换行
+    BspLog_LogError("%s", err_log_buf);
 }
 
 static char wrn_log_buf[72] = {0};
@@ -196,21 +184,12 @@ void Monitor::LogWarning(const char* format, ...)
     memset(wrn_log_buf, 0, sizeof(wrn_log_buf));
     
     // 填充警告头和时间戳
-    uint8_t used_bytes = snprintf(wrn_log_buf, 24, "[WRN][%.2f]", System.runtime_tick);
+    uint8_t used_bytes = snprintf(wrn_log_buf, 12, "[%.2f]", System.runtime_tick);
     vsnprintf(wrn_log_buf + used_bytes, 72 - used_bytes, format, args);
     va_end(args);
 
-    // 最后一位写 换行符（如果没越界）
-    if (strlen(wrn_log_buf) < 72)
-    {
-        wrn_log_buf[strlen(wrn_log_buf)] = '\n';
-    }
-    
     // 发送日志到上位机
-    if (host_uart.IsValid())
-    {
-        host_uart.Transmit((uint8_t*)wrn_log_buf, strlen(wrn_log_buf));
-    }
+    BspLog_LogWarning("%s", wrn_log_buf);
 }
 
 static char nrm_log_buf[72] = {0};
@@ -228,21 +207,12 @@ void Monitor::Log(const char* format, ...)
     memset(nrm_log_buf, 0, sizeof(nrm_log_buf));
     
     // 填充日志头和时间戳
-    uint8_t used_bytes = snprintf(nrm_log_buf, 24, "[LOG][%.2f]", System.runtime_tick);
+    uint8_t used_bytes = snprintf(nrm_log_buf, 12, "[%.2f]", System.runtime_tick);
     vsnprintf(nrm_log_buf + used_bytes, 72 - used_bytes, format, args);
     va_end(args);
 
-    // 最后一位写 换行符（如果没越界）
-    if (strlen(nrm_log_buf) < 72)
-    {
-        nrm_log_buf[strlen(nrm_log_buf)] = '\n';
-    }
-
     // 发送日志到上位机
-    if (host_uart.IsValid())
-    {
-        host_uart.Transmit((uint8_t*)nrm_log_buf, strlen(nrm_log_buf));
-    }
+    BspLog_LogInfo("%s", nrm_log_buf);
 }
 
 
@@ -254,9 +224,9 @@ void Monitor::Perflize()
 
 void Monitor::Init(BSP::UART::UartID huart_host, BSP::UART::UartID huart_farc, bool vofa_mode)
 {
-    if (huart_farc != nullptr)
+    if (huart_host != nullptr)
     {
-        farcon_uart = BSP::UART::Apply(huart_farc);
+        host_uart = BSP::UART::Apply(huart_host);
     }
 
     if (huart_farc != nullptr)

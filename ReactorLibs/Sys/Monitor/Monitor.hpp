@@ -142,14 +142,14 @@ public:
     }
 
     /// @brief 发送跟踪信息
-    void LogTrack();
+    void TrackLog();
 
     /**
      * @brief 发送跟踪信息 (JustFloat格式，极快)
      * @note 无论由于Track的是什么类型，这里统统转为float发送
      * @note 协议帧尾: 00 00 80 7f
      */
-    void LogTrackJustFloat();
+    void TrackLogJustFloat();
 };
 
 #endif
