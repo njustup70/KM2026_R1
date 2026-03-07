@@ -197,7 +197,7 @@ static char nrm_log_buf[72] = {0};
  * @brief 发送日志
  * @note 同上
  */
-void Monitor::Log(const char* format, ...)
+void Monitor::LogInfo(const char* format, ...)
 {
     // 解析可变参数列表
     va_list args;
@@ -213,6 +213,75 @@ void Monitor::Log(const char* format, ...)
 
     // 发送日志到上位机
     BspLog_LogInfo("%s", nrm_log_buf);
+}
+
+static char ok_log_buf[72] = {0};
+/**
+ * @brief 发送完成日志
+ * @note 同上
+ */
+void Monitor::LogOK(const char* format, ...)
+{
+    // 解析可变参数列表
+    va_list args;
+    va_start(args, format);
+
+    // 清空缓冲区
+    memset(ok_log_buf, 0, sizeof(ok_log_buf));
+
+    // 填充日志头和时间戳
+    uint8_t used_bytes = snprintf(ok_log_buf, 12, "[%.2f]", System.runtime_tick);
+    vsnprintf(ok_log_buf + used_bytes, 72 - used_bytes, format, args);
+    va_end(args);
+
+    // 发送日志到上位机
+    BspLog_LogOK("%s", ok_log_buf);
+}
+
+static char spec_log_buf[72] = {0};
+/**
+ * @brief 发送说明日志
+ * @note 同上
+ */
+void Monitor::LogSpec(const char* format, ...)
+{
+    // 解析可变参数列表
+    va_list args;
+    va_start(args, format);
+
+    // 清空缓冲区
+    memset(spec_log_buf, 0, sizeof(spec_log_buf));
+
+    // 填充日志头和时间戳
+    uint8_t used_bytes = snprintf(spec_log_buf, 12, "[%.2f]", System.runtime_tick);
+    vsnprintf(spec_log_buf + used_bytes, 72 - used_bytes, format, args);
+    va_end(args);
+
+    // 发送日志到上位机
+    BspLog_LogSpec("%s", spec_log_buf);
+}
+
+static char rsp_log_buf[72] = {0};
+/**
+ * @brief 发送响应日志
+ * @note 同上
+ */
+void Monitor::LogRespond(const char* format, ...)
+{
+    // 解析可变参数列表
+    va_list args;
+    va_start(args, format);
+
+    // 清空缓冲区
+    memset(rsp_log_buf, 0, sizeof(rsp_log_buf));
+
+    // 填充日志头和时间戳
+    uint8_t used_bytes = snprintf(rsp_log_buf, 12, "[%.2f]", System.runtime_tick);
+    vsnprintf(rsp_log_buf + used_bytes, 72 - used_bytes, format, args);
+    va_end(args);
+
+    // 发送日志到上位机
+    BspLog_LogRespond("%s", rsp_log_buf);
 }
 
 

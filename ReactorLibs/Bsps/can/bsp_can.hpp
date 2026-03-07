@@ -54,5 +54,8 @@ namespace BSP
         void Transmit(CanID can, uint32_t id, uint8_t is_ext,
                       const uint8_t* data, uint8_t len,
                       uint16_t timeout_ms = 10);
+        
+        /// @brief 获取 CAN 总线名称（用于日志等）
+        const char* GetName(CanID can);
     }
 }

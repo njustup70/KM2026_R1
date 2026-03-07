@@ -65,14 +65,23 @@ public:
      * @note 该方法应被周期性调用，以处理监控任务
      * @details 内含发送日志信息、发送机器人状态码、监控维护模块等功能
      */
-    void Run();
+    // void Run();
 
     /// @brief 切换高性能模式
     void Perflize();
 
     /// @brief 发送日志
-    void Log(const char *format, ...);
-    // void Log(const char *format);       // 空参数重载
+    void LogInfo(const char *format, ...);
+    // void LogInfo(const char *format);       // 空参数重载
+
+    /// @brief 发送正常完成日志
+    void LogOK(const char *format, ...);
+
+    /// @brief 发送说明性日志
+    void LogSpec(const char *format, ...);
+
+    /// @brief 发送响应类日志
+    void LogRespond(const char *format, ...);
 
     /// @brief 发送警告
     void LogWarning(const char *format, ...);

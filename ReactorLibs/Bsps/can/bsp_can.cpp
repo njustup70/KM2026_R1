@@ -219,6 +219,13 @@ void BSP::CAN::Transmit(CanID can, uint32_t id, uint8_t is_ext,
     }
 }
 
+const char* BSP::CAN::GetName(CanID can)
+{
+    if (can == Hardware::hcan_main) return "hcan_main";
+    if (can == Hardware::hcan_sub) return "hcan_sub";
+    return "hcan_unknown";
+}
+
 // ---- 中断回调路由 ----
 
 static void RxCallbackRouter(CAN_HandleTypeDef* hcan, uint32_t fifo)
