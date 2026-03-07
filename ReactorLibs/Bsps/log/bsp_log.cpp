@@ -66,22 +66,43 @@ static void LogToUart(const char* prefix, const char* fmt, va_list args)
     if (Hardware::RTTLogAtUart && uart_log_handler.IsValid())
     {
         int len = 0;
-        int max_len = 511; // 留一个位置给 \0
+        const int max_len = (int)sizeof(log_tx_buf) - 1; // 留一个位置给 \0
         
         if (prefix)
         {
-            int ret = snprintf(log_tx_buf + len, max_len - len, "%s", prefix);
-            if (ret > 0) len += ret;
+            int ret = snprintf(log_tx_buf + len, max_len - len + 1, "%s", prefix);
+            if (ret > 0)
+            {
+                int available = max_len - len;
+                len += (ret > available) ? available : ret;
+            }
         }
         
         if (len < max_len)
         {
-             int ret = vsnprintf(log_tx_buf + len, max_len - len, fmt, args);
-             if (ret > 0) len += ret;
+            int ret = vsnprintf(log_tx_buf + len, max_len - len + 1, fmt, args);
+            if (ret > 0)
+            {
+                int available = max_len - len;
+                len += (ret > available) ? available : ret;
+            }
         }
 
         if (len > 0)
         {
+            if (log_tx_buf[len - 1] != '\n')
+            {
+                if (len < max_len)
+                {
+                    log_tx_buf[len++] = '\n';
+                    log_tx_buf[len] = '\0';
+                }
+                else
+                {
+                    log_tx_buf[len - 1] = '\n';
+                }
+            }
+
             // BspUart_Transmit_DMA(Hardware::huart_host, (uint8_t*)log_tx_buf, (uint8_t)len);
             uart_log_handler.Transmit((uint8_t*)log_tx_buf, (uint8_t)len);
         }

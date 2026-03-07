@@ -10,9 +10,9 @@ void ChassisType::Start()
     for (int i = 0; i < 4; i++)
     {
         // motors[i].Init(Hardware::hcan_main, i + 1, MotorDJIMode::PID_SpeedControl);
-        motors[i].speed_pid.Init(3.6, 2.4, 0.0);
-        motors[i].speed_pid.ForwardLize(PidGeneral::SpeedForward, 1.5f, 5, 4.8); 			// 速度型前馈
-        motors[i].Enable();
+        // motors[i].speed_pid.Init(3.6, 2.4, 0.0);
+        // motors[i].speed_pid.ForwardLize(PidGeneral::SpeedForward, 1.5f, 5, 4.8); 			// 速度型前馈
+        // motors[i].Enable();
     }
 }
 
@@ -51,7 +51,7 @@ void ChassisType::_UpdateChasOdom()
     float theta_distan = 0;     // 单位：米
     for (int i = 0; i < 4; i++)
     {
-        theta_distan += motors[i].measure.total_angle;
+        theta_distan += motors[i].driver.measure.total_angle;
     }
     theta_distan = theta_distan / (MotorDJIConst::redu_M3508 * 8192) * (PI * WHEEL_DIAMETER) / 4.0f;
     float chas_theta = theta_distan / ROTATE_RADIUS;   // 单位：弧度
@@ -61,7 +61,7 @@ void ChassisType::_UpdateChasOdom()
     // 旋转分量
     for (int i = 0; i < 4; i++)
     {
-        chas_speed.z += motors[i].measure.speed_rpm;
+        chas_speed.z += motors[i].driver.measure.speed_rpm;
     }
     chas_speed.z = (chas_speed.z / 240.0f) / (MotorDJIConst::redu_M3508) * (PI * WHEEL_DIAMETER);
 
@@ -69,7 +69,7 @@ void ChassisType::_UpdateChasOdom()
     float motor_spd_xy[4] = {0};
     for (int i = 0; i < 4; i++)
     {
-        motor_spd_xy[i] = (motors[i].measure.speed_rpm / 60.0f / MotorDJIConst::redu_M3508) * (PI * WHEEL_DIAMETER) - chas_speed.z;
+        motor_spd_xy[i] = (motors[i].driver.measure.speed_rpm / 60.0f / MotorDJIConst::redu_M3508) * (PI * WHEEL_DIAMETER) - chas_speed.z;
     }
 
     Vec2 chas_vxy;
@@ -146,7 +146,7 @@ inline void ChassisType::_SendSpdToMotor()
     for (int i = 0; i < 4; i++)
     {
         // motors[i].SwitchMode(MotorDJIMode::PID_SpeedControl);
-        motors[i].SetSpeed((_motor_spd[i] * 60.0f) / (PI * WHEEL_DIAMETER));
+        motors[i].SetSpd((_motor_spd[i] * 60.0f) / (PI * WHEEL_DIAMETER));
     }
 }
 
