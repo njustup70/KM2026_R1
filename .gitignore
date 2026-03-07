@@ -39,6 +39,7 @@ MDK-ARM/.vscode/
 build/
 .cache/
 .agents
+.code_temp/
 __pycache__/
 AGENTS.md
 

@@ -180,9 +180,16 @@ def main():
                     # 如果匹配了日志的前缀特征，则尝试寻找 '\n' 来截取完整的一行
                     nl_idx = buffer.find(b"\n")
                     if nl_idx != -1:
-                        # 找到了换行符，提取出一整行
-                        line_bytes = bytes(buffer[: nl_idx + 1])
-                        del buffer[: nl_idx + 1]
+                        # 找到了换行符
+                        # 向后探查是否紧跟着多个 \r 或 \n (处理用户额外的换行排版)
+                        end_idx = nl_idx + 1
+                        extra_newlines = bytearray()
+                        while end_idx < len(buffer) and buffer[end_idx] in (10, 13):
+                            extra_newlines.append(buffer[end_idx])
+                            end_idx += 1
+
+                        line_bytes = bytes(buffer[:end_idx])
+                        del buffer[:end_idx]
 
                         try:
                             line_str = line_bytes.decode("utf-8", errors="ignore")
@@ -202,7 +209,21 @@ def main():
 
                             if is_log:
                                 # ==== 路径 1: 显示彩色日志 ====
-                                print(f"{matched_color}{line_str.strip()}")
+                                # 去掉尾部空白符，仅将颜色重置放在文本末，以防终端干扰，并原样输出其包含的换行排版
+                                stripped_line = line_str.rstrip()
+                                trailing_chars = line_str[len(stripped_line) :]
+                                print(
+                                    f"{matched_color}{stripped_line}{Fore.RESET}{trailing_chars}",
+                                    end="",
+                                    flush=True,
+                                )
+
+                                # 主动避免粘包: 多截取的尾部换行极低概率可能会混入波形的有效有效帧 (0x0A/0x0D)。
+                                # 一旦错杀没发给波形会导致帧错位死机。
+                                # 而从 BspLog 发出的附加换行转发给波形也是安全合规的间隙数据（Just Float忽略这部分间隙）
+                                # 因此采取“主动抄送副本”的策略。
+                                if extra_newlines:
+                                    forwarder.send_waveform(bytes(extra_newlines))
                             else:
                                 # ==== 路径 2: 转发未匹配特征的数据 ====
                                 forwarder.send_waveform(line_bytes)
