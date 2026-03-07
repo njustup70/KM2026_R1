@@ -29,12 +29,14 @@ uint32_t can_busy_times = 0;
 
 static uint8_t can1_filter_idx = 0;   // CAN1过滤器组索引（0-13）
 static uint8_t can2_filter_idx = 14;  // CAN2过滤器组索引（14-27）
-static uint8_t CanActivated = 0;      // CAN是否已启动标志
 
 // ---- 实例管理 ----
 
 static HandleTypeDef bspcan_insts[BSPCAN_MAX_CANINSTS] = {nullptr};
 static int bspcan_inst_count = 0;
+
+// 记录已经激活的CAN总线
+static CanID activated_cans[3] = {nullptr, nullptr, nullptr};
 
 // ---- 过滤器配置（内部函数） ----
 
@@ -46,19 +48,25 @@ static int FilterAdd(HandleTypeDef inst)
     }
 
     CAN_HandleTypeDef* hcan = reinterpret_cast<CAN_HandleTypeDef*>(inst->can_id);
-    CAN_FilterTypeDef FilterConfig = {0};
     uint8_t filter_bank;
 
+#ifdef USE_REAL_HAL
+    CAN_FilterTypeDef FilterConfig = {0};
+
     // 分配过滤器组
-    if (hcan == &hcan1)
+    if (hcan->Instance == CAN1)
     {
         if (can1_filter_idx > 13) return -1;
         filter_bank = can1_filter_idx++;
     }
-    else
+    else if (hcan->Instance == CAN2)
     {
         if (can2_filter_idx > 27) return -1;
         filter_bank = can2_filter_idx++;
+    }
+    else
+    {
+        return -1;
     }
 
     // 配置过滤器ID和掩码
@@ -87,25 +95,59 @@ static int FilterAdd(HandleTypeDef inst)
     {
         return -1;
     }
+#else
+    // Pure-Fram模式下，仅靠指针地址区分，避免引用Instance
+    static CanID first_can = nullptr;
+    if (first_can == nullptr) first_can = inst->can_id;
+
+    if (inst->can_id == first_can)
+    {
+        if (can1_filter_idx > 13) return -1;
+        filter_bank = can1_filter_idx++;
+    }
+    else
+    {
+        if (can2_filter_idx > 27) return -1;
+        filter_bank = can2_filter_idx++;
+    }
+    
+    // 假人调用消除未使用警告
+    (void)hcan;
+    (void)filter_bank;
+#endif
 
     return 0;
 }
 
 // ---- CAN 总线激活（内部函数） ----
 
-static void Activate()
+static void TryActivateCan(CanID can)
 {
-#ifdef CAN_1_USED
-    HAL_CAN_Start(&hcan1);
-    HAL_CAN_ActivateNotification(&hcan1, CAN_IT_RX_FIFO0_MSG_PENDING);
-    HAL_CAN_ActivateNotification(&hcan1, CAN_IT_RX_FIFO1_MSG_PENDING);
-#endif
+    // 检查是否已激活
+    for (int i = 0; i < 3; i++)
+    {
+        if (activated_cans[i] == can) return; // 已经激活过
+    }
 
-#ifdef CAN_2_USED
-    HAL_CAN_Start(&hcan2);
-    HAL_CAN_ActivateNotification(&hcan2, CAN_IT_RX_FIFO0_MSG_PENDING);
-    HAL_CAN_ActivateNotification(&hcan2, CAN_IT_RX_FIFO1_MSG_PENDING);
-#endif
+    // 记录为已激活
+    for (int i = 0; i < 3; i++)
+    {
+        if (activated_cans[i] == nullptr)
+        {
+            activated_cans[i] = can;
+            break;
+        }
+    }
+
+    CAN_HandleTypeDef* hcan = reinterpret_cast<CAN_HandleTypeDef*>(can);
+    
+    #ifdef USE_REAL_HAL
+        HAL_CAN_Start(hcan);
+        HAL_CAN_ActivateNotification(hcan, CAN_IT_RX_FIFO0_MSG_PENDING);
+        HAL_CAN_ActivateNotification(hcan, CAN_IT_RX_FIFO1_MSG_PENDING);
+    #else
+        (void)hcan;
+    #endif
 }
 
 // ---- 公开接口：注册 ----
@@ -133,12 +175,8 @@ void BSP::CAN::Regist(HandleTypeDef inst, CanID can, uint32_t rx_id,
         return;
     }
 
-    // 首次注册时启动CAN
-    if (!CanActivated)
-    {
-        Activate();
-        CanActivated = 1;
-    }
+    // 尝试激活该特定CAN外设
+    TryActivateCan(can);
 
     // 记录实例
     if (bspcan_inst_count < BSPCAN_MAX_CANINSTS)
