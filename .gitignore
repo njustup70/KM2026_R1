@@ -42,6 +42,7 @@ build/
 .code_temp/
 __pycache__/
 AGENTS.md
+.agent_prompts/
 
 # 忽略CubeMX生成的所有文件
 /Middlewares/
