@@ -43,6 +43,8 @@ build/
 __pycache__/
 AGENTS.md
 .agent_prompts/
+ReactorLibs/Mods_70/
+reactor_intro.md
 
 # 忽略CubeMX生成的所有文件
 /Middlewares/
@@ -56,5 +58,6 @@ CMakePresets.json
 *.ioc
 *.s
 *.ld
+#--------------------------
 
 MDK-ARM/RTE/_GeneralFramework/RTE_Components.h

@@ -37,6 +37,7 @@
 #include "odo_ops.hpp"
 #include "bsp_dwt.hpp"
 #include "bsp_log.hpp"
+#include "string.h"
 
 #define OPS9_RECV_FREQ 100                          // 说明书中的里程计接收频率，单位Hz
 
@@ -197,8 +198,8 @@ void stractString(char str1[], char str2[], int num)
   *@plus   使用共用体主要是为了方便数据类型的转换(float和char)，此外还可以节省内存
 */
 
-static void update_x(float new_x)
-{
+// static void update_x(float new_x)
+// {
     // char x[8] = "ACTX";
     // static union 
     // {
@@ -216,11 +217,11 @@ static void update_x(float new_x)
     // }
 
     // HAL_Delay(10);//应使用vTaskDelay
-}
+// }
 
 /* 更新标定Y坐标 */
-static void update_y(float new_y)
-{
+// static void update_y(float new_y)
+// {
     // char y[8] = "ACTY";
     // static union 
     // {
@@ -238,11 +239,11 @@ static void update_y(float new_y)
     // }
 
     // HAL_Delay(10);//应使用vTaskDelay
-}
+// }
 
 /* 更新标定yaw角 */
-static void update_yaw(float new_yaw)
-{
+// static void update_yaw(float new_yaw)
+// {
     // char yaw[8] = "ACTJ";//char型存疑
     // static union 
     // {
@@ -257,7 +258,7 @@ static void update_yaw(float new_yaw)
     //     HAL_UART_Transmit(&ACTION_USART_HANDLE, (uint8_t*)&yaw[i], 1, 1000);//内部自置等待上一笔数据发送完的flag，是否应该转换为uint8_t存疑
     // }
     // HAL_Delay(10);//应使用vTaskDelay
-}
+// }
 
 
 /**
@@ -267,8 +268,8 @@ static void update_yaw(float new_yaw)
   * @param float value
   * @retval void
   */
-static void update_odom(char a, float value)
-{
+// static void update_odom(char a, float value)
+// {
     // if(a == 'x')
     // {
     //     update_x(value);
@@ -281,4 +282,4 @@ static void update_odom(char a, float value)
     // {
     //     update_yaw(value);
     // }
-}
+// }

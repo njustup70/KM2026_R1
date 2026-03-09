@@ -2,7 +2,6 @@
 #define __ODO_OPS_HPP__
 
 #include "stdint.h"
-#include "string.h"
 #include "std_math.hpp"
 #include "bsp_uart.hpp"
 
@@ -74,7 +73,7 @@ typedef Odometer_Ops9 Ops9;
 //extern uint8_t dma_rx_buffer[30];//存储action发的数据包，30个字节
 //extern Odometer odometer_data;//里程计数据
 
-static void update_odom(char a, float value);
+// static void update_odom(char a, float value);
 void odom_dma_init();
 // Vec3 odom_get_tf_vec(Odometer odom_sturct);
 
