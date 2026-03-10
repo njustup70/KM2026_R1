@@ -1,8 +1,13 @@
 CompileFlags:
-  Add: []
+  Add: [-D__GNUC__]
   Remove: [-mthumb, -mabi=aapcs, -mfloat-abi=hard, -mcpu=cortex-m4, -mfpu=fpv4-sp-d16]
 ---
 If:
   PathMatch: .*\.cpp
 CompileFlags:
   Add: [-xc++]
+---
+If:
+  PathMatch: .*/stm32f4xx_hal_def\.h
+Diagnostics:
+  Suppress: "*"
