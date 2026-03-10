@@ -18,6 +18,7 @@
     #include "can.h"
     #include "usart.h"
     #include "dma.h"
+    #include "spi.h"
 
 /* ==================================================================
  * 场景 2：在 Pure-Fram 分支（实验室），无硬件环境

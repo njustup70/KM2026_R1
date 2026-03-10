@@ -45,6 +45,7 @@ AGENTS.md
 .agent_prompts/
 ReactorLibs/Mods_70/
 reactor_intro.md
+external_file/
 
 # 忽略CubeMX生成的所有文件
 /Middlewares/
