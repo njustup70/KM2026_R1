@@ -100,6 +100,11 @@ void PidGeneral::SetRev(bool reverse)
     this->reverse = reverse;
 }
 
+void PidGeneral::SetFeedforward(FeedforwardCallback cb)
+{
+    _ff_callback = cb;
+}
+
 /**
  * @brief 设置死区控制
  */
@@ -205,6 +210,13 @@ float PidGeneral::CalcPos(float targ, float real, float output_lim)
         default: break;
     }
 
+    // 自定义前馈回调
+    if (_ff_callback)
+    {
+        FeedforwardInfo ff_info = { targ, real, 0.0f, delta_t };
+        pid_output += _ff_callback(ff_info);
+    }
+
     // 如果用户配置了反向，作反向输出
     if (reverse) pid_output = -pid_output;
     
@@ -307,6 +319,12 @@ float PidGeneral::CalcIncAuto(float targ, float real, float output_lim)
         default: break;
     }
     
+    // 自定义前馈回调
+    if (_ff_callback)
+    {
+        FeedforwardInfo ff_info = { targ, real, 0.0f, delta_t };
+        reterval += _ff_callback(ff_info);
+    }
 
     // 应用外界输出限幅（如果配置了限幅）
     if (output_lim > 0)

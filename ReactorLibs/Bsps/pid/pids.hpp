@@ -2,6 +2,18 @@
 #define PIDS_HPP
 #include "bsp_halport.hpp"
 
+/// @brief 控制器传给前馈回调的状态信息
+struct FeedforwardInfo
+{
+    float target;       // 目标值
+    float measured;     // 测量值 / ESO估计值
+    float velocity;     // 速度
+    float dt;           // 控制周期 (s)
+};
+
+/// @brief 前馈回调函数类型
+typedef float (*FeedforwardCallback)(const FeedforwardInfo& info);
+
 // 通用PID类
 class PidGeneral
 {
@@ -20,6 +32,9 @@ private:
     float Kd;      // 微分系数
     float Kf = 0.0f;      // 前馈系数
     float delta_t = 0.0f; // 时间间隔
+
+    // 自定义前馈回调
+    FeedforwardCallback _ff_callback = nullptr;
     float _delta_t_protect = 0.05f; // 保护性时间间隔，防止频率过低
 
     int reverse;   // 反向控制标志
@@ -94,6 +109,8 @@ public:
     void SetLimit(float intelim, float outlim, float dfilter);
     /// @brief 设置反向控制
     void SetRev(bool reverse);
+    /// @brief 设置自定义前馈回调
+    void SetFeedforward(FeedforwardCallback cb);
     /// @brief 设置死区控制
     void SetDeadband(float start, float end);
 
