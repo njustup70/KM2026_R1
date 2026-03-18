@@ -6,6 +6,8 @@
 #include "Monitor.hpp"
 #include "farcon.hpp"
 #include "bsp_log.hpp"
+#include "freertos.h"
+#include "task.h"
 
 SystemType& System = SystemType::GetInstance();
 LedWs2812 sys_ledband;
@@ -372,6 +374,49 @@ bool SystemType::RegistApp(Application &app_inst)
     return false;
 }
 
+bool SystemType::RegistSpiSamp(SpiSamp &sampler)
+{
+    // 回调为空时不允许注册
+    if (sampler.poll_full_frame == nullptr)
+    {
+        BspLog_LogWarning("SpiSamp [%s] register failed: empty callback.\n",
+                          (sampler.name != nullptr) ? sampler.name : "Unknown");
+        return false;
+    }
+
+    // 查找空槽并注册
+    for (uint8_t i = 0; i < 24; i++)
+    {
+        if (spi_sampler_list[i] == nullptr)
+        {
+            spi_sampler_list[i] = &sampler;
+            return true;
+        }
+    }
+
+    BspLog_LogWarning("SpiSamp [%s] register failed: list full.\n",
+                      (sampler.name != nullptr) ? sampler.name : "Unknown");
+    return false;
+}
+
+/**
+ * @brief 更新所有 SPI 采样器（轮询模式）
+ */
+void SystemType::_Update_SpiSamps()
+{
+    for (uint8_t i = 0; i < 24; i++)
+    {
+        // 获取对应的采样器实例
+        SpiSamp *sampler = spi_sampler_list[i];
+
+        // 确保实例存在
+        if (sampler == nullptr) continue;
+
+        // 与 App 类似，按循环节拍直接轮询
+        sampler->poll_full_frame(sampler->ctx);
+    }
+}
+
 /**
  * @brief 运行所有应用实例并更新健康状态缓存
  */
@@ -405,5 +450,3 @@ bool Application::CntFull()
     }
     return false;
 }
-
-

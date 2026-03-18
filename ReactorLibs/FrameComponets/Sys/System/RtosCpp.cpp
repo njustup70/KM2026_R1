@@ -170,10 +170,11 @@ void ControlCpp()
  */
 void SpiReadCpp()
 {
+    uint32_t AppTick = xTaskGetTickCount();
+
     while (1)
     {
-        
-        /***    最大循环频率：500Hz     ***/
-        osDelay(2); // 500Hz
+        System._Update_SpiSamps();
+        osDelayUntil(&AppTick, 2);
     }
 }

@@ -48,6 +48,15 @@ namespace App
     };
 }
 
+using SpiSampPollFn = bool (*)(void *ctx);
+
+struct SpiSamp
+{
+    const char* name = "SpiSamp";               // 采样器名称，仅用于日志定位
+    SpiSampPollFn poll_full_frame = nullptr;    // 轮询回调，返回本次是否采样成功
+    void* ctx = nullptr;                           // 回调上下文
+};
+
 class Application
 {
     friend class SystemType;            // 允许系统类访问私有成员
@@ -101,6 +110,7 @@ class SystemType
     friend void RobotSystemCpp();
     friend void ApplicationCpp();
     friend void StateCoreCpp();
+    friend void SpiReadCpp();
 
     SINGLETON(SystemType):Display(*this){};
     
@@ -112,6 +122,7 @@ class SystemType
     void _Update_LedBand();
     void _Update_Applications();
     void _Update_SelfCheck(); 
+    void _Update_SpiSamps();
 
     class _LedDisplayAPI
     {
@@ -168,6 +179,7 @@ class SystemType
 
     bool is_retrying = false;                               // 是否处于重试状态（从RetryZone出发）
     Application* app_list[24];                              // 系统中的应用实例列表
+    SpiSamp* spi_sampler_list[24];                       // SPI采样实例列表
 
 
 public:
@@ -197,6 +209,8 @@ public:
     
     /// @brief 应用注册 
     bool RegistApp(Application& app_inst);
+    /// @brief SPI采样任务注册（只注册回调，不处理调度）
+    bool RegistSpiSamp(SpiSamp& sampler);
 
     /// @brief 运行机器人系统主进程
     void Run();
@@ -207,6 +221,7 @@ public:
     
     private:
     uint16_t ledband_prescaler = 4;                     // 主灯带更新预分频（200 / 4 = 50Hz）
+    
 };
 
 
