@@ -24,6 +24,9 @@ void ApplicationCpp();
 /// @brief 机器人主任务
 void RobotSystemCpp();
 
+/// @brief SPI读取任务
+void SpiReadCpp();
+
 /// @brief 测试任务
 void TestCpp();
 

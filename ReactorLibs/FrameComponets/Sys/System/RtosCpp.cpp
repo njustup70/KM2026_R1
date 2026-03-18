@@ -16,6 +16,7 @@
 // 如果需要在其他地方引用（如挂起任务），可以在头文件 extern
 TaskHandle_t ApplicationTaskHandle;
 TaskHandle_t RobotSystemTaskHandle;
+TaskHandle_t SpiReadTaskHandle;
 TaskHandle_t ControlTaskHandle;
 TaskHandle_t StateCoreTaskHandle;
 TaskHandle_t CoroutineHandles[4]; // 协程数组，管理更方便
@@ -73,6 +74,9 @@ void Reactor46H_TakeOverRTOS()
 
     xTaskCreate(TaskWrapper, "RobotSys", 256, (void*)RobotSystemCpp, 
                 osPriorityNormal, &RobotSystemTaskHandle);
+
+    xTaskCreate(TaskWrapper, "SpiRead", 128, (void*)SpiReadCpp, 
+                osPriorityBelowNormal, &SpiReadTaskHandle);
 
     xTaskCreate(TaskWrapper, "App", 512, (void*)ApplicationCpp, 
                 osPriorityNormal, &ApplicationTaskHandle);
@@ -156,5 +160,20 @@ void ControlCpp()
         System.PerformanceRun();
         /***    最大循环频率：1000Hz     ***/
         osDelay(1); // FreeRTOS的极限，1ms喂狗
+    }
+}
+
+
+/**
+ * @brief 读取SPI数据的任务
+ * 
+ */
+void SpiReadCpp()
+{
+    while (1)
+    {
+        
+        /***    最大循环频率：500Hz     ***/
+        osDelay(2); // 500Hz
     }
 }
