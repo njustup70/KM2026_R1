@@ -165,7 +165,7 @@ def run_sync_keil(root: Path) -> None:
 
 
 def pull_extensions_repo(root: Path) -> None:
-    reactor_lib_dir = root / "ReactorLib"
+    reactor_lib_dir = root / "ReactorLibs"
     extensions_dir = reactor_lib_dir / "Extensions70"
 
     reactor_lib_dir.mkdir(parents=True, exist_ok=True)
