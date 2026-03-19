@@ -93,10 +93,24 @@ uint64_t DWT_GetTimeline_USec(void);
  * @brief DWT延时函数,单位为秒/s
  * @attention 该函数不受中断是否开启的影响,可以在临界区和关闭中断时使用
  * @note 禁止在__disable_irq()和__enable_irq()之间使用HAL_Delay()函数,应使用本函数
+ * @note 单次等待内部使用32位CYCCNT差值计数,最大只支持不超过一整圈计数器的等待
+ *       超过上限时会被钳制到最大可等待值,避免比较溢出后死循环
+ *       A板(180MHz)建议Sec <= 23.8f, C板(168MHz)建议Sec <= 25.5f
  *
- * @param Delay 延时时间,单位为秒/s
+ * @param Sec 延时时间,单位为秒/s
  */
-void DWT_Delay(float Delay);
+void DWT_Delay(float Sec);
+
+/**
+ * @brief DWT延时函数,单位为毫秒/ms
+ * @attention 该函数不受中断是否开启的影响,可以在临界区和关闭中断时使用
+ * @note 单次等待内部使用32位CYCCNT差值计数,最大只支持不超过一整圈计数器的等待
+ *       超过上限时会被钳制到最大可等待值,避免比较溢出后死循环
+ *       A板(180MHz)建议MilSec <= 23800.0f, C板(168MHz)建议MilSec <= 25500.0f
+ *
+ * @param MilSec 延时时间,单位为毫秒/ms
+ */
+void DWT_DelayMs(float MilSec);
 
 /**
  * @brief DWT更新时间轴函数,会被三个timeline函数调用

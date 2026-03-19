@@ -15,6 +15,39 @@ static uint32_t CYCCNT_LAST;
 static uint64_t CYCCNT64;
 
 /**
+ * @brief 将等待时间换算成CYCCNT tick，并限制在单圈32位差值可表达的范围内
+ * @note DWT_Delay / DWT_DelayMs 内部都是通过 `(uint32_t)(now - start)` 来判断是否到时
+ *       这种写法只在“目标tick数不超过 uint32_t 一整圈”时成立
+ *       因此这里统一做两件事：
+ *       1. 非法或非正数参数直接按0处理，避免无意义等待
+ *       2. 超过单圈上限时钳制到 UINT32_MAX，避免比较目标超过可达范围后死循环
+ *
+ * @param wait 输入等待值，单位由 cpu_freq 决定
+ * @param cpu_freq 对应单位下每秒/每毫秒的tick频率
+ * @return uint32_t 可安全用于32位差值比较的等待tick数
+ */
+static uint32_t DWT_GetWaitTicks(double wait, uint32_t cpu_freq)
+{
+    // 小于等于0的等待没有实际意义，直接返回0 tick
+    if (wait <= 0.0)
+    {
+        return 0u;
+    }
+
+    // 使用double先做乘法，避免float在大数区间过早损失精度
+    double wait_ticks = wait * (double)cpu_freq;
+
+    // 目标tick超过32位单圈差值的表达范围时，钳到最大安全值
+    if (wait_ticks >= (double)UINT32_MAX)
+    {
+        return UINT32_MAX;
+    }
+
+    // 这里保留向下取整语义，保证实际等待不会因为进位而越过请求上界
+    return (uint32_t)wait_ticks;
+}
+
+/**
  * @brief 用于检查DWT CYCCNT寄存器是否溢出,并更新CYCCNT_RountCount
  * @attention 此函数假设两次调用之间的时间间隔不超过一次溢出
  *
@@ -163,11 +196,24 @@ uint64_t DWT_GetTimeline_USec(void)
     return DWT_Timelinef32;
 }
 
-void DWT_Delay(float Delay)
+void DWT_Delay(float Sec)
 {
     uint32_t tickstart = DWT->CYCCNT;
-    float wait = Delay;
+    // 先把秒换算成安全的tick目标，避免在while里重复做浮点乘法和隐式类型比较
+    uint32_t wait_ticks = DWT_GetWaitTicks((double)Sec, CPU_FREQ_Hz);
 
-    while ((DWT->CYCCNT - tickstart) < wait * (float)CPU_FREQ_Hz)
+    // 这里依赖uint32_t减法回绕特性做忙等待，但前提是 wait_ticks 不超过单圈上限
+    while ((uint32_t)(DWT->CYCCNT - tickstart) < wait_ticks)
+        ;
+}
+
+void DWT_DelayMs(float MilSec)
+{
+    uint32_t tickstart = DWT->CYCCNT;
+    // 毫秒版本与秒版本保持同一套安全策略，只是换算频率改为每毫秒tick数
+    uint32_t wait_ticks = DWT_GetWaitTicks((double)MilSec, CPU_FREQ_Hz_ms);
+
+    // 纯uint32_t比较可避免把float精度问题带进循环条件
+    while ((uint32_t)(DWT->CYCCNT - tickstart) < wait_ticks)
         ;
 }
