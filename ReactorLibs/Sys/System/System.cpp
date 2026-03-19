@@ -14,12 +14,12 @@ Farcon farcon;
 void SystemType::Init(bool Sc)
 {
     // 初始化日志系统
-    BspLog_Init();
+//    BspLog_Init();
 
-    // 输出系统启动信息
-    BspLog_LogInfo("-- -- -- \n\n\n\n");
-    BspLog_LogSpec("/----^---^-- Welcome to REACTOR SYSTEM --^---^----/");
-    BspLog_LogInfo("Waiting for system initialization...\n\n");
+//    // 输出系统启动信息
+//    BspLog_LogInfo("-- -- -- \n\n\n\n");
+//    BspLog_LogSpec("/----^---^-- Welcome to REACTOR SYSTEM --^---^----/");
+//    BspLog_LogInfo("Waiting for system initialization...\n\n");
 
     // 初始化DWT计时器（C板）
     DWT_Init(CPU_HERT_C_BOARD_MHZ);

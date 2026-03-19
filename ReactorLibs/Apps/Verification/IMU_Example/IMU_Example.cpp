@@ -6,8 +6,8 @@
 void IMU_Example::Start()
 {
   // 配置 SPI 实例: CS1_Accel -> PA4, CS1_Gyro -> PB0
-  spi_acc_inst_.Init((BSP::SPI::SpiID)&hspi1, {'A', 4});
-  spi_gyro_inst_.Init((BSP::SPI::SpiID)&hspi1, {'B', 0}); // 假设加速度计和陀螺仪共用SPI1，仅CS不同
+  spi_acc_inst_.Init((BSP::SPI::SpiID)&hspi4, {'A', 4});
+  spi_gyro_inst_.Init((BSP::SPI::SpiID)&hspi4, {'B', 0}); // 假设加速度计和陀螺仪共用SPI1，仅CS不同
 
   // 初始化 BMI088 (包含自动标定)
   imu_.Init(&spi_acc_inst_, &spi_gyro_inst_);
