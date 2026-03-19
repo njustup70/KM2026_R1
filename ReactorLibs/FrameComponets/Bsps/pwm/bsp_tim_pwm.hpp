@@ -2,11 +2,6 @@
 #define BSP_TIM_PWM_H
 #include "bsp_halport.hpp"
 
-#ifdef __cplusplus
-extern "C"
-{
-#endif
-
 typedef struct BspTIMPWM_t
 {
     TIM_HandleTypeDef *htim;        // PWM定时器句柄
@@ -27,9 +22,5 @@ void BspTIMPWM_InstRegist(BspTIMPWM_TypeDef *tim_inst, TIM_HandleTypeDef *htim, 
 void BspTIMPWM_SetDuty(BspTIMPWM_TypeDef *tim_inst, float duty);
 void BspTIMPWM_Enable(BspTIMPWM_TypeDef *tim_inst);
 void BspTIMPWM_Disable(BspTIMPWM_TypeDef *tim_inst);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif

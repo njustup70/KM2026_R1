@@ -1,15 +1,7 @@
 #ifndef RELAY_HPP
 #define RELAY_HPP
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include "bsp_gpio.hpp"
-
-#ifdef __cplusplus
-}
-#endif
 
 // 继电器类
 class Relay

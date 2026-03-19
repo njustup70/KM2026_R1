@@ -16,11 +16,6 @@
 
 #include "bsp_halport.hpp"
 
-#ifdef __cplusplus
-extern "C"
-{
-#endif
-
 #define CPU_HERT_A_BOARD_MHZ 180
 #define CPU_HERT_C_BOARD_MHZ 168
 
@@ -125,7 +120,5 @@ void DWT_SysTimeUpdate(void);
  */
 void DWT_CntUpdate(void);
 
-#ifdef __cplusplus
-}
-#endif
+
 #endif /* BSP_DWT_H_ */

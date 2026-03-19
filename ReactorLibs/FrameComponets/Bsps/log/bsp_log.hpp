@@ -1,10 +1,6 @@
 #pragma once
 #include "bsp_halport.hpp"
 
-#ifdef __cplusplus
-extern "C"{
-#endif
-
 typedef void (*cmd_handler_t)(int argc, char **argv);
 
 
@@ -31,6 +27,3 @@ extern void BspLog_LogRespond(const char* fmt, ...);
 
 extern void BspLog_RegistCMD(const char* name, cmd_handler_t handler, const char* help);
 
-#ifdef __cplusplus
-}
-#endif
