@@ -56,6 +56,29 @@
     #endif
 
 #endif 
+ 
+namespace BSP
+{
+    namespace CAN { struct OpaqueCan; using CanID = OpaqueCan*; }
+    namespace UART { struct OpaqueUart; using UartID = OpaqueUart*; }
+    namespace SPI { struct OpaqueSpi; using SpiID = OpaqueSpi*; }
+}
+
+// ---- 框架助手函数：将 HAL 句柄转换为框架 ID ----
+inline BSP::CAN::CanID ToID(CAN_HandleTypeDef* handle)
+{
+    return reinterpret_cast<BSP::CAN::CanID>(handle);
+}
+
+inline BSP::UART::UartID ToID(UART_HandleTypeDef* handle)
+{
+    return reinterpret_cast<BSP::UART::UartID>(handle);
+}
+
+inline BSP::SPI::SpiID ToID(SPI_HandleTypeDef* handle)
+{
+    return reinterpret_cast<BSP::SPI::SpiID>(handle);
+}
 
 
 namespace Hardware

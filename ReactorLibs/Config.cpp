@@ -8,18 +8,18 @@
 void Hardware::Config_Hardwares()
 {
     /**-----    配置CAN总线     -----**/
-    Hardware::hcan_main = reinterpret_cast<BSP::CAN::CanID>(&hcan1);
+    Hardware::hcan_main = ToID(&hcan1);
     Hardware::hcan_sub = nullptr;
-
+ 
     /**-----    配置串口    -----**/
-    Hardware::huart_host = reinterpret_cast<BSP::UART::UartID>(&huart1);
-    Hardware::huart_farcon = reinterpret_cast<BSP::UART::UartID>(&huart3);
-    Hardware::huart_odom = reinterpret_cast<BSP::UART::UartID>(&huart6);
+    Hardware::huart_host = ToID(&huart1);
+    Hardware::huart_farcon = ToID(&huart3);
+    Hardware::huart_odom = ToID(&huart6);
     Hardware::huart_other = nullptr;
-
+ 
     /**-----    配置SPI总线    -----**/
     Hardware::spi_main_bus = nullptr;
-    Hardware::spi_imu_bus = nullptr;
+    Hardware::spi_imu_bus = ToID(&hspi1);
     Hardware::spi_ext_bus = nullptr;
 
     /**-----    配置定时器    -----**/
