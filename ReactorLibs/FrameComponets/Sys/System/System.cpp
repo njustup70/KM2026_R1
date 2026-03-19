@@ -376,10 +376,9 @@ bool SystemType::RegistApp(Application &app_inst)
 
 bool SystemType::RegistSpiSamp(SpiSamp &sampler)
 {
-    // 回调为空时不允许注册
     if (sampler.poll_full_frame == nullptr)
     {
-        BspLog_LogWarning("SpiSamp [%s] register failed: empty callback.\n",
+        BspLog_LogWarning("SpiSamp [%s] register failed: callback is null.\n",
                           (sampler.name != nullptr) ? sampler.name : "Unknown");
         return false;
     }
@@ -412,8 +411,10 @@ void SystemType::_Update_SpiSamps()
         // 确保实例存在
         if (sampler == nullptr) continue;
 
+        if (sampler->poll_full_frame == nullptr) continue;
+
         // 与 App 类似，按循环节拍直接轮询
-        sampler->poll_full_frame(sampler->ctx);
+        sampler->poll_full_frame(sampler->owner);
     }
 }
 

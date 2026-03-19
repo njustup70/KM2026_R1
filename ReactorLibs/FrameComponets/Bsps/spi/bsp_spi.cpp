@@ -457,19 +457,24 @@ bool Device::TransRecvDMA(uint8_t *tx_data, uint8_t *rx_data, uint16_t size)
  */
 DmaState Device::ConsumeDmaState()
 {
-    // 仅DMA owner可以读取并消费最终态，其他设备始终视为Idle
+    // 确认当前想读这个的设备，是DMA的owner；否则判定为其他设备，始终视为Idle
     if (GetDmaOwnerDevice(this->spi_id) != this)
     {
         return DmaState::Idle;
     }
 
+    // 读取状态
     DmaState state = GetDmaState(this->spi_id);
+    
+    // 只有owner设备能看到Done/Error状态
+    // 一旦看到就消费掉，复位为Idle并释放owner
     if (state == DmaState::Done || state == DmaState::Error)
     {
         // Done/Error为一次性事件：消费后复位为Idle并释放owner
         SetDmaState(this->spi_id, DmaState::Idle);
         SetDmaOwnerDevice(this->spi_id, nullptr);
     }
+
     return state;
 }
 

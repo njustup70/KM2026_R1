@@ -48,13 +48,11 @@ namespace App
     };
 }
 
-using SpiSampPollFn = bool (*)(void *ctx);
-
 struct SpiSamp
 {
     const char* name = "SpiSamp";               // 采样器名称，仅用于日志定位
-    SpiSampPollFn poll_full_frame = nullptr;    // 轮询回调，返回本次是否采样成功
-    void* ctx = nullptr;                           // 回调上下文
+    void* owner = nullptr;                      // 采样器所属对象
+    bool (*poll_full_frame)(void* owner) = nullptr;
 };
 
 class Application
