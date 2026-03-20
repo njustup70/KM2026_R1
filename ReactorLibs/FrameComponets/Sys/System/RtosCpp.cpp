@@ -4,6 +4,7 @@
 #include "freertos.h"
 #include "task.h"
 #include "cmsis_os.h"
+#include "semphr.h"
 
 #include "bsp_dwt.hpp"
 #include "motor_dji.hpp"
@@ -17,10 +18,18 @@
 TaskHandle_t ApplicationTaskHandle;
 TaskHandle_t RobotSystemTaskHandle;
 TaskHandle_t SpiReadTaskHandle;
+TaskHandle_t SpiConsumeTaskHandle;
 TaskHandle_t ControlTaskHandle;
 TaskHandle_t StateCoreTaskHandle;
 TaskHandle_t CoroutineHandles[4]; // 协程数组，管理更方便
+static SemaphoreHandle_t SpiConsumeSemaphore = nullptr;
 void Reactor46H_TakeOverRTOS();
+void ApplicationCpp();
+void RobotSystemCpp();
+void StateCoreCpp();
+void ControlCpp();
+void SpiReadCpp();
+void SpiConsumeCpp();
 
 
 /* ================= 内部适配器 ================= */
@@ -69,6 +78,13 @@ void Reactor46H_Initialize()
  */
 void Reactor46H_TakeOverRTOS()
 {
+    // SPI 消费线程平时阻塞在这个二值信号量上。
+    // 读线程只负责“叫醒它”，不直接承担消费算法。
+    if (SpiConsumeSemaphore == nullptr)
+    {
+        SpiConsumeSemaphore = xSemaphoreCreateBinary();
+    }
+
     xTaskCreate(TaskWrapper, "Control", 256, (void*)ControlCpp, 
                 osPriorityAboveNormal, &ControlTaskHandle);
 
@@ -77,6 +93,9 @@ void Reactor46H_TakeOverRTOS()
 
     xTaskCreate(TaskWrapper, "SpiRead", 128, (void*)SpiReadCpp, 
                 osPriorityBelowNormal, &SpiReadTaskHandle);
+
+    xTaskCreate(TaskWrapper, "SpiConsume", 256, (void*)SpiConsumeCpp,
+                osPriorityNormal, &SpiConsumeTaskHandle);
 
     xTaskCreate(TaskWrapper, "App", 512, (void*)ApplicationCpp, 
                 osPriorityNormal, &ApplicationTaskHandle);
@@ -90,6 +109,16 @@ void Reactor46H_TakeOverRTOS()
     //     xTaskCreate(CoroutineStub, "Coroutine", 128, NULL, 
     //                 tskIDLE_PRIORITY + 1, &CoroutineHandles[i]);
     // }
+}
+
+void Reactor46H_NotifySpiConsume()
+{
+    // 这里只做最直接的唤醒，不在这里判断是谁的新数据。
+    // 被唤醒后，消费线程会自己把各实例邮箱里的样本全部吃完。
+    if (SpiConsumeSemaphore != nullptr)
+    {
+        xSemaphoreGive(SpiConsumeSemaphore);
+    }
 }
 
 /**
@@ -176,5 +205,19 @@ void SpiReadCpp()
     {
         System._Update_SpiSamps();
         osDelayUntil(&AppTick, 2);
+    }
+}
+
+void SpiConsumeCpp()
+{
+    while (1)
+    {
+        // 平时阻塞等待；一旦有任意 SpiSamp 产出了完整新帧，就起来把当前可消费样本全部处理掉。
+        if (SpiConsumeSemaphore != nullptr)
+        {
+            xSemaphoreTake(SpiConsumeSemaphore, portMAX_DELAY);
+        }
+
+        System._Update_SpiConsumes();
     }
 }

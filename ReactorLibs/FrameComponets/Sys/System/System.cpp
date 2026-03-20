@@ -8,6 +8,7 @@
 #include "bsp_log.hpp"
 #include "freertos.h"
 #include "task.h"
+#include "RtosCpp.hpp"
 
 SystemType& System = SystemType::GetInstance();
 LedWs2812 sys_ledband;
@@ -413,8 +414,31 @@ void SystemType::_Update_SpiSamps()
 
         if (sampler->poll_full_frame == nullptr) continue;
 
-        // 与 App 类似，按循环节拍直接轮询
-        sampler->poll_full_frame(sampler->owner);
+        // 与 App 类似，按循环节拍直接轮询。
+        // 一旦这一轮确实产出了完整新帧，并且实例声明了消费回调，
+        // 就立刻唤醒消费线程，避免把算法耗时塞进 SpiRead 线程。
+        bool has_new_frame = sampler->poll_full_frame(sampler->owner);
+        if (has_new_frame && sampler->consume_full_frame != nullptr)
+        {
+            Reactor46H_NotifySpiConsume();
+        }
+    }
+}
+
+void SystemType::_Update_SpiConsumes()
+{
+    for (uint8_t i = 0; i < 24; i++)
+    {
+        SpiSamp *sampler = spi_sampler_list[i];
+
+        if (sampler == nullptr) continue;
+        if (sampler->consume_full_frame == nullptr) continue;
+
+        // 一次唤醒就把实例内部已经准备好的样本全部消费掉。
+        // 这样 System 只管“唤醒”，不需要在系统层维护额外的样本队列状态。
+        while (sampler->consume_full_frame(sampler->owner))
+        {
+        }
     }
 }
 

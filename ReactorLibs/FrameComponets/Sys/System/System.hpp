@@ -53,6 +53,7 @@ struct SpiSamp
     const char* name = "SpiSamp";               // 采样器名称，仅用于日志定位
     void* owner = nullptr;                      // 采样器所属对象
     bool (*poll_full_frame)(void* owner) = nullptr;
+    bool (*consume_full_frame)(void* owner) = nullptr; // 可选的消费回调：读线程产出样本后，由消费线程尽快处理
 };
 
 class Application
@@ -109,6 +110,7 @@ class SystemType
     friend void ApplicationCpp();
     friend void StateCoreCpp();
     friend void SpiReadCpp();
+    friend void SpiConsumeCpp();
 
     SINGLETON(SystemType):Display(*this){};
     
@@ -121,6 +123,7 @@ class SystemType
     void _Update_Applications();
     void _Update_SelfCheck(); 
     void _Update_SpiSamps();
+    void _Update_SpiConsumes();
 
     class _LedDisplayAPI
     {
