@@ -216,6 +216,33 @@ inline Color operator/(const Color &vec, float scalar)
   return Color(vec.r / scalar, vec.g / scalar, vec.b / scalar);
 }
 
+/**
+ * @name 四元数
+ */
+class Quat
+{
+public:
+  float w, x, y, z;
+  Quat(float w = 1.0f, float x = 0.0f, float y = 0.0f, float z = 0.0f) : w(w), x(x), y(y), z(z)
+  {
+  }
+
+  void Normalize();
+  Vec3 ToEuler() const;
+
+  friend Quat operator*(const Quat &lhs, const Quat &rhs);
+};
+
+/*********      运算符重载      **********/
+inline Quat operator*(const Quat &lhs, const Quat &rhs)
+{
+  return Quat(
+      lhs.w * rhs.w - lhs.x * rhs.x - lhs.y * rhs.y - lhs.z * rhs.z,
+      lhs.w * rhs.x + lhs.x * rhs.w + lhs.y * rhs.z - lhs.z * rhs.y,
+      lhs.w * rhs.y - lhs.x * rhs.z + lhs.y * rhs.w + lhs.z * rhs.x,
+      lhs.w * rhs.z + lhs.x * rhs.y - lhs.y * rhs.x + lhs.z * rhs.w);
+}
+
 typedef struct
 {
   int id;

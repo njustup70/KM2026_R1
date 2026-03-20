@@ -197,3 +197,46 @@ int StdMath::signf(float val)
     else if (val < 0)   return -1;
     else return 0;
 }
+
+///////////////////////////////////////////          QUAT         /////////////////////////////////////////////////////
+/*********      Quat 归一化      **********/
+void Quat::Normalize()
+{
+    float magnitude = sqrt(this->w * this->w + this->x * this->x + this->y * this->y + this->z * this->z);
+    if (magnitude > 0.0f)
+    {
+        this->w /= magnitude;
+        this->x /= magnitude;
+        this->y /= magnitude;
+        this->z /= magnitude;
+    }
+}
+
+/*********      Quat 转欧拉角      **********/
+Vec3 Quat::ToEuler() const
+{
+    Vec3 euler;
+    
+    // Roll (x-axis rotation)
+    float sinr_cosp = 2.0f * (this->w * this->x + this->y * this->z);
+    float cosr_cosp = 1.0f - 2.0f * (this->x * this->x + this->y * this->y);
+    euler.x = atan2(sinr_cosp, cosr_cosp);
+
+    // Pitch (y-axis rotation)
+    float sinp = 2.0f * (this->w * this->y - this->z * this->x);
+    if (fabs(sinp) >= 1.0f)
+    {
+        euler.y = copysign(3.14159265358979323846f / 2.0f, sinp); // use 90 degrees if out of range
+    }
+    else
+    {
+        euler.y = asin(sinp);
+    }
+
+    // Yaw (z-axis rotation)
+    float siny_cosp = 2.0f * (this->w * this->z + this->x * this->y);
+    float cosy_cosp = 1.0f - 2.0f * (this->y * this->y + this->z * this->z);
+    euler.z = atan2(siny_cosp, cosy_cosp);
+
+    return euler;
+}
