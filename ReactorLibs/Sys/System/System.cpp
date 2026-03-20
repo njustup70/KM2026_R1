@@ -6,11 +6,12 @@
 #include "Monitor.hpp"
 #include "farcon.hpp"
 #include "bsp_log.hpp"
-
+#include "motor_dji.hpp"
 SystemType& System = SystemType::GetInstance();
 LedWs2812 sys_ledband;
 Farcon farcon;
-
+MotorDJI gimb_motor;
+float target_speed=0;
 void SystemType::Init(bool Sc)
 {
     // 初始化日志系统
@@ -36,6 +37,16 @@ void SystemType::Init(bool Sc)
     
     odometer.Init(Hardware::huart_odom, true, false, false, true);
 
+gimb_motor.Init(Hardware::hcan_main, 5, MOTOR_TYPE_GM6020);
+    gimb_motor.ConfigPID()
+              .AsSpeedC()                     // 设置为速度模式
+              .Spd_Coeff(0.5f, 0.01f, 0.0f)   // 填入调试好的 PID 参数
+              .Spd_Limit(3.0f, 10.0f)          // 限幅建议先设小点（GM6020最大3A）
+              .Apply();                       // 应用配置
+
+    gimb_motor.driver.Enable();
+
+
     // 自动开始自检
     if (Sc) status = Systems::SELF_CHECK;
 }
@@ -53,7 +64,7 @@ void SystemType::Run()
 
     // 管理 主灯带 状态（50Hz分频）
     _Update_LedBand();
-
+     gimb_motor.SetSpd(target_speed);
     // 提供位置
     if (pos_source != nullptr)
     {
