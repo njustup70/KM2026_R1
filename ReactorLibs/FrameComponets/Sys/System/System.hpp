@@ -188,6 +188,7 @@ public:
     bool system_ready_flag = false;                  // 系统准备就绪标志位
     bool system_start_to_work_flag = false;         // 系统开始工作标志位
 
+    bool out_from_debugmode = false;
 
     /// @brief 机器人全局位置，单位m，场地坐标系
     Vec3    position;

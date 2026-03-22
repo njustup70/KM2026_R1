@@ -86,13 +86,13 @@ void Reactor46H_TakeOverRTOS()
     }
 
     xTaskCreate(TaskWrapper, "Control", 256, (void*)ControlCpp, 
-                osPriorityAboveNormal, &ControlTaskHandle);
+                osPriorityNormal, &ControlTaskHandle);
 
     xTaskCreate(TaskWrapper, "RobotSys", 256, (void*)RobotSystemCpp, 
                 osPriorityNormal, &RobotSystemTaskHandle);
 
     xTaskCreate(TaskWrapper, "SpiRead", 128, (void*)SpiReadCpp, 
-                osPriorityBelowNormal, &SpiReadTaskHandle);
+                osPriorityNormal, &SpiReadTaskHandle);
 
     xTaskCreate(TaskWrapper, "SpiConsume", 256, (void*)SpiConsumeCpp,
                 osPriorityNormal, &SpiConsumeTaskHandle);
@@ -101,7 +101,7 @@ void Reactor46H_TakeOverRTOS()
                 osPriorityNormal, &ApplicationTaskHandle);
 
     xTaskCreate(TaskWrapper, "StateCore", 512, (void*)StateCoreCpp, 
-                osPriorityHigh, &StateCoreTaskHandle);
+                osPriorityNormal, &StateCoreTaskHandle);
 
     // 如果你还需要原来的 4 个协程，可以用循环批量创建
     // for(int i = 0; i < 4; i++) {

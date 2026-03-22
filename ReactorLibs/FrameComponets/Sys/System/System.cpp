@@ -77,11 +77,13 @@ void SystemType::Run()
     stop_cnt++;
     if (stop_cnt == 6)
     {
+      out_from_debugmode = true;
       monit.LogSpec("--- --- Exit of Debug Detected! --- ---\n");
     }
   }
   else
   {
+    out_from_debugmode = false;
     stop_cnt = 0;
   }
 

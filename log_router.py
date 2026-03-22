@@ -11,6 +11,9 @@ from colorama import init, Fore, Style
 init(autoreset=True)
 
 # ================= 配置区域 =================
+# 默认串口配置
+DEFAULT_BAUD_RATE = 921600
+
 # 是否显示每一行接收到的原始数据 (调试开关)，可通过终端动态配置
 DEBUG_SHOW_RAW_LINE = False
 
@@ -110,12 +113,17 @@ def list_serial_ports():
     return [port.device for port in ports]
 
 
-def main():
-    # 1. 选择串口
+def get_serial_config():
+    """默认自动配置；仅在 -p 模式下进入交互配置。"""
     ports = list_serial_ports()
     if not ports:
         print(f"{Fore.RED}No serial ports found!")
-        return
+        return None
+
+    interactive_mode = "-p" in sys.argv[1:]
+
+    if not interactive_mode:
+        return ports[0], DEFAULT_BAUD_RATE, DEBUG_SHOW_RAW_LINE
 
     print("Available Ports:")
     for i, p in enumerate(ports):
@@ -124,18 +132,30 @@ def main():
     try:
         idx = int(input("Select Port Index: "))
         port_name = ports[idx]
-        baud_rate = int(input("Baudrate: ") or "115200")
+        baud_rate = int(input(f"Baudrate [{DEFAULT_BAUD_RATE}]: ") or str(DEFAULT_BAUD_RATE))
 
         debug_input = input("Show raw/debug binary data? (y/N): ").strip().lower()
-        if debug_input == "y":
-            global DEBUG_SHOW_RAW_LINE
-            DEBUG_SHOW_RAW_LINE = True
-        else:
-            DEBUG_SHOW_RAW_LINE = False
+        debug_show_raw_line = debug_input == "y"
+        return port_name, baud_rate, debug_show_raw_line
 
     except:
         print("Invalid selection.")
+        return None
+
+
+def main():
+    global DEBUG_SHOW_RAW_LINE
+
+    serial_config = get_serial_config()
+    if serial_config is None:
         return
+
+    port_name, baud_rate, DEBUG_SHOW_RAW_LINE = serial_config
+
+    if "-p" not in sys.argv[1:]:
+        print(
+            f"{Fore.CYAN}[System] Auto selected {port_name} @ {baud_rate}, raw/debug output: {'ON' if DEBUG_SHOW_RAW_LINE else 'OFF'}"
+        )
 
     # 启动 TCP 转发线程
     forwarder = DataForwarder()
