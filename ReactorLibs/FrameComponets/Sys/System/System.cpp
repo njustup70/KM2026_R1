@@ -49,8 +49,11 @@ void SystemType::Init(bool Sc)
  */
 void SystemType::Run()
 {
-    // 自检
-    _Update_SelfCheck();
+  static float delta_time = 0;
+  static uint32_t cnt = 0;
+
+  // 自检
+  _Update_SelfCheck();
 
     /*--<       正式运行        >--*/
 
@@ -63,11 +66,27 @@ void SystemType::Run()
         position = *pos_source;
     }
 
-    // 更新全局时间
-    runtime_tick = DWT_GetTimeline_Sec();
+  // 更新全局时间
+  runtime_tick = DWT_GetTimeline_Sec();
+  delta_time = DWT_GetDeltaTime(&cnt);
 
-    // RTT接收命令处理
-    BspLog_RecvCMD();
+  // 判定计时器是否停止连续六次（30ms）
+  static uint32_t stop_cnt = 0;
+  if (delta_time < 0.002f)
+  {
+    stop_cnt++;
+    if (stop_cnt == 6)
+    {
+      monit.LogSpec("--- --- Exit of Debug Detected! --- ---\n");
+    }
+  }
+  else
+  {
+    stop_cnt = 0;
+  }
+
+  // RTT接收命令处理
+  // BspLog_RecvCMD();
 
     // 零开销巡检所有 App 状态
     for (int i = 0; i < 24; i++) {
