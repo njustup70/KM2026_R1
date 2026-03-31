@@ -19,7 +19,7 @@ void Hardware::Config_Hardwares()
  
     /**-----    配置SPI总线    -----**/
     Hardware::spi_main_bus = nullptr;
-    Hardware::spi_imu_bus = ToID(&hspi1);
+    Hardware::spi_imu_bus = nullptr;
     Hardware::spi_ext_bus = nullptr;
 
     /**-----    配置定时器    -----**/

@@ -12,7 +12,6 @@
 
 SystemType& System = SystemType::GetInstance();
 LedWs2812 sys_ledband;
-Farcon farcon;
 
 void SystemType::Init(bool Sc)
 {
