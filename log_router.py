@@ -1,0 +1,371 @@
+import serial
+import serial.tools.list_ports
+import socket
+import threading
+import sys
+import select
+import time
+from colorama import init, Fore, Style
+
+# 初始化 Colorama 以支持 Windows 终端颜色
+init(autoreset=True)
+
+# ================= 配置区域 =================
+# 默认串口配置
+DEFAULT_BAUD_RATE = 921600
+FRAME_START_BYTE = ord("[")
+SERIAL_REOPEN_DELAY_SEC = 0.05
+SERIAL_REOPEN_COOLDOWN_SEC = 0.3
+JUSTFLOAT_TAIL = b"\x00\x00\x80\x7f"
+FIREWATER_MAX_FRAME_LEN = 64
+FIREWATER_IDLE_FLUSH_SEC = 0.02
+
+# 是否显示每一行接收到的原始数据 (调试开关)，可通过终端动态配置
+DEBUG_SHOW_RAW_LINE = False
+
+# 转发给 VOFA+ 的 TCP 端口 (VOFA+ 选 TCP Client 连接此端口)
+TCP_HOST = "0.0.0.0"
+TCP_PORT = 8888
+
+# 根据 bsp_log.cpp 定义的日志前缀与颜色映射
+# 只有匹配到以下前缀的文本，才被认为是日志在终端截留着色，否则一律当作波形转给 VOFA+
+# 您可以在这里面自定义需要截获的前缀和您期望设定的颜色
+LOG_STYLES = {
+    "[Error] ": Fore.RED + Style.BRIGHT,
+    "[Warn] ": Fore.YELLOW + Style.BRIGHT,
+    "[Well] ": Fore.GREEN + Style.BRIGHT,
+    "[Note] ": Fore.MAGENTA + Style.BRIGHT,  # 对应 STM32 的 Purple
+    "[Respond] ": Fore.CYAN + Style.BRIGHT,  # 对应 STM32 的 Blue
+    "[Info] ": Fore.WHITE + Style.BRIGHT,  # 例子：添加对 Info 的白字拦截
+}
+
+# ===========================================
+
+
+class DataForwarder:
+    def __init__(self):
+        self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self.client_socket = None
+        self.running = True
+
+    def start_server(self):
+        """启动 TCP 服务器等待 VOFA+ 连接"""
+        try:
+            self.server_socket.bind((TCP_HOST, TCP_PORT))
+            self.server_socket.listen(1)
+            print(
+                f"{Fore.CYAN}[System] TCP Server listening on port {TCP_PORT}. Connect VOFA+ via TCP Client mode."
+            )
+        except Exception as e:
+            print(f"{Fore.RED}[System] Failed to bind TCP port: {e}")
+            return
+
+        while self.running:
+            try:
+                # 阻塞等待连接
+                client, addr = self.server_socket.accept()
+                print(f"{Fore.GREEN}[System] VOFA+ Connected from {addr}")
+                self.client_socket = client
+
+                # 保持连接直到断开
+                while self.running:
+                    try:
+                        # select(read_list, write_list, error_list, timeout)
+                        # timeout=0 表示非阻塞，立即返回结果
+                        # r 列表如果不为空，说明 client_socket 有数据（或断开信号）来了
+                        r, _, _ = select.select([self.client_socket], [], [], 0)
+
+                        if r:
+                            # 只有当 select 说“有动静”时，才去 peek 数据
+                            # 这样就不需要 MSG_DONTWAIT 标志了
+                            data = self.client_socket.recv(16, socket.MSG_PEEK)
+                            if data == b"":
+                                # 读到空数据意味着对端（VOFA+）关闭了连接
+                                raise ConnectionResetError
+                    except (ConnectionResetError, OSError):
+                        break
+                    time.sleep(0.5)
+
+                print(f"{Fore.YELLOW}[System] VOFA+ Disconnected")
+                if self.client_socket:
+                    self.client_socket.close()
+                    self.client_socket = None
+            except Exception as e:
+                if self.running:
+                    print(f"{Fore.RED}[System] TCP Error: {e}")
+
+    def send_waveform(self, data_bytes):
+        """转发数据给 VOFA+"""
+        if DEBUG_SHOW_RAW_LINE:
+            print(f"[{Fore.BLUE}DEBUG-WAVE{Fore.RESET}] Forwarding: {repr(data_bytes)}")
+
+        if self.client_socket:
+            try:
+                self.client_socket.sendall(data_bytes)
+            except:
+                # 发送失败通常意味着连接断开了，主循环会处理
+                pass
+
+    def stop(self):
+        self.running = False
+        if self.client_socket:
+            self.client_socket.close()
+        self.server_socket.close()
+
+
+def list_serial_ports():
+    ports = serial.tools.list_ports.comports()
+    return [port.device for port in ports]
+
+
+def get_serial_config():
+    """默认自动配置；仅在 -p 模式下进入交互配置。"""
+    ports = list_serial_ports()
+    if not ports:
+        print(f"{Fore.RED}No serial ports found!")
+        return None
+
+    interactive_mode = "-p" in sys.argv[1:]
+
+    if not interactive_mode:
+        return ports[0], DEFAULT_BAUD_RATE, DEBUG_SHOW_RAW_LINE
+
+    print("Available Ports:")
+    for i, p in enumerate(ports):
+        print(f"{i}: {p}")
+
+    try:
+        idx = int(input("Select Port Index: "))
+        port_name = ports[idx]
+        baud_rate = int(input(f"Baudrate [{DEFAULT_BAUD_RATE}]: ") or str(DEFAULT_BAUD_RATE))
+
+        debug_input = input("Show raw/debug binary data? (y/N): ").strip().lower()
+        debug_show_raw_line = debug_input == "y"
+        return port_name, baud_rate, debug_show_raw_line
+
+    except:
+        print("Invalid selection.")
+        return None
+
+
+def main():
+    global DEBUG_SHOW_RAW_LINE
+
+    serial_config = get_serial_config()
+    if serial_config is None:
+        return
+
+    port_name, baud_rate, DEBUG_SHOW_RAW_LINE = serial_config
+
+    if "-p" not in sys.argv[1:]:
+        print(
+            f"{Fore.CYAN}[System] Auto selected {port_name} @ {baud_rate}, raw/debug output: {'ON' if DEBUG_SHOW_RAW_LINE else 'OFF'}"
+        )
+
+    # 启动 TCP 转发线程
+    forwarder = DataForwarder()
+    tcp_thread = threading.Thread(target=forwarder.start_server, daemon=True)
+    tcp_thread.start()
+
+    # 打开串口并开始处理
+    try:
+        ser = serial.Serial(port_name, baud_rate, timeout=0.1)
+        print(f"{Fore.GREEN}[System] Opened {port_name} @ {baud_rate}")
+        print(
+            f"{Fore.GREEN}[System] Logs will appear here. Waveforms forwarded to TCP :{TCP_PORT}"
+        )
+        print("-" * 40)
+
+        buffer = bytearray()
+        last_reopen_time = 0.0
+        last_rx_time = time.time()
+        # 预先将所有的前缀转换为 bytes，以优化判断速度
+        prefixes_bytes = [p.encode("utf-8") for p in LOG_STYLES.keys()]
+
+        def could_be_log(buf):
+            # 判断 buf 是否可能是一条彩色日志的开头
+            for p in prefixes_bytes:
+                # 只要 buf 和 p 在可比较的长度内完全一致，就有可能是日志
+                match_len = min(len(p), len(buf))
+                if p[:match_len] == buf[:match_len]:
+                    return True
+            return False
+
+        def drop_garbled_and_resync(garbled_bytes):
+            # 乱码提示只展示前 80 字节，避免刷屏
+            preview = repr(garbled_bytes[:80])
+            if len(garbled_bytes) > 80:
+                preview += "..."
+            print(
+                f"{Fore.YELLOW}[System] 丢弃乱码（{preview}），已恢复脚本。",
+                flush=True,
+            )
+
+        def quick_restart_serial():
+            nonlocal ser, last_reopen_time
+            now = time.time()
+            if now - last_reopen_time < SERIAL_REOPEN_COOLDOWN_SEC:
+                return
+            last_reopen_time = now
+
+            print(f"{Fore.YELLOW}[System] 检测到帧错误，快速重启串口中...", flush=True)
+            try:
+                if ser.is_open:
+                    ser.close()
+            except:
+                pass
+
+            time.sleep(SERIAL_REOPEN_DELAY_SEC)
+            try:
+                ser = serial.Serial(port_name, baud_rate, timeout=0.1)
+                print(
+                    f"{Fore.GREEN}[System] 串口已恢复: {port_name} @ {baud_rate}",
+                    flush=True,
+                )
+            except serial.SerialException as e:
+                print(f"{Fore.RED}[System] 串口重启失败: {e}", flush=True)
+
+        while True:
+            # 使用 read 获取可用数据，避免 readline 在无 '\n' 的纯二进制流上阻塞
+            # in_waiting 是当前串口缓冲区已接收的字节数
+            data = ser.read(max(1, ser.in_waiting))
+            if not data:
+                continue
+
+            last_rx_time = time.time()
+            buffer.extend(data)
+
+            while buffer:
+                # 下位机重上电时可能出现帧错误/乱码；合法数据起始必须为 '['
+                if buffer[0] != FRAME_START_BYTE:
+                    next_start = buffer.find(b"[")
+                    if next_start == -1:
+                        garbled = bytes(buffer)
+                        buffer.clear()
+                    else:
+                        garbled = bytes(buffer[:next_start])
+                        del buffer[:next_start]
+                    drop_garbled_and_resync(garbled)
+                    quick_restart_serial()
+                    continue
+
+                if could_be_log(buffer):
+                    # 如果匹配了日志的前缀特征，则尝试寻找 '\n' 来截取完整的一行
+                    nl_idx = buffer.find(b"\n")
+                    if nl_idx != -1:
+                        # 找到了换行符
+                        # 向后探查是否紧跟着多个 \r 或 \n (处理用户额外的换行排版)
+                        end_idx = nl_idx + 1
+                        extra_newlines = bytearray()
+                        while end_idx < len(buffer) and buffer[end_idx] in (10, 13):
+                            extra_newlines.append(buffer[end_idx])
+                            end_idx += 1
+
+                        line_bytes = bytes(buffer[:end_idx])
+                        del buffer[:end_idx]
+
+                        try:
+                            line_str = line_bytes.decode("utf-8", errors="ignore")
+                            is_log = False
+                            matched_color = Fore.WHITE
+
+                            for prefix, color in LOG_STYLES.items():
+                                if line_str.startswith(prefix):
+                                    is_log = True
+                                    matched_color = color
+                                    break
+
+                            if DEBUG_SHOW_RAW_LINE:
+                                print(
+                                    f"[{Fore.BLUE}DEBUG{Fore.RESET}] Got line: {repr(line_str)}"
+                                )
+
+                            if is_log:
+                                # ==== 路径 1: 显示彩色日志 ====
+                                # 去掉尾部空白符，仅将颜色重置放在文本末，以防终端干扰，并原样输出其包含的换行排版
+                                stripped_line = line_str.rstrip()
+                                trailing_chars = line_str[len(stripped_line) :]
+                                print(
+                                    f"{matched_color}{stripped_line}{Fore.RESET}{trailing_chars}",
+                                    end="",
+                                    flush=True,
+                                )
+
+                                # 主动避免粘包: 多截取的尾部换行极低概率可能会混入波形的有效有效帧 (0x0A/0x0D)。
+                                # 一旦错杀没发给波形会导致帧错位死机。
+                                # 而从 BspLog 发出的附加换行转发给波形也是安全合规的间隙数据（Just Float忽略这部分间隙）
+                                # 因此采取“主动抄送副本”的策略。
+                                if extra_newlines:
+                                    forwarder.send_waveform(bytes(extra_newlines))
+                            else:
+                                # ==== 路径 2: 转发未匹配特征的数据 ====
+                                forwarder.send_waveform(line_bytes)
+                        except Exception as e:
+                            print(f"{Fore.RED}[Error parsing]: {e}")
+                    else:
+                        # 没有找到换行符，但前缀有可能合法，等待后续数据
+                        # 避免异常长数据（如含前缀但无换行符的二进制）无限堆积内存，设个2048字节阈值
+                        if len(buffer) > 2048:
+                            forwarder.send_waveform(bytes(buffer[:1]))
+                            del buffer[:1]
+                        else:
+                            break  # 跳出内层缓冲区处理，继续从串口读取新数据
+                else:
+                    # 非日志分支：优先按 JustFloat 帧尾解析；否则按 FireWater(ASCII) 解析
+                    tail_idx = buffer.find(JUSTFLOAT_TAIL, 1)
+                    if tail_idx != -1:
+                        frame_end = tail_idx + len(JUSTFLOAT_TAIL)
+                        if frame_end > 1:
+                            # 去掉起始 '['，其余原样转发给 VOFA+
+                            forwarder.send_waveform(bytes(buffer[1:frame_end]))
+                        del buffer[:frame_end]
+                        continue
+
+                    payload = buffer[1:]
+                    is_ascii_firewater = all(
+                        (32 <= b <= 126) or b in (9, 10, 13) for b in payload
+                    )
+
+                    if is_ascii_firewater:
+                        next_start = buffer.find(b"[", 1)
+                        if next_start != -1:
+                            if next_start > 1:
+                                forwarder.send_waveform(bytes(buffer[1:next_start]))
+                            del buffer[:next_start]
+                        elif len(buffer) > FIREWATER_MAX_FRAME_LEN:
+                            # FireWater 单帧由 64B 缓冲区构建，超过该长度仍无完整边界，判为异常
+                            garbled = bytes(buffer)
+                            buffer.clear()
+                            drop_garbled_and_resync(garbled)
+                            quick_restart_serial()
+                        elif time.time() - last_rx_time >= FIREWATER_IDLE_FLUSH_SEC:
+                            # 空闲间隙视为一帧结束，避免单帧长时间滞留
+                            if len(buffer) > 1:
+                                forwarder.send_waveform(bytes(buffer[1:]))
+                            buffer.clear()
+                        else:
+                            break
+                    else:
+                        # 非 ASCII 且暂未发现 JustFloat 尾，通常是 JustFloat 帧还没收全
+                        # 防止极端异常数据无限堆积
+                        if len(buffer) > 96:
+                            garbled = bytes(buffer)
+                            buffer.clear()
+                            drop_garbled_and_resync(garbled)
+                            quick_restart_serial()
+                        else:
+                            break
+
+    except serial.SerialException as e:
+        print(f"{Fore.RED}Serial Error: {e}")
+    except KeyboardInterrupt:
+        print(f"\n{Fore.YELLOW}Stopping...")
+    finally:
+        forwarder.stop()
+        if "ser" in locals() and ser.is_open:
+            ser.close()
+
+
+if __name__ == "__main__":
+    main()

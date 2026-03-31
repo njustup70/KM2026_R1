@@ -38,6 +38,17 @@
 MDK-ARM/.vscode/
 build/
 .cache/
+.agents
+.code_temp/
+__pycache__/
+AGENTS.md
+.agent_prompts/
+ReactorLibs/Extensions/
+ReactorLibs/Extensions70/
+ReactorLibs/Extensions
+ReactorLib/Extensions70
+reactor_intro.md
+external_file/
 
 # 忽略CubeMX生成的所有文件
 /Middlewares/
@@ -51,5 +62,8 @@ CMakePresets.json
 *.ioc
 *.s
 *.ld
+#--------------------------
 
 MDK-ARM/RTE/_GeneralFramework/RTE_Components.h
+
+

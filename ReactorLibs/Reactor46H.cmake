@@ -1,5 +1,6 @@
 # 这里的 ${PROJECT_SOURCE_DIR} 指的是CubeMX的那个 .ioc 文件所在的根目录
 # 递归寻找所有 .h 和 .hpp 文件
+# 使用 CONFIGURE_DEPENDS，让 CMake 在文件增删后自动重新配置
 file(GLOB_RECURSE ALL_HEADERS CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_LIST_DIR}/*.h" 
     "${CMAKE_CURRENT_LIST_DIR}/*.hpp"
@@ -22,9 +23,9 @@ endif()
 target_include_directories(${CMAKE_PROJECT_NAME} BEFORE PRIVATE ${REACTOR_INC})
 
 # 收集所有 .c 源文件
-file(GLOB_RECURSE REACTOR_SRCS 
-    "ReactorLibs/*.c"
-    "ReactorLibs/*.cpp"
+file(GLOB_RECURSE REACTOR_SRCS CONFIGURE_DEPENDS
+    "${CMAKE_CURRENT_LIST_DIR}/*.c"
+    "${CMAKE_CURRENT_LIST_DIR}/*.cpp"
 )
 
 # 将路径和文件添加到工程目标中
