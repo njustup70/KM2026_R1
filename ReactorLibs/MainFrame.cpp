@@ -2,14 +2,16 @@
 #include "Monitor.hpp"
 #include "System.hpp"
 #include "R1GetBlock.hpp"
-
+#include "CBoard_Connect.hpp"
 StateCore &core = StateCore::GetInstance();
 Monitor &monit = Monitor::GetInstance();
+
 
 StateGraph example_graph("graph_name");
 void Action_of_Dege(StateCore *core);
 
 GetBlock &getblock = GetBlock::GetInstance();
+Connect_CBoard &connect_cboard=Connect_CBoard::GetInstance();
 /**
  * @brief 程序主入口
  * @warning 严禁阻塞
@@ -25,8 +27,10 @@ void MainFrameCpp()
   core.RegistGraph(example_graph);
   core.Enable(0); // 启动状态机核心，指定初始状态图为0号图
   System.RegistApp(getblock);
+  System.RegistApp(connect_cboard);
 }
 
 void Action_of_Dege(StateCore *core)
 {
+
 }

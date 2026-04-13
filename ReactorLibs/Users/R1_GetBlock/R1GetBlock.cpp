@@ -8,7 +8,7 @@ extern Farcon farcon;
 extern SystemType &System;
 
 // 遥控器按键 8 存储高度的计数器（1→存200块高度，2→400，3→600）
-static uint8_t entertime = 0;
+// static uint8_t entertime = 0;
 int suck_flag = 0;
 float lift_target_pos = 0.0f;
 
@@ -277,38 +277,7 @@ void GetBlock::Update()
      liftservo[1].SetAngle(0);
       suck_flag = 0;
     }
-    //   if(farcon.button_first_half[0] == 1)
-    //   {
-    //     suck_flag = 1;
-    //   }
-    //   if(farcon.button_first_half[1] == 1)
-    //   {
-    //     suck_flag = 2;
-    //   }
-    // if(farcon.button_first_half[2] == 1)
-    //   {
-    //     suck_flag = 3;
-    //   }
-    //   if(farcon.button_first_half[3] == 1)
-    //   {
-    //     suck_flag = 4;
-    //   }
-    //   if(farcon.button_first_half[4] == 1)
-    //   {
-    //     suck_flag = 5;
-    //   }
 
-    //   if(farcon.button_second_half[0] == 1)
-    //   {
-    //     lift_target_pos=0.0f;
-    //   }else  if(farcon.button_second_half[1] == 1)
-    //   {
-    //     lift_target_pos=1800000.0f;
-    //   }
-    //   else  if(farcon.button_second_half[2] == 1)
-    //   {
-    //     lift_target_pos=380000.0f;
-    //   }
   }
 }
 
