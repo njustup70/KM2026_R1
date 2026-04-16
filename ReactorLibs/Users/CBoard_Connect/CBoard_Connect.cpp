@@ -52,9 +52,9 @@ void Connect_CBoard::Update()
  uint8_t payload[6];
 
     // 放大 100 倍转为 int16
-    int16_t x = (int16_t)(chasis_posx * 100.0f);
-    int16_t y = (int16_t)(chasis_posy * 100.0f);
-    int16_t z = (int16_t)(chasis_posz * 100.0f);
+    int16_t x = (int16_t)(chassis_vx * 100.0f);
+    int16_t y = (int16_t)(chassis_vy * 100.0f);
+    int16_t z = (int16_t)(chassis_vz * 100.0f);
 
     // 大端格式：高字节 <<8 在前，低字节在后
     // 对应接收端：payload[0] <<8 | payload[1]

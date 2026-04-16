@@ -23,6 +23,8 @@ float lift_speed_kd = 0.0f;
 int air_flag = 0;
 
 float debug_angle=0;
+
+float debug_speed=13000;
 void GetBlock::Start()
 {
   air_pump_pin = BSP::GPIO::Inst({'D', 12});
@@ -53,20 +55,20 @@ void GetBlock::Start()
 
   // ---- 大疆吸吮电机左（M2006，减速比36，CAN2 ID:1，位置串级模式）----
   suckmotor[0].Init(Hardware::hcan_sub, 1, DJI_C610);
-  suckmotor[0].ConfigPID().AsPosC().Pos_Coeff(20.0f, 0.0f, 2.5f) // 位置环 kp/ki/kd（待整定）
-      .Pos_Limit(300.0f, 5000.0f)                                // 位置环积分限幅、输出速度限幅（rad/s）
-      .Spd_Coeff(0.003f, 0.00005f, 0.0f)                         // 速度环 kp/ki/kd（待整定）
-      .Spd_Limit(2.0f, 10.0f)                                    // 速度环积分限幅、电流输出限幅（code）
+  suckmotor[0].ConfigPID().AsSpeedC()
+      .Spd_Coeff(0.1f, 0.004, 0.0f)                            // 速度环 kp/ki/kd（待整定）
+      .SpdLimit(13000)
+      .Spd_Limit(3.0f, 10.0f)                                   // 速度环积分限幅、电流输出限幅（code）
       .CurLimit(10)
       .Apply();
   suckmotor[0].driver.Enable(); // 左边target_pos是1000000左右合适，且－的往外推，正的往里吸
 
   // ---- 大疆吸吮电机右（M2006，减速比36，CAN2 ID:2，位置串级模式）----
   suckmotor[1].Init(Hardware::hcan_sub, 2, DJI_C610);
-  suckmotor[1].ConfigPID().AsPosC().Pos_Coeff(20.0f, 0.0f, 2.5f) // 位置环 kp/ki/kd（待整定）
-      .Pos_Limit(300.0f, 5000.0f)                                // 位置环积分限幅、输出速度限幅（rad/s）
-      .Spd_Coeff(0.003f, 0.00005f, 0.0f)                         // 速度环 kp/ki/kd（待整定）
-      .Spd_Limit(2.0f, 10.0f)                                    // 速度环积分限幅、电流输出限幅（code）
+  suckmotor[1].ConfigPID().AsSpeedC()
+      .Spd_Coeff(0.1f, 0.004, 0.0f)                            // 速度环 kp/ki/kd（待整定）
+      .SpdLimit(13000)
+      .Spd_Limit(3.0f, 10.0f)                                   // 速度环积分限幅、电流输出限幅（code）
       .CurLimit(10)
       .Apply();
   suckmotor[1].driver.Enable(); // 右边target_pos是1000000左右合适，且－的往外推，正的往里吸
@@ -254,11 +256,9 @@ void GetBlock::Update()
 
     if (suck_flag == 5)
     {
-      SetTargetState(3900000.0f, 3800000.0f, 20000000.0f, 20000000.0f, lift_target_pos, lift_target_pos);
-      for (int i = 0; i < 2000000; i++)
-      {
-      }
-      suck_flag = 6;
+      suckmotor[0].SetSpd(-debug_speed);
+      suckmotor[1].SetSpd(debug_speed);
+      SetTargetState(3900000.0f, 3800000.0f, 40000000.0f, 40000000.0f, lift_target_pos, lift_target_pos);
     }
     if (suck_flag == 6)
     {
@@ -267,11 +267,13 @@ void GetBlock::Update()
     if (suck_flag == 7)
     {
       air_pump_pin.Write(0);
-      SetTargetState(0.0f, 0.0f, 20000000.0f, 20000000.0f, lift_target_pos, lift_target_pos);
+      SetTargetState(0.0f, 0.0f, 40000000.0f, 40000000.0f, lift_target_pos, lift_target_pos);
     }
     // 回去
     if (suck_flag == 8)
     {
+      suckmotor[0].SetSpd(0);
+      suckmotor[1].SetSpd(0);
       SetTargetState(0.0f, 0.0f, 0.0f, 0.0f, 0, 0);
           liftservo[0].SetAngle(0);
      liftservo[1].SetAngle(0);
