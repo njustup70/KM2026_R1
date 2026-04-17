@@ -11,6 +11,7 @@
 #include "RtosCpp.hpp"
 
 #include "motor_dji.hpp"
+
 SystemType& System = SystemType::GetInstance();
 LedWs2812 sys_ledband;
 

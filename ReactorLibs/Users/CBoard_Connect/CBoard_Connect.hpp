@@ -14,4 +14,10 @@ public:
   float chasis_posx;
   float chasis_posy;
   float chasis_posz;
+
+void farcon_vct();
+void task_send();
+void send_KFS_all();
+
+
 };
