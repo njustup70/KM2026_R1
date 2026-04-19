@@ -18,6 +18,6 @@ public:
 void farcon_vct();
 void task_send();
 void send_KFS_all();
-
+void c_board_control();
 
 };

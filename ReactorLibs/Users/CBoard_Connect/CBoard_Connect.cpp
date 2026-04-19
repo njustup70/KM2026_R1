@@ -63,6 +63,26 @@ payload[4]=dest[2];
 		  main_board.SendTask(0x210, 1, payload, 8, false);
 }
 
+void Connect_CBoard::c_board_control()
+{
+   memset(payload, 0, 8);
+//底盘接管模式
+ payload[0] = 2;
+//发送按钮
+ payload[1] = 1;
+ uint8_t temp_button_add_first=0;
+  uint8_t temp_button_add_second=0;
+      for (int i = 0; i < 8; i++)
+    {
+        temp_button_add_first |= (   farcon.button_first_half[i] << i);
+        temp_button_add_second |= (farcon.button_second_half[i + 8] << i);
+    }
+
+    payload[2]=temp_button_add_first;
+    payload[3]=temp_button_add_second;
+
+      main_board.SendTask(0x210, 1, payload, 8, false);
+}
 
 void Connect_CBoard::Update()
 {
@@ -71,6 +91,11 @@ void Connect_CBoard::Update()
   else if(farcon.toggle[1] == 0&&farcon.toggle[2] == 1)
   {
     send_KFS_all();
+  }
+  //底盘接管模式
+  if(farcon.toggle[1]==1)
+  {
+
   }
 }
 

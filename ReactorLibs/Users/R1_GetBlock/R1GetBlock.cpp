@@ -22,9 +22,10 @@ float lift_speed_kd = 0.0f;
 
 int air_flag = 0;
 
-float debug_angle=0;
+float debug_angle = 0;
 
-float debug_speed=13000;
+float debug_speed = 13000;
+static int suck_flag_counts = 0;
 void GetBlock::Start()
 {
   air_pump_pin = BSP::GPIO::Inst({'D', 12});
@@ -55,21 +56,19 @@ void GetBlock::Start()
 
   // ---- 大疆吸吮电机左（M2006，减速比36，CAN2 ID:1，位置串级模式）----
   suckmotor[0].Init(Hardware::hcan_sub, 1, DJI_C610);
-  suckmotor[0].ConfigPID().AsSpeedC()
-      .Spd_Coeff(0.1f, 0.004, 0.0f)                            // 速度环 kp/ki/kd（待整定）
+  suckmotor[0].ConfigPID().AsSpeedC().Spd_Coeff(0.1f, 0.004, 0.0f) // 速度环 kp/ki/kd（待整定）
       .SpdLimit(13000)
-      .Spd_Limit(3.0f, 10.0f)                                   // 速度环积分限幅、电流输出限幅（code）
-      .CurLimit(10)
+      .Spd_Limit(3.0f, 10.0f) // 速度环积分限幅、电流输出限幅（code）
+      .CurLimit(5)
       .Apply();
   suckmotor[0].driver.Enable(); // 左边target_pos是1000000左右合适，且－的往外推，正的往里吸
 
   // ---- 大疆吸吮电机右（M2006，减速比36，CAN2 ID:2，位置串级模式）----
   suckmotor[1].Init(Hardware::hcan_sub, 2, DJI_C610);
-  suckmotor[1].ConfigPID().AsSpeedC()
-      .Spd_Coeff(0.1f, 0.004, 0.0f)                            // 速度环 kp/ki/kd（待整定）
+  suckmotor[1].ConfigPID().AsSpeedC().Spd_Coeff(0.1f, 0.004, 0.0f) // 速度环 kp/ki/kd（待整定）
       .SpdLimit(13000)
-      .Spd_Limit(3.0f, 10.0f)                                   // 速度环积分限幅、电流输出限幅（code）
-      .CurLimit(10)
+      .Spd_Limit(3.0f, 10.0f) // 速度环积分限幅、电流输出限幅（code）
+      .CurLimit(5)
       .Apply();
   suckmotor[1].driver.Enable(); // 右边target_pos是1000000左右合适，且－的往外推，正的往里吸
 
@@ -95,140 +94,47 @@ void GetBlock::Start()
 
   SetTargetState(0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
 
-  liftservo[0].Init(ToID(&htim5), TIM_CHANNEL_2);//-35度锁死，0度松开
+  liftservo[0].Init(ToID(&htim5), TIM_CHANNEL_2); //-35度锁死，0度松开
   liftservo[0].Enable();
 
-  liftservo[1].Init(ToID(&htim5), TIM_CHANNEL_3);//15度锁死，0度松开
+  liftservo[1].Init(ToID(&htim5), TIM_CHANNEL_3); // 15度锁死，0度松开
   liftservo[1].Enable();
 
   appstate = STATE_INIT;
   Enable();
 }
 
-// ======================== Update ========================
-
-// void GetBlock::Update()
-// {
-//   //   GetTargetBlockInfo();
-
-//     // ---- 状态机 ----
-//     if (appstate == STATE_INIT)
-//     {
-//       rolldmmotor.SetPosVel(0.0f, 2.0f);
-//       // 参数顺序：左伸缩, 右伸缩, 左吸吮, 右吸吮, 左抬升, 右抬升
-//       SetTargetState(0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
-//       release_air_pin.Write(true);
-//     }
-
-//     if (appstate == STATE_LIFTED)
-//     {
-//       // 修复：必须明确指定读取数组中的某一个电机（比如左伸缩电机[0]）的反馈角度
-//       if (stretchmotor[0].driver.measure.total_angle < -700000.0f)
-//       {
-//         rolldmmotor.SetPosVel(-2.30383492f, 2.0f);
-//         // 原逻辑：lift(抬升)运动到 -750000，伸缩回零。吸吮保持原样([5], [6])
-//         SetTargetState(0.0f, 0.0f,
-//                        target_state_pos[5], target_state_pos[6],
-//                        -750000.0f, -750000.0f);
-//       }
-//       appstate = STATE_IDLE;
-//     }
-
-//     if (appstate == STATE_IDLE)
-//     {
-//       release_air_pin.Write(true);
-//     }
-
-//     // ---- 遥控器按键边沿检测 ----
-//     for (int i = 0; i < 8; i++)
-//     {
-//       uint8_t cur = farcon.button_first_half[i];
-//       btn_enter[i] = (cur == 1 && last_btn_state[i] == 0); // 上升沿
-//       last_btn_state[i] = cur;
-//     }
-
-//     // ---- 按键动作 ----
-
-//     // 按键 1/2/3：一级动作，直接调用已经封装好的取块函数，代码更简洁
-//     if (farcon.button_first_half[0] == 1)
-//     {
-//       Get_200Block();
-//     }
-//     if (farcon.button_first_half[1] == 1)
-//     {
-//       Get_400Block();
-//     }
-//     if (farcon.button_first_half[2] == 1)
-//     {
-//       Get_600Block();
-//     }
-
-//     // 按键 4：二级动作，滑台(伸缩)全伸出吸附
-//     if (farcon.button_first_half[3] == 1)
-//     {
-//       rolldmmotor.SetPosVel(-2.30383492f, 2.0f);
-//       // 伸缩(Stretch)伸出到 430000，吸吮([5][6])和抬升([1][2])保持当前状态
-//       SetTargetState(430000.0f, 430000.0f,
-//                      target_state_pos[5], target_state_pos[6],
-//                      target_state_pos[1], target_state_pos[2]);
-//       vacuum_pump_pin.Write(true);
-//     }
-
-//     // 按键 5：放块，调用封装好的释放函数
-//     if (farcon.button_first_half[4] == 1)
-//     {
-//       ReleaseBlock();
-//       appstate = STATE_IDLE; // 释放后重置回空闲状态
-//     }
-
-//     // 按键 6/7：手动微调抬升高度（单次触发，每次约 5cm）
-//     if (farcon.button_first_half[5] == 1 && btn_enter[5])
-//     {
-//       // 微调时，必须同时更新左右抬升电机的值
-//       target_state_pos[1] -= 166666.0f; // 左抬升上升
-//       target_state_pos[2] -= 166666.0f; // 右抬升上升
-
-//       SetTargetState(target_state_pos[3], target_state_pos[4],
-//                      target_state_pos[5], target_state_pos[6],
-//                      target_state_pos[1], target_state_pos[2]);
-//     }
-//     if (farcon.button_first_half[6] == 1 && btn_enter[6])
-//     {
-//       target_state_pos[1] += 166666.0f; // 左抬升下降
-//       target_state_pos[2] += 166666.0f; // 右抬升下降
-
-//       SetTargetState(target_state_pos[3], target_state_pos[4],
-//                      target_state_pos[5], target_state_pos[6],
-//                      target_state_pos[1], target_state_pos[2]);
-//     }
-
-//     // 按键 8：依次存储 200/400/600 块对应的当前抬升位置
-//   //   if (farcon.button_first_half[7] == 1 && btn_enter[7])
-//   //   {
-//   //     // 取左侧抬升电机([1])的当前目标高度存入字典即可
-//   //     blockheight_2_liftmotortargetpos[entertime] = target_state_pos[1];
-//   //     entertime = (entertime + 1) % 3;
-//   //     // TODO: 将 entertime 回传到遥控器屏幕
-//   //   }
-// }
+// 延迟delay_times ms
+int delay_dg(int *delay_counts, int delay_times, int mini_time = 5)
+{
+  int delay_multiple = delay_times / mini_time; // 进多少次该函数
+  (*delay_counts)++;
+  if (*delay_counts >= delay_multiple)
+  {
+    *delay_counts = 0;
+    return 1;
+  }
+  return 0;
+}
 
 void GetBlock::Update()
 {
-
   GetTargetBlockInfo();
   if (System.out_from_debugmode)
   {
     Stop();
   }
 
-  if (air_flag == 1)
-  {
-    air_pump_pin.Write(true);
-  }
-  else if (air_flag == 0)
-  {
-    air_pump_pin.Write(false);
-  }
+  // if (air_flag == 0)
+  // {
+  //   air_pump_pin.Write(true);
+  //   air_flag += delay_dg((&suck_flag_counts), 2000);
+  // }
+  // if (air_flag == 1)
+  // {
+  //   air_pump_pin.Write(false);
+  //   air_flag -= delay_dg((&suck_flag_counts), 2000);
+  // }
 
   // ---- 状态机 ----
   if (appstate == STATE_INIT)
@@ -242,44 +148,50 @@ void GetBlock::Update()
     if (suck_flag == 2)
     {
       SetTargetState(3900000.0f, 0.0f, 0.0f, 0.0f, lift_target_pos, lift_target_pos);
-    liftservo[0].SetAngle(-35);
-     liftservo[1].SetAngle(15);
+      liftservo[0].SetAngle(-35);
+      liftservo[1].SetAngle(15);
     }
     if (suck_flag == 3)
     {
-      SetTargetState(3900000.0f, 3800000.0f, 0.0f, 0.0f, lift_target_pos, lift_target_pos);
+      SetTargetState(3900000.0f, 3830000.0f, 0.0f, 0.0f, lift_target_pos, lift_target_pos);
     }
     if (suck_flag == 4)
     {
-      SetTargetState(3900000.0f, 3800000.0f, 0.0f, 0.0f, lift_target_pos, lift_target_pos);
+      SetTargetState(3900000.0f, 3830000.0f, 0.0f, 0.0f, lift_target_pos, lift_target_pos);
     }
 
     if (suck_flag == 5)
     {
       suckmotor[0].SetSpd(-debug_speed);
       suckmotor[1].SetSpd(debug_speed);
-      SetTargetState(3900000.0f, 3800000.0f, 40000000.0f, 40000000.0f, lift_target_pos, lift_target_pos);
+      SetTargetState(3900000.0f, 3830000.0f, 0.0f, 0.0f, lift_target_pos, lift_target_pos);
     }
     if (suck_flag == 6)
     {
-      air_pump_pin.Write(1);
+      air_pump_pin.Write(1);//夹块
+      suck_flag+=delay_dg((&suck_flag_counts),  1000);
     }
     if (suck_flag == 7)
     {
-      air_pump_pin.Write(0);
-      SetTargetState(0.0f, 0.0f, 40000000.0f, 40000000.0f, lift_target_pos, lift_target_pos);
+      air_pump_pin.Write(1);
+      SetTargetState(3000000.0f, 3000000.0f, 0.0f, 0.0f, lift_target_pos, lift_target_pos);
+       suck_flag+=delay_dg((&suck_flag_counts),  1000);
     }
     // 回去
     if (suck_flag == 8)
     {
+      air_pump_pin.Write(0);
+      suck_flag+=delay_dg((&suck_flag_counts),  1000);
+    }
+    if(suck_flag==9)
+    {
       suckmotor[0].SetSpd(0);
       suckmotor[1].SetSpd(0);
       SetTargetState(0.0f, 0.0f, 0.0f, 0.0f, 0, 0);
-          liftservo[0].SetAngle(0);
-     liftservo[1].SetAngle(0);
-      suck_flag = 0;
+      liftservo[0].SetAngle(0);
+      liftservo[1].SetAngle(0);
+      suck_flag=0;
     }
-
   }
 }
 
