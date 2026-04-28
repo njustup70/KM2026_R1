@@ -7,25 +7,9 @@
 extern Farcon farcon;
 extern SystemType &System;
 
-// 遥控器按键 8 存储高度的计数器（1→存200块高度，2→400，3→600）
-// static uint8_t entertime = 0;
-int suck_flag = 0;
-float lift_target_pos = 0.0f;
 
-float lift_pos_kp = 2.0f;
-float lift_pos_ki = 0.0f;
-float lift_pos_kd = 0.0f;
 
-float lift_speed_kp = 0.001f;
-float lift_speed_ki = 0.0f;
-float lift_speed_kd = 0.0f;
 
-int air_flag = 0;
-
-float debug_angle = 0;
-
-float debug_speed = 13000;
-static int suck_flag_counts = 0;
 void GetBlock::Start()
 {
   air_pump_pin = BSP::GPIO::Inst({'D', 12});
@@ -125,73 +109,10 @@ void GetBlock::Update()
     Stop();
   }
 
-  // if (air_flag == 0)
-  // {
-  //   air_pump_pin.Write(true);
-  //   air_flag += delay_dg((&suck_flag_counts), 2000);
-  // }
-  // if (air_flag == 1)
-  // {
-  //   air_pump_pin.Write(false);
-  //   air_flag -= delay_dg((&suck_flag_counts), 2000);
-  // }
-
   // ---- 状态机 ----
   if (appstate == STATE_INIT)
   {
-    //   rolldmmotor.SetPosVel(0.0f, 2.0f);
-    // 参数顺序：左伸缩, 右伸缩, 左吸吮, 右吸吮, 左抬升, 右抬升
-    if (suck_flag == 1)
-    {
-      SetTargetState(0.0f, 0.0f, 0.0f, 0.0f, lift_target_pos, lift_target_pos);
-    }
-    if (suck_flag == 2)
-    {
-      SetTargetState(3900000.0f, 0.0f, 0.0f, 0.0f, lift_target_pos, lift_target_pos);
-      liftservo[0].SetAngle(-35);
-      liftservo[1].SetAngle(15);
-    }
-    if (suck_flag == 3)
-    {
-      SetTargetState(3900000.0f, 3830000.0f, 0.0f, 0.0f, lift_target_pos, lift_target_pos);
-    }
-    if (suck_flag == 4)
-    {
-      SetTargetState(3900000.0f, 3830000.0f, 0.0f, 0.0f, lift_target_pos, lift_target_pos);
-    }
-
-    if (suck_flag == 5)
-    {
-      suckmotor[0].SetSpd(-debug_speed);
-      suckmotor[1].SetSpd(debug_speed);
-      SetTargetState(3900000.0f, 3830000.0f, 0.0f, 0.0f, lift_target_pos, lift_target_pos);
-    }
-    if (suck_flag == 6)
-    {
-      air_pump_pin.Write(1);//夹块
-      suck_flag+=delay_dg((&suck_flag_counts),  1000);
-    }
-    if (suck_flag == 7)
-    {
-      air_pump_pin.Write(1);
-      SetTargetState(3000000.0f, 3000000.0f, 0.0f, 0.0f, lift_target_pos, lift_target_pos);
-       suck_flag+=delay_dg((&suck_flag_counts),  1000);
-    }
-    // 回去
-    if (suck_flag == 8)
-    {
-      air_pump_pin.Write(0);
-      suck_flag+=delay_dg((&suck_flag_counts),  1000);
-    }
-    if(suck_flag==9)
-    {
-      suckmotor[0].SetSpd(0);
-      suckmotor[1].SetSpd(0);
-      SetTargetState(0.0f, 0.0f, 0.0f, 0.0f, 0, 0);
-      liftservo[0].SetAngle(0);
-      liftservo[1].SetAngle(0);
-      suck_flag=0;
-    }
+    
   }
 }
 
