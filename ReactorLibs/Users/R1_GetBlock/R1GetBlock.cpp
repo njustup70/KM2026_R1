@@ -7,9 +7,6 @@
 extern Farcon farcon;
 extern SystemType &System;
 
-
-
-
 void GetBlock::Start()
 {
   air_pump_pin = BSP::GPIO::Inst({'D', 12});
@@ -20,20 +17,20 @@ void GetBlock::Start()
 
   // ---- 大疆抬升电机左（M3508，减速比19，CAN1 ID:5，位置串级模式）----
   liftmotor[0].Init(Hardware::hcan_main, 5, DJI_C620);
-  liftmotor[0].ConfigPID().AsPosC().Pos_Coeff(1.5f, 0.0f, 0.3f) // 位置环 kp/ki/kd（待整定）
+  liftmotor[0].ConfigPID().AsPosC().Pos_Coeff(3.0f, 0.0f, 0.3f) // 位置环 kp/ki/kd（待整定）
       .Pos_Limit(500.0f, 4000.0f)                               // 位置环积分限幅、输出速度限幅（rad/s）
-      .Spd_Coeff(0.04f, 0.003, 0.0f)                            // 速度环 kp/ki/kd（待整定）
-      .Spd_Limit(3.0f, 10.0f)                                   // 速度环积分限幅、电流输出限幅（code）
+      .Spd_Coeff(0.1f, 0.001, 0.0f)                            // 速度环 kp/ki/kd（待整定）
+      .Spd_Limit(5.0f, 10.0f)                                   // 速度环积分限幅、电流输出限幅（code）
       .CurLimit(10)
       .Apply();
   liftmotor[0].driver.Enable(); // 设负的向上，正的向下
 
   // ---- 大疆抬升电机右（M3508，减速比19，CAN1 ID:6，位置串级模式）----
   liftmotor[1].Init(Hardware::hcan_main, 6, DJI_C620);
-  liftmotor[1].ConfigPID().AsPosC().Pos_Coeff(1.8f, 0.0f, 0.3f) // 位置环 kp/ki/kd（待整定）
+  liftmotor[1].ConfigPID().AsPosC().Pos_Coeff(3.0f, 0.0f, 0.3f) // 位置环 kp/ki/kd（待整定）
       .Pos_Limit(500.0f, 4000.0f)                               // 位置环积分限幅、输出速度限幅（rad/s）
-      .Spd_Coeff(0.06f, 0.004, 0.0f)                            // 速度环 kp/ki/kd（待整定）
-      .Spd_Limit(3.0f, 10.0f)                                   // 速度环积分限幅、电流输出限幅（code）
+      .Spd_Coeff(0.1f, 0.001, 0.0f)                            // 速度环 kp/ki/kd（待整定）
+      .Spd_Limit(5.0f, 10.0f)                                   // 速度环积分限幅、电流输出限幅（code）
       .CurLimit(10)
       .Apply();
   liftmotor[1].driver.Enable(); // 设正的向上，负的向下
@@ -62,7 +59,7 @@ void GetBlock::Start()
       .Pos_Limit(300.0f, 4000.0f)                                   // 位置环积分限幅、输出速度限幅（rad/s）
       .Spd_Coeff(0.01f, 0.00005f, 0.0f)                             // 速度环 kp/ki/kd（待整定）
       .Spd_Limit(2.0f, 10.0f)                                       // 速度环积分限幅、电流输出限幅（code）
-      .CurLimit(10)
+      .CurLimit(5)
       .Apply();
   stretchmotor[0].driver.Enable(); // 左边target_pos是1000000左右合适，且+的往前
 
@@ -72,7 +69,7 @@ void GetBlock::Start()
       .Pos_Limit(300.0f, 4000.0f)                                   // 位置环积分限幅、输出速度限幅（rad/s）
       .Spd_Coeff(0.01f, 0.00005f, 0.0f)                             // 速度环 kp/ki/kd（待整定）
       .Spd_Limit(2.0f, 10.0f)                                       // 速度环积分限幅、电流输出限幅（code）
-      .CurLimit(10)
+      .CurLimit(5)
       .Apply();
   stretchmotor[1].driver.Enable(); // 右边target_pos是1000000左右合适，且-的往前
 
@@ -153,8 +150,8 @@ void GetBlock::SetTargetState(float stretch_pos_L, float stretch_pos_R,
                               float lift_speed_L, float lift_speed_R)
 {
   // 1->左抬升, 2->右抬升
-  target_state_pos[1] = -lift_pos_L;
-  target_state_pos[2] = lift_pos_R;
+  target_state_pos[1] = lift_pos_L;
+  target_state_pos[2] = -lift_pos_R;
   target_state_speed[1] = lift_speed_L;
   target_state_speed[2] = lift_speed_R;
 
