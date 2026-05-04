@@ -100,8 +100,6 @@ void MainFrameCpp()
 
 void Action_of_Dege(StateCore *core)
 {
-
-
 }
 
 void Action_PrepareSuck(StateCore *core)
@@ -160,7 +158,7 @@ void Action_StartSuck(StateCore *core)
   getblock.suckmotor[0].SetSpd(-debug_speed);
   getblock.suckmotor[1].SetSpd(debug_speed);
   getblock.SetTargetState(3900000.0f, 3810000.0f, 0.0f, 0.0f, lift_target_pos, lift_target_pos);
- Seq::Wait(3);
+  Seq::Wait(3);
   getblock.air_pump_pin.Write(0);
 Seq::Wait(4);
   
