@@ -95,7 +95,7 @@ void StateCore::Run()
 
     // 执行 `当前状态图` 的 `对应状态`的 状态函数
     StateGraph& graph = *graphs[at_graph_id];
-    StateBlock& state = graph.current_state;
+    StateBlock& state = graph.states[graph.executor_at_id];  // 直接用索引访问，不覆盖状态内容
 
     // 执行当前状态图的全局状态函数
     if (graph.GlobalAction != nullptr) graph.GlobalAction(this);
@@ -107,9 +107,9 @@ void StateCore::Run()
      */
     if (state.StateAction != nullptr) state.StateAction(this);
 
-    // 进行状态转移
+    // 进行状态转移：只改变 executor_at_id，不复制状态内容
     graph.executor_at_id = state.Transition();
-    graph.current_state = graph.states[graph.executor_at_id];
+    // 修复：删除了将下一状态复制进当前状态的代码
 }
 
 void StateCore::Enable(uint8_t first_graph)
@@ -124,7 +124,7 @@ void StateCore::Enable(uint8_t first_graph)
 StateBlock& StateCore::GetCurState()
 {
     StateGraph& graph = *graphs[at_graph_id];
-    return graph.current_state; 
+    return graph.states[graph.executor_at_id];  // 直接返回当前索引对应的状态，避免引用被覆盖
 }
 
 
