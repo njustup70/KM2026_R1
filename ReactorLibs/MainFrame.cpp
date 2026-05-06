@@ -78,9 +78,9 @@ void MainFrameCpp()
   st_spit_reset.StateAction = Action_SpitReset;
 
   // // 2. 建立取块状态链接
-  // st_prepare.LinkTo(&cond_start_suck, st_sucking);
-  // st_sucking.LinkTo(&cond_reset, st_reset);
-  // st_reset.LinkTo(&cond_reset_done, st_prepare);
+  //   st_prepare.LinkTo(&cond_start_suck, st_sucking);
+  //   st_sucking.LinkTo(&cond_reset, st_reset);
+  //   st_reset.LinkTo(&cond_reset_done, st_prepare);
 
   // 建立吐块状态链接
   st_spit_prepare.LinkTo(&cond_spit_start, st_spit_start);
@@ -107,7 +107,7 @@ void Action_PrepareSuck(StateCore *core)
   debug_state = 1;
 
   // // 这里是测试用的，实际使用时请注释
-  // getblock.air_pump_pin.Write(manble); // 1松，0紧
+  //  getblock.air_pump_pin.Write(manble); // 1松，0紧
 
   if (begin_get_flag == 1)
   {
@@ -129,9 +129,9 @@ void Action_StartSuck(StateCore *core)
   getblock.suckmotor[0].SetSpd(-debug_speed);
   getblock.suckmotor[1].SetSpd(debug_speed);
   getblock.SetTargetState(3900000.0f, 3810000.0f, 0.0f, 0.0f, lift_target_pos, lift_target_pos);
-  Seq::Wait(3);
+  Seq::Wait(2);
   getblock.air_pump_pin.Write(0);
-  Seq::Wait(4);
+  Seq::Wait(2);
 
   cond_reset = true;
 }
@@ -145,7 +145,7 @@ void Action_SuckReset(StateCore *core)
   getblock.liftservo[0].SetAngle(0);
   getblock.liftservo[1].SetAngle(0);
   Seq::Wait(3);
-
+  getblock.air_pump_pin.Write(1);
   cond_start_suck = false;
   cond_reset = false;
   cond_reset_done = true;
@@ -160,8 +160,8 @@ void Action_SpitPrepare(StateCore *core)
   // 舵机位置设置
   getblock.liftservo[0].SetAngle(-35);
   getblock.liftservo[1].SetAngle(15);
-
-  // 等待 begin_spit_flag 触发吐块流程
+  // getblock.air_pump_pin.Write(manble); // 1松，0紧
+  //  等待 begin_spit_flag 触发吐块流程
   if (begin_spit_flag == 1)
   {
     cond_spit_reset = false;
@@ -170,7 +170,7 @@ void Action_SpitPrepare(StateCore *core)
     // 初始化吐块流程参数
     spit_phase = 1;
     phase_frame_cnt = 0;
-    getblock.air_pump_pin.Write(1); // 松开
+    getblock.air_pump_pin.Write(0); // 松开
     getblock.suckmotor[0].SetSpd(0);
     getblock.suckmotor[1].SetSpd(0);
 
@@ -184,39 +184,36 @@ void Action_SpitStart(StateCore *core)
   cond_spit_start = false;
   cond_spit_done = false;
   debug_state = 5;
-
-  getblock.SetTargetState(812083.0f, 812083.0f, 0.0f, 0.0f, lift_target_pos, lift_target_pos);
-  Seq::Wait(0.25f); // 等待0.25秒确保气泵松开
-  getblock.air_pump_pin.Write(0);
-  Seq::Wait(0.5f);
+  //开始吐第一个块
   getblock.SetTargetState(3900000.0f, 3810000.0f, 0.0f, 0.0f, lift_target_pos, lift_target_pos);
-  Seq::Wait(0.5f);
+  Seq::Wait(2);
 
   getblock.suckmotor[0].SetSpd(debug_speed);
   getblock.suckmotor[1].SetSpd(-debug_speed);
   Seq::Wait(2);
-
+  getblock.air_pump_pin.Write(1); // 松开
+  Seq::Wait(2);
   getblock.suckmotor[0].SetSpd(0);
   getblock.suckmotor[1].SetSpd(0);
-  getblock.air_pump_pin.Write(1); // 松开
+
   // 回到最初位置准备吐
   getblock.SetTargetState(0.0f, 0.0f, 0.0f, 0.0f, lift_target_pos, lift_target_pos);
+  //开始吐第二个块
   Seq::Wait(3);
   getblock.air_pump_pin.Write(0);
-
-  getblock.SetTargetState(3900000.0f, 3810000.0f, 0.0f, 0.0f, lift_target_pos, lift_target_pos);
   Seq::Wait(1);
+  getblock.SetTargetState(3900000.0f, 3810000.0f, 0.0f, 0.0f, lift_target_pos, lift_target_pos);
+  Seq::Wait(3);
 
   // 加松开往后走再吐
   getblock.air_pump_pin.Write(1);
-Seq::Wait(1);
+  Seq::Wait(3);
   getblock.SetTargetState(0, 0, 0.0f, 0.0f, lift_target_pos, lift_target_pos);
-  Seq::Wait(1);
-    getblock.air_pump_pin.Write(0);
-   getblock.SetTargetState(3900000, 3810000, 0.0f, 0.0f, lift_target_pos, lift_target_pos);
   Seq::Wait(2);
-   getblock.air_pump_pin.Write(1);
-    Seq::Wait(1);
+  getblock.air_pump_pin.Write(0);
+  Seq::Wait(3);
+  getblock.SetTargetState(3900000, 3810000, 0.0f, 0.0f, lift_target_pos, lift_target_pos);
+  Seq::Wait(2);
   getblock.suckmotor[0].SetSpd(debug_speed);
   getblock.suckmotor[1].SetSpd(-debug_speed);
 
