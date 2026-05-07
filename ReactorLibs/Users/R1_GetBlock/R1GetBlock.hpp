@@ -46,9 +46,7 @@ private:
         STATE_IDLE = 0,
         STATE_INIT,
         STATE_LIFTED,
-        STATE_GET200BLOCK,
-        STATE_GET400BLOCK,
-        STATE_GET600BLOCK,
+        STATE_GETBLOCK,
         STATE_RELEASEBLOCK,
         STATE_EMERGENCY
     };
@@ -104,9 +102,7 @@ public:
                      float suck_min_L, float suck_max_L, float suck_min_R, float suck_max_R,
                      float lift_min_L, float lift_max_L, float lift_min_R, float lift_max_R);
 
-    void Get_200Block();
-    void Get_400Block();
-    void Get_600Block();
+    void Get_Block(int block_height);
     void ReleaseBlock();
 
     void Action_LiftToHeight(float height); // TODO: 预留

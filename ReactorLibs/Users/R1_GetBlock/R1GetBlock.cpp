@@ -3,9 +3,22 @@
 #include <cmath>
 #include "farcon.hpp"
 #include "bsp_hardware.hpp"
-
+#include "StateCore.hpp"
 extern Farcon farcon;
 extern SystemType &System;
+extern GetBlock &getblock;
+
+//取块机构总体参数
+volatile int manble = 0;
+float debug_speed = 13000;
+float lift_target_pos = 0.0f;
+// ======================== 取块状态机控制 ========================
+// 定义全局或静态的布尔变量作为跳转条件
+bool suck_finish = false;
+volatile int suck_flag = 0; // 取块触发
+// ======================== 吐块状态机控制 ========================
+bool cond_finish = false; // 吐块：Prepare → SpitStart
+volatile int begin_spit_flag = 0; // 吐块触发
 
 void GetBlock::Start()
 {
@@ -209,57 +222,105 @@ void GetBlock::SetPosLimit(float stretch_min_L, float stretch_max_L, float stret
 
 // ======================== 取块动作 ========================
 
-void GetBlock::Get_200Block()
+
+void GetBlock::Get_Block(int block_height)
 {
-  appstate = STATE_GET200BLOCK;
-  rolldmmotor.SetPosVel(-2.30383492f, 2.0f);
+  appstate = STATE_GETBLOCK;
+  // // 这里是测试用的，实际使用时请注释
+  //  getblock.air_pump_pin.Write(manble); // 1松，0紧
 
-  // 参数顺序：左伸缩, 右伸缩, 左吸吮, 右吸吮, 左抬升, 右抬升
-  // 如果右抬升反装需要相反数，就可以直接写 -blockheight_2_liftmotortargetpos[0]
-  float target_lift = blockheight_2_liftmotortargetpos[0];
-  SetTargetState(130000.0f, 130000.0f, 0.0f, 0.0f, target_lift, target_lift);
-
-  //  vacuum_pump_pin.Write(true);
+  if (suck_flag == 1)
+  {
+    getblock.air_pump_pin.Write(1);
+    getblock.SetTargetState(3900000.0f, 0.0f, 0.0f, 0.0f, lift_target_pos, lift_target_pos);
+    getblock.liftservo[0].SetAngle(-35);
+    getblock.liftservo[1].SetAngle(15);
+    suck_flag = 2;
+  }
+  if (suck_flag == 2)
+  {
+    // 右边出去夹块
+    getblock.suckmotor[0].SetSpd(-debug_speed);
+    getblock.suckmotor[1].SetSpd(debug_speed);
+    getblock.SetTargetState(3900000.0f, 3810000.0f, 0.0f, 0.0f, lift_target_pos, lift_target_pos);
+    Seq::Wait(2);
+    getblock.air_pump_pin.Write(0);
+    Seq::Wait(2);
+    // 退回起点
+    getblock.suckmotor[0].SetSpd(0);
+    getblock.suckmotor[1].SetSpd(0);
+    getblock.SetTargetState(0.0f, 0.0f, 0.0f, 0.0f, 0, 0);
+    getblock.liftservo[0].SetAngle(0);
+    getblock.liftservo[1].SetAngle(0);
+    Seq::Wait(3);
+    getblock.air_pump_pin.Write(1);
+  }
 }
-// ======================== 取块/放块动作 ========================
 
-void GetBlock::Get_400Block()
-{
-  appstate = STATE_GET400BLOCK;
-  rolldmmotor.SetPosVel(-2.30383492f, 2.0f);
-
-  float target_lift = blockheight_2_liftmotortargetpos[1];
-  // 参数顺序：左伸缩, 右伸缩, 左吸吮, 右吸吮, 左抬升, 右抬升
-  SetTargetState(130000.0f, 130000.0f, 0.0f, 0.0f, target_lift, target_lift);
-
-  //  vacuum_pump_pin.Write(true);
-}
-
-void GetBlock::Get_600Block()
-{
-  appstate = STATE_GET600BLOCK;
-  rolldmmotor.SetPosVel(-2.30383492f, 2.0f);
-
-  float target_lift = blockheight_2_liftmotortargetpos[2];
-  // 参数顺序：左伸缩, 右伸缩, 左吸吮, 右吸吮, 左抬升, 右抬升
-  SetTargetState(130000.0f, 130000.0f, 0.0f, 0.0f, target_lift, target_lift);
-
-  //  vacuum_pump_pin.Write(true);
-}
 
 void GetBlock::ReleaseBlock()
 {
   appstate = STATE_RELEASEBLOCK;
-  rolldmmotor.SetPosVel(-2.30383492f, 2.0f);
+// 舵机位置设置
+  getblock.liftservo[0].SetAngle(-35);
+  getblock.liftservo[1].SetAngle(15);
+  // getblock.air_pump_pin.Write(manble); // 1松，0紧
+  //  等待 begin_spit_flag 触发吐块流程
+  if (begin_spit_flag == 1)
+  {
+    // 初始化吐块流程参数
+    getblock.air_pump_pin.Write(0); // 松开
+    getblock.suckmotor[0].SetSpd(0);
+    getblock.suckmotor[1].SetSpd(0);
+    //防止来回触发
+    begin_spit_flag = 0;
 
-  // 保持当前抬升和吸吮位置不变 (target_state_pos[1][2]为抬升，[5][6]为吸吮)
-  // 仅将左右伸缩 (Stretch) 缩回至 -800000.0f
-  SetTargetState(-800000.0f, -800000.0f,
-                 target_state_pos[5], target_state_pos[6],
-                 target_state_pos[1], target_state_pos[2]);
 
-  //  vacuum_pump_pin.Write(false);
-  // release_air_pin.Write(false); // 如果放块时需要操作泄气阀，可以在这里解开注释
+    // 开始吐第一个块
+    getblock.SetTargetState(3900000.0f, 3810000.0f, 0.0f, 0.0f, lift_target_pos, lift_target_pos);
+    Seq::Wait(2);
+
+    getblock.suckmotor[0].SetSpd(debug_speed);
+    getblock.suckmotor[1].SetSpd(-debug_speed);
+    Seq::Wait(2);
+    getblock.air_pump_pin.Write(1); // 松开
+    Seq::Wait(2);
+    getblock.suckmotor[0].SetSpd(0);
+    getblock.suckmotor[1].SetSpd(0);
+
+    // 回到最初位置准备吐
+    getblock.SetTargetState(0.0f, 0.0f, 0.0f, 0.0f, lift_target_pos, lift_target_pos);
+
+    // 开始吐第二个块
+    Seq::Wait(3);
+    getblock.air_pump_pin.Write(0);
+    Seq::Wait(1);
+    getblock.SetTargetState(3900000.0f, 3810000.0f, 0.0f, 0.0f, lift_target_pos, lift_target_pos);
+    Seq::Wait(3);
+
+    // 加松开往后走再吐
+    getblock.air_pump_pin.Write(1);
+    Seq::Wait(3);
+    getblock.SetTargetState(0, 0, 0.0f, 0.0f, lift_target_pos, lift_target_pos);
+    Seq::Wait(2);
+    getblock.air_pump_pin.Write(0);
+    Seq::Wait(3);
+    getblock.SetTargetState(3900000, 3810000, 0.0f, 0.0f, lift_target_pos, lift_target_pos);
+    Seq::Wait(2);
+    getblock.suckmotor[0].SetSpd(debug_speed);
+    getblock.suckmotor[1].SetSpd(-debug_speed);
+
+    Seq::Wait(2);
+
+    //回去
+    getblock.suckmotor[0].SetSpd(0);
+    getblock.suckmotor[1].SetSpd(0);
+    getblock.air_pump_pin.Write(0); // 夹紧
+    getblock.SetTargetState(0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
+    getblock.liftservo[0].SetAngle(0);
+    getblock.liftservo[1].SetAngle(0);
+
+  }
 }
 
 void GetBlock::Action_LiftToHeight(float height)
@@ -281,16 +342,5 @@ void GetBlock::GetTargetBlockInfo()
   {
     if (farcon.KFS_values[i] != 1)
       continue;
-
-    // if (System.GetCamp() == Systems::Camp_Red)
-    // {
-    //     if (target_count >= 3) break;
-    //     target_block_pos[target_count] = RED_ALL_BLOCKS_DATA[i];
-    //     target_count++;
-    // }
-    // else if (System.GetCamp() == Systems::Camp_Blue)
-    // {
-    //     // TODO: 蓝方块坐标数据
-    // }
   }
 }

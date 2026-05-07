@@ -15,18 +15,6 @@ void Action_of_Dege(StateCore *core);
 void Action_Suck(StateCore *core);
 void Action_Spit(StateCore *core); // 吐块准备
 
-//取块机构总体参数
-volatile int manble = 0;
-float debug_speed = 13000;
-float lift_target_pos = 0.0f;
-int debug_state = 0; // 状态指示器
-// ======================== 取块状态机控制 ========================
-// 定义全局或静态的布尔变量作为跳转条件
-bool suck_finish = false;
-volatile int suck_flag = 0; // 取块触发
-// ======================== 吐块状态机控制 ========================
-bool cond_finish = false; // 吐块：Prepare → SpitStart
-volatile int begin_spit_flag = 0; // 吐块触发
 
 /**
  * @brief 程序主入口
@@ -65,104 +53,14 @@ void MainFrameCpp()
 void Action_of_Dege(StateCore *core)
 {
 }
-
+// ======================== 取块 ========================
 void Action_Suck(StateCore *core)
 {
-  debug_state = 1;
-  // // 这里是测试用的，实际使用时请注释
-  //  getblock.air_pump_pin.Write(manble); // 1松，0紧
-
-  if (suck_flag == 1)
-  {
-    getblock.air_pump_pin.Write(1);
-    getblock.SetTargetState(3900000.0f, 0.0f, 0.0f, 0.0f, lift_target_pos, lift_target_pos);
-    getblock.liftservo[0].SetAngle(-35);
-    getblock.liftservo[1].SetAngle(15);
-    suck_flag = 2;
-  }
-  if (suck_flag == 2)
-  {
-    // 右边出去夹块
-    getblock.suckmotor[0].SetSpd(-debug_speed);
-    getblock.suckmotor[1].SetSpd(debug_speed);
-    getblock.SetTargetState(3900000.0f, 3810000.0f, 0.0f, 0.0f, lift_target_pos, lift_target_pos);
-    Seq::Wait(2);
-    getblock.air_pump_pin.Write(0);
-    Seq::Wait(2);
-    // 退回起点
-    getblock.suckmotor[0].SetSpd(0);
-    getblock.suckmotor[1].SetSpd(0);
-    getblock.SetTargetState(0.0f, 0.0f, 0.0f, 0.0f, 0, 0);
-    getblock.liftservo[0].SetAngle(0);
-    getblock.liftservo[1].SetAngle(0);
-    Seq::Wait(3);
-    getblock.air_pump_pin.Write(1);
-  }
+getblock.Get_Block(200); // TODO: 根据遥控器输入的高度调用不同的函数，目前测试用固定值
 }
 
-// ======================== 吐块状态函数 ========================
-// 吐块阶段：1=伸第1块, 2=伸最远, 3=吐块, 4=延迟3s, 5=伸第2块, 6=伸最远+吐块2
+// ======================== 吐块 ========================
 void Action_Spit(StateCore *core)
 {
-  debug_state = 4;
-  // 舵机位置设置
-  getblock.liftservo[0].SetAngle(-35);
-  getblock.liftservo[1].SetAngle(15);
-  // getblock.air_pump_pin.Write(manble); // 1松，0紧
-  //  等待 begin_spit_flag 触发吐块流程
-  if (begin_spit_flag == 1)
-  {
-    // 初始化吐块流程参数
-    getblock.air_pump_pin.Write(0); // 松开
-    getblock.suckmotor[0].SetSpd(0);
-    getblock.suckmotor[1].SetSpd(0);
-    //防止来回触发
-    begin_spit_flag = 0;
-
-    debug_state = 5;
-    // 开始吐第一个块
-    getblock.SetTargetState(3900000.0f, 3810000.0f, 0.0f, 0.0f, lift_target_pos, lift_target_pos);
-    Seq::Wait(2);
-
-    getblock.suckmotor[0].SetSpd(debug_speed);
-    getblock.suckmotor[1].SetSpd(-debug_speed);
-    Seq::Wait(2);
-    getblock.air_pump_pin.Write(1); // 松开
-    Seq::Wait(2);
-    getblock.suckmotor[0].SetSpd(0);
-    getblock.suckmotor[1].SetSpd(0);
-
-    // 回到最初位置准备吐
-    getblock.SetTargetState(0.0f, 0.0f, 0.0f, 0.0f, lift_target_pos, lift_target_pos);
-
-    // 开始吐第二个块
-    Seq::Wait(3);
-    getblock.air_pump_pin.Write(0);
-    Seq::Wait(1);
-    getblock.SetTargetState(3900000.0f, 3810000.0f, 0.0f, 0.0f, lift_target_pos, lift_target_pos);
-    Seq::Wait(3);
-
-    // 加松开往后走再吐
-    getblock.air_pump_pin.Write(1);
-    Seq::Wait(3);
-    getblock.SetTargetState(0, 0, 0.0f, 0.0f, lift_target_pos, lift_target_pos);
-    Seq::Wait(2);
-    getblock.air_pump_pin.Write(0);
-    Seq::Wait(3);
-    getblock.SetTargetState(3900000, 3810000, 0.0f, 0.0f, lift_target_pos, lift_target_pos);
-    Seq::Wait(2);
-    getblock.suckmotor[0].SetSpd(debug_speed);
-    getblock.suckmotor[1].SetSpd(-debug_speed);
-
-    Seq::Wait(2);
-
-    //回去
-    getblock.suckmotor[0].SetSpd(0);
-    getblock.suckmotor[1].SetSpd(0);
-    getblock.air_pump_pin.Write(0); // 夹紧
-    getblock.SetTargetState(0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
-    getblock.liftservo[0].SetAngle(0);
-    getblock.liftservo[1].SetAngle(0);
-
-  }
+  getblock.ReleaseBlock();
 }
