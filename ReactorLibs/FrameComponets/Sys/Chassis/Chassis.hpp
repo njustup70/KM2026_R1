@@ -87,7 +87,7 @@ class ChassisType : public Application
             Vec3 speed;         // 自解算的速度向量
             float velocity;     // 对应的线速度，单位m/s
         }_SelfResoOdom;
-
+    public:
         /// @brief 底盘控制模式
         typedef enum
         {

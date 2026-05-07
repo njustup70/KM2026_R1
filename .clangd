@@ -1,6 +1,6 @@
 CompileFlags:
   CompilationDatabase: build/Debug
-  Compiler: "E:/APPS/ArmGNU/13.3 rel1/bin/arm-none-eabi-gcc.exe"
+  Compiler: "D:/Users/Linjl/ReleasesApp/Arm GNU Toolchain arm-none-eabi/13.3 rel1/bin/arm-none-eabi-gcc.exe"
 
   Add:
     - "--target=arm-none-eabi"
@@ -18,20 +18,43 @@ Index:
 If:
   PathMatch: [.*\.cpp, .*\.cc, .*\.cxx, .*\.hpp, .*\.hh, .*\.hxx]
 CompileFlags:
-  Compiler: "E:/APPS/ArmGNU/13.3 rel1/bin/arm-none-eabi-g++.exe"
+  Compiler: "D:/Users/Linjl/ReleasesApp/Arm GNU Toolchain arm-none-eabi/13.3 rel1/bin/arm-none-eabi-g++.exe"
   Add:
     - "-std=gnu++17"
     - "-isystem"
-    - "E:/APPS/ArmGNU/13.3 rel1/arm-none-eabi/include/c++/13.3.1"
+    - "D:/Users/Linjl/ReleasesApp/Arm GNU Toolchain arm-none-eabi/13.3 rel1/arm-none-eabi/include/c++/13.3.1"
     - "-isystem"
-    - "E:/APPS/ArmGNU/13.3 rel1/arm-none-eabi/include/c++/13.3.1/arm-none-eabi"
+    - "D:/Users/Linjl/ReleasesApp/Arm GNU Toolchain arm-none-eabi/13.3 rel1/arm-none-eabi/include/c++/13.3.1/arm-none-eabi"
     - "-isystem"
-    - "E:/APPS/ArmGNU/13.3 rel1/arm-none-eabi/include/c++/13.3.1/backward"
+    - "D:/Users/Linjl/ReleasesApp/Arm GNU Toolchain arm-none-eabi/13.3 rel1/arm-none-eabi/include/c++/13.3.1/backward"
     - "-isystem"
-    - "E:/APPS/ArmGNU/13.3 rel1/lib/gcc/arm-none-eabi/13.3.1/include"
+    - "D:/Users/Linjl/ReleasesApp/Arm GNU Toolchain arm-none-eabi/13.3 rel1/lib/gcc/arm-none-eabi/13.3.1/include"
+    - "-isystem"
+    - "D:/Users/Linjl/ReleasesApp/Arm GNU Toolchain arm-none-eabi/13.3 rel1/arm-none-eabi/include"
+    - "-isystem"
+    - "D:/Users/Linjl/ReleasesApp/Arm GNU Toolchain arm-none-eabi/13.3 rel1/lib/gcc/arm-none-eabi/13.3.1/include-fixed"
+
+---
+If:
+  PathMatch: [.*\.hpp, .*\.hh, .*\.hxx]
+CompileFlags:
+  Compiler: "D:/Users/Linjl/ReleasesApp/Arm GNU Toolchain arm-none-eabi/13.3 rel1/bin/arm-none-eabi-g++.exe"
+  Add:
+    - "-std=gnu++17"
+    - "-isystem"
+    - "D:/Users/Linjl/ReleasesApp/Arm GNU Toolchain arm-none-eabi/13.3 rel1/arm-none-eabi/include/c++/13.3.1"
+    - "-isystem"
+    - "D:/Users/Linjl/ReleasesApp/Arm GNU Toolchain arm-none-eabi/13.3 rel1/arm-none-eabi/include/c++/13.3.1/arm-none-eabi"
+    - "-isystem"
+    - "D:/Users/Linjl/ReleasesApp/Arm GNU Toolchain arm-none-eabi/13.3 rel1/arm-none-eabi/include/c++/13.3.1/backward"
+    - "-isystem"
+    - "D:/Users/Linjl/ReleasesApp/Arm GNU Toolchain arm-none-eabi/13.3 rel1/lib/gcc/arm-none-eabi/13.3.1/include"
+    - "-isystem"
+    - "D:/Users/Linjl/ReleasesApp/Arm GNU Toolchain arm-none-eabi/13.3 rel1/arm-none-eabi/include"
+    - "-isystem"
+    - "D:/Users/Linjl/ReleasesApp/Arm GNU Toolchain arm-none-eabi/13.3 rel1/lib/gcc/arm-none-eabi/13.3.1/include-fixed"
 
 ---
 Diagnostics:
   UnusedIncludes: None
   MissingIncludes: None
-  
