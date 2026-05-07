@@ -1,31 +1,154 @@
 #include "Chassis.hpp"
 #include "arm_math.h"
 #include "Monitor.hpp"
+#include "farcon.hpp"
+#include "System.hpp"
 
+extern Farcon farcon;
 ChassisType& test_chas = ChassisType::GetInstance();
 
 void ChassisType::Start()
 {
+    // 初始化底盘类型
+    SetType(Omni);
+    if(_chas_type == Omni)
+    {
+        // 初始化电机
+        // 轮序：
+        //         前
+        //     1       2
+        //
+        //     3       4  
+        for (int i = 0; i < 4; i++)
+        {
+            // 初始化PID
+            motors[i].Init(Hardware::hcan_main, i + 1, DJI_C620);
+            motors[i].ConfigPID()
+                        .AsSpeedC()
+                        .Spd_Coeff(0.12f, 0.07f, 0.0f)    
+                        .Spd_Limit(5.0f, 10.0f)
+                        .CurLimit(15.0f) 
+                        .Apply();
+            motors[i].speed_pid.SetDeadband(1.0, 3.5);
+            // ForwardLize(前馈类型, 前馈系数, 被控对象增益K, 时间常数Tc)
+            motors[i].speed_pid.ForwardLize(
+                                PidGeneral::SpeedForward,  // 前馈类型
+                                0.015f,                      // 前馈系数 Kf（0~1，权重）
+                                0.75f,                      // 被控对象增益 K
+                                0.02f                      // 时间常数 Tc (秒)
+                                );
+            motors[i].driver.SetReduRatio(MotorDJIReduConst::redu_M3508_G); 
+            motors[i].driver.Enable();
+        }
+        test_chas.Enable();
+    }
+    else if(_chas_type == Steer)
+    {
+        _InitSteerMods();
+    }
+    test_chas.enabled = true;
+}
+
+void ChassisType::_InitSteerMods()
+{
+    // 轮序：
+    //         前
+    //     0       1
+    //
+    //     2       3    
+    // 舵轮底盘参数
+    float wheelbase = 0.5f;    // 前后轮距
+    float trackwidth = 0.5f;   // 左右轮距
+
+    // 初始化舵轮位置
+    steer_mods[0].position = Vec2(wheelbase / 2.0f, trackwidth / 2.0f);   // 前左
+    steer_mods[1].position = Vec2(wheelbase / 2.0f, -trackwidth / 2.0f);  // 前右
+    steer_mods[2].position = Vec2(-wheelbase / 2.0f, trackwidth / 2.0f);   // 后左
+    steer_mods[3].position = Vec2(-wheelbase / 2.0f, -trackwidth / 2.0f);  // 后右
+
     // 初始化电机
     for (int i = 0; i < 4; i++)
     {
-        // motors[i].Init(Hardware::hcan_main, i + 1, MotorDJIMode::PID_SpeedControl);
-        // motors[i].speed_pid.Init(3.6, 2.4, 0.0);
-        // motors[i].speed_pid.ForwardLize(PidGeneral::SpeedForward, 1.5f, 5, 4.8); 			// 速度型前馈
-        // motors[i].Enable();
+        steer_mods[i].steer_motor.Init(Hardware::hcan_main, i + 1);
+        steer_mods[i].drive_motor.Init(Hardware::hcan_main, i + 5);
     }
+    // 初始化PID，或者ADRC
+}
+
+/**
+ * @brief 将 pid_tuner 里的参数重新应用到所有电机
+ * @note  由 Update() 在检测到 apply_flag==1 时调用，调用完毕后 apply_flag 自动清零
+ */
+void ChassisType::_ApplyPidTuner()
+{
+    for (int i = 0; i < 4; i++)
+    {
+        motors[i].ConfigPID()
+                    .AsSpeedC()
+                    .Spd_Coeff(pid_tuner.spd_kp, pid_tuner.spd_ki, pid_tuner.spd_kd)
+                    .Spd_Limit(pid_tuner.spd_i_lim, pid_tuner.spd_out_lim)
+                    .CurLimit(pid_tuner.cur_lim)
+                    .Apply();
+        // 注意：ConfigPID 链式调用结束时 mode 已经被设回 SpeedC，
+        // 但 Apply() 不会重新 Enable driver，原有使能状态保持不变。
+        motors[i].speed_pid.SetDeadband(pid_tuner.deadband_start, pid_tuner.deadband_end);
+        motors[i].speed_pid.ForwardLize(
+                    PidGeneral::SpeedForward,
+                    pid_tuner.ff_kf,
+                    pid_tuner.ff_K,
+                    pid_tuner.ff_Tc
+                    );
+    }
+ 
+    pid_tuner.apply_flag = 0;           // 自动清零，Watch窗口可观察到变化
+    pid_tuner.applied_count++;          // 计数+1，用于确认是否生效
 }
 
 void ChassisType::Update()
 {
-    // 遥控器控制逻辑
+    // ---- Debug调参检测（每帧检查，置1即触发，完成后自动归零）----
+    if (pid_tuner.apply_flag == 1)
+    {
+        _ApplyPidTuner();
+    }
 
+    // 遥控器控制逻辑
+    if(farcon.toggle[1] == 1 && farcon.toggle[2] == 0)
+    {
+        control_mode = FARCON;
+    }
+    else if(farcon.toggle[1] == 0 && farcon.toggle[2] == 1)
+    {
+        control_mode = API; //可启用自动规划路径并自动巡航 见Logic.cpp
+    }
+    else
+    {
+        control_mode = OPEN;
+    }
+
+    if(control_mode == FARCON)
+    {
+        // 读取遥控器数据到底盘控制变量
+        targ_speed.x = -farcon.jy_data_origin[3]*1.0f / 100.f * _max_velo;   // 前后
+        targ_speed.y = -farcon.jy_data_origin[2]*1.0f / 100.f * _max_velo;   // 左右
+        targ_speed.z = -farcon.jy_data_origin[0]*1.0f / 100.f * _max_omega;  // 旋转
+        Move(targ_speed);
+    }
+
+    bool walking_complete = false; //这个变量只在这一帧有用
 
     // 实现闭环的地方
     if (_walking || _is_pos_locked)
     {
-        _Walking();
+        walking_complete = _Walking();
     }
+
+    // 当MoveAt完成且只是位置锁定（不是显式RotateTo）时，清除yaw锁定
+    if (walking_complete && _is_yaw_locked && !_rotating)
+    {
+        _is_yaw_locked = false;
+    }
+
     if (_rotating || _is_yaw_locked)
     {
         _Rotating();
@@ -41,6 +164,16 @@ void ChassisType::Update()
 
     // 安全锁倒计时
     _safe_lock_tick -= 5;
+
+    // 安全退debug
+    if(System.out_from_debugmode)
+    {
+        for(int i = 0; i < 4; i++)
+        {
+            motors[i].Neutral();
+            motors[i].driver.Disable();
+        }
+    }
 }
 
 
@@ -53,7 +186,7 @@ void ChassisType::_UpdateChasOdom()
     {
         theta_distan += motors[i].driver.measure.total_angle;
     }
-    theta_distan = theta_distan / (MotorDJIConst::redu_M3508 * 8192) * (PI * WHEEL_DIAMETER) / 4.0f;
+    theta_distan = theta_distan / (MotorDJIReduConst::redu_M3508 * 8192) * (PI * WHEEL_DIAMETER) / 4.0f;
     float chas_theta = theta_distan / ROTATE_RADIUS;   // 单位：弧度
     
     // （2）获取车体速度(读取而不是控制的速度，以减少误差)
@@ -63,13 +196,13 @@ void ChassisType::_UpdateChasOdom()
     {
         chas_speed.z += motors[i].driver.measure.speed_rpm;
     }
-    chas_speed.z = (chas_speed.z / 240.0f) / (MotorDJIConst::redu_M3508) * (PI * WHEEL_DIAMETER);
+    chas_speed.z = (chas_speed.z / 240.0f) / (MotorDJIReduConst::redu_M3508) * (PI * WHEEL_DIAMETER);
 
     // 获得每个电机不带旋转速度的线速度分量（用于计算x, y方向上的速度）
     float motor_spd_xy[4] = {0};
     for (int i = 0; i < 4; i++)
     {
-        motor_spd_xy[i] = (motors[i].driver.measure.speed_rpm / 60.0f / MotorDJIConst::redu_M3508) * (PI * WHEEL_DIAMETER) - chas_speed.z;
+        motor_spd_xy[i] = (motors[i].driver.measure.speed_rpm / 60.0f / motors[i].driver.redu_ratio) * (PI * WHEEL_DIAMETER) - chas_speed.z;
     }
 
     Vec2 chas_vxy;
@@ -86,9 +219,6 @@ void ChassisType::_UpdateChasOdom()
     
     chas_odom.pos = chas_odom.pos + delta_move.ToVec3();
     chas_odom.pos.z = chas_theta;
-	// 角度归一化，将角度映射到 [-π, π] 范围
-    // 正前方为 0，逆时针增加到 π，顺时针减小到 -π
-    chas_odom.pos.z = atan2(sin(chas_odom.pos.z), cos(chas_odom.pos.z));
 }
 
 void ChassisType::_UploadSpeed()
@@ -139,6 +269,26 @@ void ChassisType::_UploadSpeed()
 
 inline void ChassisType::_SendSpdToMotor()
 {
+    // ---- 死区控制：过滤掉微小的控制信号 ----
+    targ_speed.x = (fabs(targ_speed.x) < _speed_deadzone) ? 0.0f : targ_speed.x;
+    targ_speed.y = (fabs(targ_speed.y) < _speed_deadzone) ? 0.0f : targ_speed.y;
+    targ_speed.z = (fabs(targ_speed.z) < _omega_deadzone) ? 0.0f : targ_speed.z;
+
+    if (_chas_type == Steer) 
+    {
+        // 舵轮
+        _CalculateSteerTargets(targ_speed);
+        _SendSteerCommands();
+    }
+    else if(_chas_type == Omni) 
+    {
+        // 全向轮
+        _CalculateOmniMotorSpd();
+    }
+}
+
+void ChassisType::_CalculateOmniMotorSpd()
+{
     // 计算x, y, w合成分量
     _motor_spd[0] = (-targ_speed.x + targ_speed.y)  / (BSP_SQRT2) + targ_speed.z * ROTATE_RADIUS;
     _motor_spd[1] = (targ_speed.x + targ_speed.y) / (BSP_SQRT2) + targ_speed.z * ROTATE_RADIUS;
@@ -148,8 +298,74 @@ inline void ChassisType::_SendSpdToMotor()
     // 发送速度指令到电机
     for (int i = 0; i < 4; i++)
     {
-        // motors[i].SwitchMode(MotorDJIMode::PID_SpeedControl);
-        motors[i].SetSpd((_motor_spd[i] * 60.0f) / (PI * WHEEL_DIAMETER));
+        // if(motors[i].mode != MotorDJIMode::SpeedC) 
+        // {
+        //     motors[i].Uneutral(); 
+        // }
+        motors[i].mode = MotorDJIMode::SpeedC;
+        motors[i].SetSpd((_motor_spd[i] * 60.0f) / (PI * WHEEL_DIAMETER) * motors[i].driver.redu_ratio); // 速度转换为RPM，注意要乘以减速比
+    }    
+}
+
+float my_copysign(float x, float y)
+{
+    return (y >= 0) ? fabs(x) : -fabs(x);
+}   
+
+void ChassisType::_CalculateSteerTargets(const Vec3& chassis_speed)
+{
+    float vx = chassis_speed.x;      // 底盘x方向速度（前向）
+    float vy = chassis_speed.y;      // 底盘y方向速度（左向）
+    float omega = chassis_speed.z;   // 底盘角速度（逆时针）
+    
+    for (int i = 0; i < 4; i++) 
+    {
+        SteerMods& module = steer_mods[i];
+        
+        // 计算每个舵轮的目标线速度
+        // v_module = v_chassis + omega × r_module
+        float v_module_x = vx - omega * module.position.y;
+        float v_module_y = vy + omega * module.position.x;
+        
+        // 计算目标速度大小和方向
+        float speed_magnitude = sqrt(v_module_x * v_module_x + v_module_y * v_module_y);
+        float angle = atan2(v_module_y, v_module_x);
+        
+        // 优化转向角度，选择最近的转向方向
+        float current_angle = module.steer_motor.driver.measure.total_angle / (module.steer_motor.driver.redu_ratio * 8192) * 2 * PI; // 这个角度要根据底盘舵向实际减速比改
+        
+        float angle_diff = angle - current_angle;
+
+        // 调整角度差到[-PI, PI]范围
+        while (angle_diff > PI) angle_diff -= 2 * PI;
+        while (angle_diff < -PI) angle_diff += 2 * PI;
+        
+        // 如果角度差大于90度，反转速度方向并调整角度
+        if (fabs(angle_diff) > PI / 2) 
+        {
+            angle_diff -= (angle_diff >= 0 ? PI : -PI);
+            speed_magnitude = -speed_magnitude;
+        }
+        
+        // 设置目标角度和速度
+        module.targ_angle = current_angle + angle_diff;
+        module.targ_speed = speed_magnitude;
+    }
+}
+
+void ChassisType::_SendSteerCommands()
+{
+    for (int i = 0; i < 4; i++) 
+    {
+        SteerMods& module = steer_mods[i];
+        
+        // 发送转向指令（角度转换为电机编码器值）
+        float encoder_angle = module.targ_angle / (2 * PI) * (module.steer_motor.driver.redu_ratio * 8192); // 这个编码值要根据底盘舵向实际减速比改
+        module.steer_motor.SetPos(encoder_angle);
+        
+        // 发送驱动指令（速度转换为RPM）
+        float rpm = (module.targ_speed * 60.0f) / (PI * WHEEL_DIAMETER) * module.drive_motor.driver.redu_ratio;
+        module.drive_motor.SetSpd(rpm);
     }
 }
 
@@ -168,13 +384,20 @@ void ChassisType::Disable()
 
 void ChassisType::MoveAt(Vec2 Pos)
 {
-    targ_ges = Vec3(Pos.x, Pos.y, targ_ges.z);
+    targ_ges = Vec3(Pos.x, Pos.y, System.position.z);
     _walking = true;
+}
+
+static inline float NormalizeAngle(float angle)
+{
+    while (angle > PI) angle -= 2 * PI;
+    while (angle <= -PI) angle += 2 * PI;
+    return angle;
 }
 
 void ChassisType::RotateAt(float yaw)
 {
-    targ_ges.z = yaw;
+    targ_ges.z = NormalizeAngle(yaw);
     _rotating = true;
 }
 
@@ -199,7 +422,7 @@ void ChassisType::Move(Vec3 Spd)
     targ_speed = Spd;
 }
 
-void ChassisType::Move(Vec2 Spd)
+void ChassisType::Move(Vec2 Spd)   //Spd单位m/s
 {
     if (!enabled)  return;
 
@@ -246,29 +469,32 @@ void ChassisType::Rotate(float omega)
  */
 bool ChassisType::_Walking()
 {
+    _is_yaw_locked = true;  // 启用yaw锁定
+
     // 计算移动向量
     Vec2 move_vec = targ_ges.ToVec2() - System.position.ToVec2();
     // 带入车体旋转
-    move_vec = move_vec.Rotate(-System.position.z);
+    move_vec = move_vec.Rotate(- System.position.z);
 
     // 检查是否到达目标位置, 如果是则返回完成
-    if (move_vec.Length() < 0.05f)    // 5cm范围内视为到达
+    if (move_vec.Length() < 0.02f)    // 5cm范围内视为到达
     {
         Move(Vec2(0, 0));           // 停止移动
         _walking = false;
+        // 当走位完成且启用了yaw锁定时，保持yaw锁定状态
+        // 这样可以继续稳定yaw角直到显式调用其他函数
         return true;                 // 动作完成
     }
 
     // 计算移动速度
-    float safe_velo = sqrt(2 * _max_accel * move_vec.Length()); 
-    float out_velo = 3.0f * move_vec.Length();
+    float safe_velo = sqrt(2 * _max_accel * move_vec.Length()); // 意思是就算以最大加速度走，到达目标距离也能停下来，单位m/s
+    float out_velo = 3.0f * move_vec.Length(); // 简单的比例控制，距离越近速度越快，单位m/s
     // 最终的速度应该为三者中的最小值
-    float final_velo = fminf(safe_velo, fminf(out_velo, _max_velo));
+    float final_velo = fminf(safe_velo, fminf(out_velo, _max_velo)); //单位m/s
 
     // 更新底盘速度（向量式更新，保证更新量不大于MaxAccel）
-    Vec2 targ_speed_vec = move_vec.Norm() * final_velo;     // 计算新的目标速度
-    Vec2 curr_speed_vec = targ_speed.ToVec2();           // 当前速度
-    
+    Vec2 targ_speed_vec = move_vec.Norm() * final_velo;     // 计算新的目标速度，向量先归一化然后给个模值
+    Vec2 curr_speed_vec = targ_speed.ToVec2();           // 当前速度，这个targ_speed是上次调用Move函数设置的目标速度
     // 计算速度差
     Vec2 delta_speed_vec = targ_speed_vec - curr_speed_vec;
     float delta_speed_len = delta_speed_vec.Length();
@@ -295,7 +521,7 @@ bool ChassisType::_Walking()
 bool ChassisType::_Rotating()
 {
     // 计算旋转向量 （速度Rad / s)
-    float rotate_diff = (targ_ges.z - System.position.z);
+    float rotate_diff = NormalizeAngle(targ_ges.z - System.position.z);
 
     // 检查是否到达目标位置, 如果是则返回完成
     if (fabs(rotate_diff) < 0.01f)    // 0.01rad范围内视为到达

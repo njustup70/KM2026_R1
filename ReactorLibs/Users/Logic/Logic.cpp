@@ -320,16 +320,16 @@ void TaskLogic::Action_GetBlock(StateCore *core)
     {
         if (target_xid == 4)
         {
-            block.Get_600Block();
+            //block.Get_600Block();
         }
         else if (target_xid == 0  || target_xid == 6  || target_xid == 8  ||
              target_xid == 10 || target_xid == 12 || target_xid == 14)
         {
-            block.Get_200Block();
+            //block.Get_200Block();
         }
         else
         {
-            block.Get_400Block();
+            //block.Get_400Block();
         }
         // Seq::Wait(2); 
         chassis.RotateAt(target_yaw);
