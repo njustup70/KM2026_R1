@@ -4,7 +4,7 @@
 #include "farcon.hpp"
 int16_t mode = 0;
 extern Farcon farcon;
-
+extern BoardComm main_board;
 uint8_t payload[8];
 uint16_t vx;
 uint16_t vy;
