@@ -17,9 +17,9 @@ void GetBlock::Start()
 
   // ---- 大疆抬升电机左（M3508，减速比19，CAN1 ID:5，位置串级模式）----
   liftmotor[0].Init(Hardware::hcan_main, 5, DJI_C620);
-  liftmotor[0].ConfigPID().AsPosC().Pos_Coeff(3.0f, 0.0f, 0.3f) // 位置环 kp/ki/kd（待整定）
+  liftmotor[0].ConfigPID().AsPosC().Pos_Coeff(1.0f, 0.0f, 0.3f) // 位置环 kp/ki/kd（待整定）
       .Pos_Limit(500.0f, 4000.0f)                               // 位置环积分限幅、输出速度限幅（rad/s）
-      .Spd_Coeff(0.1f, 0.001, 0.0f)                             // 速度环 kp/ki/kd（待整定）
+      .Spd_Coeff(0.05f, 0.001, 0.0f)                            // 速度环 kp/ki/kd（待整定）
       .Spd_Limit(5.0f, 10.0f)                                   // 速度环积分限幅、电流输出限幅（code）
       .CurLimit(10)
       .Apply();
@@ -27,9 +27,9 @@ void GetBlock::Start()
 
   // ---- 大疆抬升电机右（M3508，减速比19，CAN1 ID:6，位置串级模式）----
   liftmotor[1].Init(Hardware::hcan_main, 6, DJI_C620);
-  liftmotor[1].ConfigPID().AsPosC().Pos_Coeff(3.0f, 0.0f, 0.3f) // 位置环 kp/ki/kd（待整定）
+  liftmotor[1].ConfigPID().AsPosC().Pos_Coeff(1.0f, 0.0f, 0.3f) // 位置环 kp/ki/kd（待整定）
       .Pos_Limit(500.0f, 4000.0f)                               // 位置环积分限幅、输出速度限幅（rad/s）
-      .Spd_Coeff(0.1f, 0.001, 0.0f)                             // 速度环 kp/ki/kd（待整定）
+      .Spd_Coeff(0.05f, 0.001, 0.0f)                            // 速度环 kp/ki/kd（待整定）
       .Spd_Limit(5.0f, 10.0f)                                   // 速度环积分限幅、电流输出限幅（code）
       .CurLimit(10)
       .Apply();
@@ -223,7 +223,6 @@ void GetBlock::Get_Block(int block_height)
   //  getblock.air_pump_pin.Write(manble); // 1松，0紧
   // if(farcon.button_first_half[])
 
-
   switch (block_height)
   {
     case 200:
@@ -239,22 +238,50 @@ void GetBlock::Get_Block(int block_height)
       lift_target_pos = 0.0f; // 默认值或错误处理
       break;
   }
+  if (suck_flag == 0)
+  {
+    if (farcon.button_first_half[5] == 1)
+    {
+      suck_flag = 1;
+    }
+    Seq::Wait(0.1);
+  }
+
+  if (farcon.button_first_half[6] == 1)
+  {
+    suck_flag = 2;
+    Seq::Wait(0.1);
+  }
 
   if (suck_flag == 1)
   {
     suckmotor[0].SetSpd(0);
     suckmotor[1].SetSpd(0);
     Loosen_block();
-    SetTargetState(3900000.0f, 0.0f, 0.0f, 0.0f, lift_target_pos, lift_target_pos);
+    if (block_height == 600)
+    {
+      SetTargetState(0.0f, 0.0f, 0.0f, 0.0f, blockheight_2_liftmotortargetpos[1], blockheight_2_liftmotortargetpos[1]);
+      Seq::Wait(2);
+      SetTargetState(3900000.0f, 0.0f, 0.0f, 0.0f, blockheight_2_liftmotortargetpos[1], blockheight_2_liftmotortargetpos[1]);
+      Seq::Wait(2);
+      SetTargetState(3900000.0f, 0.0f, 0.0f, 0.0f, lift_target_pos, lift_target_pos);
+    }
+    else
+    {
+      SetTargetState(0.0f, 0.0f, 0.0f, 0.0f, lift_target_pos, lift_target_pos);
+      Seq::Wait(2);
+      SetTargetState(3900000.0f, 0.0f, 0.0f, 0.0f, lift_target_pos, lift_target_pos);
+    }
     liftservo[0].SetAngle(-35);
     liftservo[1].SetAngle(15);
+    suck_flag = -1;
   }
   if (suck_flag == 2)
   {
     // 右边出去夹块
     suckmotor[0].SetSpd(-suck_speed);
     suckmotor[1].SetSpd(suck_speed);
-    SetTargetState(3900000.0f, 3810000.0f, 0.0f, 0.0f, lift_target_pos, lift_target_pos);
+    SetTargetState(3900000.0f, 3790000.0f, 0.0f, 0.0f, lift_target_pos, lift_target_pos);
     Seq::Wait(2);
     Clamp_block();
     Seq::Wait(2);
@@ -264,11 +291,29 @@ void GetBlock::Get_Block(int block_height)
 
     if (suck_finish_times == 2)
     {
-      SetTargetState(1900000.0f, 1900000.0f, 0.0f, 0.0f, 0, 0);
+      if (block_height == 200)
+      {
+        SetTargetState(1900000.0f, 1900000.0f, 0.0f, 0.0f, blockheight_2_liftmotortargetpos[1], blockheight_2_liftmotortargetpos[1]);
+        Seq::Wait(4);
+        SetTargetState(1900000.0f, 1900000.0f, 0.0f, 0.0f, blockheight_2_liftmotortargetpos[2], blockheight_2_liftmotortargetpos[2]);
+      }
+      else
+      {
+        SetTargetState(1900000.0f, 1900000.0f, 0.0f, 0.0f, blockheight_2_liftmotortargetpos[2], blockheight_2_liftmotortargetpos[2]);
+      }
     }
     else
     {
-      SetTargetState(0.0f, 0.0f, 0.0f, 0.0f, 0, 0);
+      if (block_height == 600)
+      {
+        SetTargetState(0.0f, 0.0f, 0.0f, 0.0f, blockheight_2_liftmotortargetpos[1], blockheight_2_liftmotortargetpos[1]);
+        Seq::Wait(4);
+        SetTargetState(0.0f, 0.0f, 0.0f, 0.0f, 0, 0);
+      }
+      else
+      {
+        SetTargetState(0.0f, 0.0f, 0.0f, 0.0f, 0, 0);
+      }
     }
 
     liftservo[0].SetAngle(0);
@@ -294,7 +339,7 @@ void GetBlock::ReleaseBlock()
   // 舵机位置设置
   liftservo[0].SetAngle(-35);
   liftservo[1].SetAngle(15);
-	 Loosen_block(); // 松开
+  Loosen_block(); // 松开
   // getblock.air_pump_pin.Write(manble); // 1松，0紧
   //  等待 begin_spit_flag 触发吐块流程
   if (begin_spit_flag == 1)
