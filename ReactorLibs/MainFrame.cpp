@@ -27,8 +27,8 @@ void MainFrameCpp()
   //  System.RegistApp(IMU_Example::GetInstance());
   // 1. 添加状态块
   // 下面是取块状态
-//  StateBlock &st_suck = example_graph.AddState("Suck");
-//  st_suck.StateAction = Action_Suck;
+ StateBlock &st_suck = example_graph.AddState("Suck");
+ st_suck.StateAction = Action_Suck;
 
   // 下面是吐块状态块
   StateBlock &st_spit= example_graph.AddState("Spit");
@@ -36,7 +36,7 @@ void MainFrameCpp()
 
   // // 2. 建立取块状态链接
 
-// st_suck.LinkTo(&cond_start_spit, st_spit);
+st_suck.LinkTo(&cond_start_spit, st_spit);
 
   // 建立吐块状态链接
   // st_spit.LinkTo(&cond_spit_start, st_spit_start);

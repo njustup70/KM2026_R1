@@ -87,17 +87,17 @@ void Connect_CBoard::c_board_control()
 void Connect_CBoard::Update()
 {
 //  if (farcon.toggle[1] == 0&&farcon.toggle[2] == 0)
-////    farcon_vct();//速度控制模式
+//    farcon_vct();//速度控制模式
    if(farcon.toggle[1] == 0&&farcon.toggle[2] == 1)
   {
     send_KFS_all();
 		c_board_control();
   }
-  //底盘接管模式
-  if(farcon.toggle[1] == 1&&farcon.toggle[1]==0)
-  {
+//  //底盘接管模式
+//  if(farcon.toggle[1] == 1&&farcon.toggle[1]==0)
+//  {
 
-  }
+//  }
 }
 
 void R1CBoardCallback(uint8_t task_id, const uint8_t *payload, uint8_t payload_len, void *user_ctx)

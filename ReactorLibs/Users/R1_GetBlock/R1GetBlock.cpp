@@ -37,7 +37,7 @@ void GetBlock::Start()
 
   // ---- 大疆吸吮电机左（M2006，减速比36，CAN2 ID:1，位置串级模式）----
   suckmotor[0].Init(Hardware::hcan_sub, 1, DJI_C610);
-  suckmotor[0].ConfigPID().AsSpeedC().Spd_Coeff(0.1f, 0.004, 0.0f) // 速度环 kp/ki/kd（待整定）
+  suckmotor[0].ConfigPID().AsSpeedC().Spd_Coeff(0.02f, 0.002, 0.0f) // 速度环 kp/ki/kd（待整定）
       .SpdLimit(13000)
       .Spd_Limit(3.0f, 10.0f) // 速度环积分限幅、电流输出限幅（code）
       .CurLimit(5)
@@ -46,7 +46,7 @@ void GetBlock::Start()
 
   // ---- 大疆吸吮电机右（M2006，减速比36，CAN2 ID:2，位置串级模式）----
   suckmotor[1].Init(Hardware::hcan_sub, 2, DJI_C610);
-  suckmotor[1].ConfigPID().AsSpeedC().Spd_Coeff(0.1f, 0.004, 0.0f) // 速度环 kp/ki/kd（待整定）
+  suckmotor[1].ConfigPID().AsSpeedC().Spd_Coeff(0.02f, 0.002, 0.0f) // 速度环 kp/ki/kd（待整定）
       .SpdLimit(13000)
       .Spd_Limit(3.0f, 10.0f) // 速度环积分限幅、电流输出限幅（code）
       .CurLimit(5)
@@ -221,6 +221,8 @@ void GetBlock::Get_Block(int block_height)
   appstate = STATE_GETBLOCK;
   // // 这里是测试用的，实际使用时请注释
   //  getblock.air_pump_pin.Write(manble); // 1松，0紧
+  // if(farcon.button_first_half[])
+
 
   switch (block_height)
   {
