@@ -4,7 +4,7 @@
 #include "farcon.hpp"
 int16_t mode = 0;
 extern Farcon farcon;
-extern BoardComm main_board;
+extern BoardComm chassis_board;
 uint8_t payload[8];
 uint16_t vx;
 uint16_t vy;
@@ -13,8 +13,8 @@ uint16_t vz;
 void R1CBoardCallback(uint8_t task_id, const uint8_t *payload, uint8_t payload_len, void *user_ctx);
 void Connect_CBoard::Start()
 {
-  main_board.Init(Hardware::hcan_main, 0x220, false);
-  main_board.RegisterTask(1, R1CBoardCallback, this);
+  chassis_board.Init(Hardware::hcan_main, 0x220, false);
+  chassis_board.RegisterTask(1, R1CBoardCallback, this);
 }
 
 void Connect_CBoard::farcon_vct()
@@ -37,7 +37,7 @@ void Connect_CBoard::farcon_vct()
   payload[6] = (vz >> 8) & 0xFF; // Vz 高8位
   payload[7] = vz & 0xFF;        // Vz 低8位
 
-  main_board.SendTask(0x210, 1, payload, 8, false);
+  chassis_board.SendTask(0x210, 1, payload, 8, false);
 }
 
 void Connect_CBoard::send_KFS_all()
@@ -60,7 +60,7 @@ uint8_t dest[3];
 payload[2]=dest[0];
 payload[3]=dest[1];
 payload[4]=dest[2];
-		  main_board.SendTask(0x210, 1, payload, 8, false);
+		  chassis_board.SendTask(0x210, 1, payload, 8, false);
 }
 
 void Connect_CBoard::c_board_control()
@@ -81,7 +81,7 @@ void Connect_CBoard::c_board_control()
     payload[2]=temp_button_add_first;
     payload[3]=temp_button_add_second;
 
-      main_board.SendTask(0x210, 1, payload, 8, false);
+      chassis_board.SendTask(0x210, 1, payload, 8, false);
 }
 
 void Connect_CBoard::Update()
