@@ -261,16 +261,16 @@ void GetBlock::Get_Block(int block_height)
     if (block_height == 600)
     {
       SetTargetState(0.0f, 0.0f, 0.0f, 0.0f, blockheight_2_liftmotortargetpos[1], blockheight_2_liftmotortargetpos[1]);
+      Seq::Wait(4);
+      SetTargetState(3800000.0f, 0.0f, 0.0f, 0.0f, blockheight_2_liftmotortargetpos[1], blockheight_2_liftmotortargetpos[1]);
       Seq::Wait(2);
-      SetTargetState(3900000.0f, 0.0f, 0.0f, 0.0f, blockheight_2_liftmotortargetpos[1], blockheight_2_liftmotortargetpos[1]);
-      Seq::Wait(2);
-      SetTargetState(3900000.0f, 0.0f, 0.0f, 0.0f, lift_target_pos, lift_target_pos);
+      SetTargetState(3800000.0f, 0.0f, 0.0f, 0.0f, lift_target_pos, lift_target_pos);
     }
     else
     {
       SetTargetState(0.0f, 0.0f, 0.0f, 0.0f, lift_target_pos, lift_target_pos);
-      Seq::Wait(2);
-      SetTargetState(3900000.0f, 0.0f, 0.0f, 0.0f, lift_target_pos, lift_target_pos);
+      Seq::Wait(3);
+      SetTargetState(3800000.0f, 0.0f, 0.0f, 0.0f, lift_target_pos, lift_target_pos);
     }
     liftservo[0].SetAngle(-35);
     liftservo[1].SetAngle(15);
@@ -281,7 +281,7 @@ void GetBlock::Get_Block(int block_height)
     // 右边出去夹块
     suckmotor[0].SetSpd(-suck_speed);
     suckmotor[1].SetSpd(suck_speed);
-    SetTargetState(3900000.0f, 3790000.0f, 0.0f, 0.0f, lift_target_pos, lift_target_pos);
+    SetTargetState(3800000.0f, 3750000.0f, 0.0f, 0.0f, lift_target_pos, lift_target_pos);
     Seq::Wait(2);
     Clamp_block();
     Seq::Wait(2);
@@ -371,7 +371,7 @@ void GetBlock::ReleaseBlock()
     //    Seq::Wait(3);
     //    Clamp_block();
     //    Seq::Wait(1);
-    //    SetTargetState(3900000.0f, 3810000.0f, 0.0f, 0.0f, lift_target_pos, lift_target_pos);
+    //    SetTargetState(3800000.0f, 3810000.0f, 0.0f, 0.0f, lift_target_pos, lift_target_pos);
     //    Seq::Wait(3);
 
     //    // 加松开往后走再吐
@@ -381,7 +381,7 @@ void GetBlock::ReleaseBlock()
     //    Seq::Wait(2);
     //    Clamp_block();
     //    Seq::Wait(3);
-    //    SetTargetState(3900000, 3810000, 0.0f, 0.0f, lift_target_pos, lift_target_pos);
+    //    SetTargetState(3800000, 3810000, 0.0f, 0.0f, lift_target_pos, lift_target_pos);
     //    Seq::Wait(2);
     //    suckmotor[0].SetSpd(suck_speed);
     //    suckmotor[1].SetSpd(-suck_speed);
