@@ -48,6 +48,51 @@ struct SteerMods
 };
 
 /**
+* @brief 位置环控制器
+* @note  目前是打算放在app层200Hz，输出速度指令给电机速度环1000Hz
+*/
+struct PosController
+{
+    float kp = 3.0f;     // 比例系数，单位: (m/s)/m
+    float kd = 0.2f;     // 微分系数（实际速度反馈阻尼），单位: (m/s)/(m/s) 无量纲
+
+    /**
+    * @param error      位置误差向量，单位 m
+    * @param actual_vel 当前实际速度向量，单位 m/s
+    * @return           速度指令向量，单位 m/s
+    */
+    Vec2 Calc(Vec2 error, Vec2 actual_vel)
+    {
+        return error * kp - actual_vel * kd;
+    }
+};
+
+/**
+* @brief Yaw控制器
+*/
+struct YawController
+{
+    float kp            = 2.0f;    // 比例系数，单位: (rad/s)/rad
+    float ki            = 0.4f;    // 积分系数，单位: (rad/s)/(rad·s)
+    float integral_limit = 0.6f;   // 积分限幅，单位 rad（防止 windup）
+
+    float _integral = 0.0f;
+
+    /**
+    * @param error  yaw 角度误差，单位 rad（已归一化到 [-π, π]）
+    * @param dt     时间步长，200Hz 对应 0.005f
+    * @return       角速度指令，单位 rad/s
+    */
+    float Calc(float error, float dt)
+    {
+        _integral += error * dt;
+        _integral = fmaxf(-integral_limit, fminf(integral_limit, _integral));
+        return kp * error + ki * _integral;
+    }
+
+    void Reset() { _integral = 0.0f; }
+};
+/**
  * @brief 底盘PID调参结构体
  * @note  在 Keil Watch 窗口里直接修改这里的参数，
  *        然后把 apply_flag 置为 1，框架会在下一帧自动重新配置所有电机并清零该标志。
@@ -62,6 +107,12 @@ struct ChasPidTuner
     float spd_i_lim   = 2.0f;       // 速度环积分限幅（A）
     float spd_out_lim = 10.0f;      // 速度环电流输出限幅（A）
     float cur_lim     = 15.0f;      // 总电流限幅（A），C620最大20A
+
+    float pos_kp = 3.0f;
+    float pos_kd = 0.6f;
+    float yaw_kp = 2.0f;
+    float yaw_ki = 0.4f;
+    float yaw_integral_limit = 0.6f;
 
     float deadband_start = 1.0f;  
     float deadband_end = 5.0f;    
@@ -95,7 +146,7 @@ class ChassisType : public Application
         /// @param 最大加速度，单位m/s^2
         float _max_accel = 4.0f;       
         /// @param 最大线速度，单位m/s
-        float _max_velo = 2.0f;
+        float _max_velo = 1.5f;
         /// @param 最大角速度，单位rad/s
         float _max_omega = 2.0f;
         /// @param 最大角加速度，单位rad/s^2
@@ -127,7 +178,7 @@ class ChassisType : public Application
 
         /// @brief 底盘自解算里程计更新函数
         void _UpdateChasOdom();
-
+    public:
         /// @brief 走到某点具体实现
         bool _Walking();
         /// @brief 转到某角度具体实现
@@ -185,7 +236,7 @@ class ChassisType : public Application
         /// @param 控制模式
         _ChasConMode control_mode = OPEN;
 
-        float move_precision = 0.05f;       // 最小移动精度，单位m
+        float move_precision = 0.01f;       // 最小移动精度，单位m
         float rotate_precision = 0.02f;     // 最小旋转精度，单位rad    （0.017453 rad / 度）
 
          /**
@@ -198,6 +249,12 @@ class ChassisType : public Application
          */
         ChasPidTuner pid_tuner;
 
+    private:
+        PosController  _pos_ctrl;   // XY 位置 PD 控制器
+        YawController  _yaw_ctrl;   // Yaw PI 控制器
+
+
+    public:
         /**         直接接口    (Direct)        **/
         void SetType(ChasType type) { _chas_type = type; };
         ChasType GetChasType() {return _chas_type;};
@@ -211,6 +268,9 @@ class ChassisType : public Application
 
         void MoveAt(Vec2 Pos);
         void RotateAt(float yaw);
+
+        void LockPosition();
+        void UnlockPosition();
 
         //跟通讯相关 CommCenter
         friend class CommCenter;

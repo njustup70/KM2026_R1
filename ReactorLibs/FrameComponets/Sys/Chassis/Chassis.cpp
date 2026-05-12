@@ -25,18 +25,28 @@ void ChassisType::Start()
             motors[i].Init(Hardware::hcan_main, i + 1, DJI_C620);
             motors[i].ConfigPID()
                         .AsSpeedC()
-                        .Spd_Coeff(0.12f, 0.07f, 0.0f)    
+                        .Spd_Coeff(0.1f, 0.07f, 0.0f)    
                         .Spd_Limit(5.0f, 10.0f)
-                        .CurLimit(15.0f) 
+                        .SpdLimit(7000.0f)       //469rpm（手册的额定转速应该是输出轴的） * 268/17（减速比）
+                        .CurLimit(10.0f) 
                         .Apply();
-            motors[i].speed_pid.SetDeadband(1.0, 3.5);
+            //motors[i].speed_pid.SetDeadband(1.0, 3.5);
             // ForwardLize(前馈类型, 前馈系数, 被控对象增益K, 时间常数Tc)
-            motors[i].speed_pid.ForwardLize(
-                                PidGeneral::SpeedForward,  // 前馈类型
-                                0.015f,                      // 前馈系数 Kf（0~1，权重）
-                                0.75f,                      // 被控对象增益 K
-                                0.02f                      // 时间常数 Tc (秒)
-                                );
+            //motors[i].speed_pid.ForwardLize(
+            //                    PidGeneral::SpeedForward,  // 前馈类型
+            //                    0.015f,                      // 前馈系数 Kf（0~1，权重）
+            //                    0.75f,                      // 被控对象增益 K
+            //                    0.02f                      // 时间常数 Tc (秒)
+            //                    );
+            // motors[i].ConfigADRC()
+            //             .AsSpeedC()
+            //             .ADRC_Womega(42.0f, 9.6f)
+            //             .ADRC_Physic(2.0e-4f, 0.30f, 0.005f)
+            //             .ADRC_Limit(15.0f)
+            //             .SpdLimit(3000.0f)
+            //             .ADRC_MaxPlannedVel(3000.0f)
+            //             .ADRC_SOTF(0.5f)
+            //             .Apply();
             motors[i].driver.SetReduRatio(MotorDJIReduConst::redu_M3508_G); 
             motors[i].driver.Enable();
         }
@@ -106,6 +116,16 @@ void ChassisType::_ApplyPidTuner()
 
 void ChassisType::Update()
 {
+    // 安全退debug
+    if(System.out_from_debugmode)
+    {
+        for(int i = 0; i < 4; i++)
+        {
+            motors[i].Neutral();
+            motors[i].driver.Disable();
+        }
+    }
+
     // ---- Debug调参检测（每帧检查，置1即触发，完成后自动归零）----
     if (pid_tuner.apply_flag == 1)
     {
@@ -136,6 +156,7 @@ void ChassisType::Update()
     }
 
     bool walking_complete = false; //这个变量只在这一帧有用
+    bool rotaing_complete = false;
 
     // 实现闭环的地方
     if (_walking || _is_pos_locked)
@@ -151,8 +172,13 @@ void ChassisType::Update()
 
     if (_rotating || _is_yaw_locked)
     {
-        _Rotating();
+        rotaing_complete = _Rotating();
     }
+
+    // if(rotaing_complete && _is_pos_locked && !_walking)
+    // {
+    //     _is_pos_locked = false;   
+    // } 
     
     // 将底盘的 速度targ_speed 上传到各个电机
     _UploadSpeed();
@@ -164,16 +190,6 @@ void ChassisType::Update()
 
     // 安全锁倒计时
     _safe_lock_tick -= 5;
-
-    // 安全退debug
-    if(System.out_from_debugmode)
-    {
-        for(int i = 0; i < 4; i++)
-        {
-            motors[i].Neutral();
-            motors[i].driver.Disable();
-        }
-    }
 }
 
 
@@ -269,10 +285,10 @@ void ChassisType::_UploadSpeed()
 
 inline void ChassisType::_SendSpdToMotor()
 {
-    // ---- 死区控制：过滤掉微小的控制信号 ----
-    targ_speed.x = (fabs(targ_speed.x) < _speed_deadzone) ? 0.0f : targ_speed.x;
-    targ_speed.y = (fabs(targ_speed.y) < _speed_deadzone) ? 0.0f : targ_speed.y;
-    targ_speed.z = (fabs(targ_speed.z) < _omega_deadzone) ? 0.0f : targ_speed.z;
+    // // ---- 死区控制：过滤掉微小的控制信号 ----呃死区控制有点问题
+    // targ_speed.x = (fabs(targ_speed.x) < _speed_deadzone) ? 0.0f : targ_speed.x;
+    // targ_speed.y = (fabs(targ_speed.y) < _speed_deadzone) ? 0.0f : targ_speed.y;
+    // targ_speed.z = (fabs(targ_speed.z) < _omega_deadzone) ? 0.0f : targ_speed.z;
 
     if (_chas_type == Steer) 
     {
@@ -473,22 +489,21 @@ bool ChassisType::_Walking()
 
     // 计算移动向量
     Vec2 move_vec = targ_ges.ToVec2() - System.position.ToVec2();
-    // 带入车体旋转
+    // 带入车体旋转，将世界坐标系转成车体坐标系
     move_vec = move_vec.Rotate(- System.position.z);
 
     // 检查是否到达目标位置, 如果是则返回完成
-    if (move_vec.Length() < 0.02f)    // 5cm范围内视为到达
+    if (move_vec.Length() < move_precision)    // 1cm范围内视为到达
     {
         Move(Vec2(0, 0));           // 停止移动
         _walking = false;
-        // 当走位完成且启用了yaw锁定时，保持yaw锁定状态
-        // 这样可以继续稳定yaw角直到显式调用其他函数
         return true;                 // 动作完成
     }
 
     // 计算移动速度
     float safe_velo = sqrt(2 * _max_accel * move_vec.Length()); // 意思是就算以最大加速度走，到达目标距离也能停下来，单位m/s
-    float out_velo = 3.0f * move_vec.Length(); // 简单的比例控制，距离越近速度越快，单位m/s
+    float out_velo = _pos_ctrl.Calc(move_vec, chas_odom.speed.ToVec2()).Length(); // 位置控制器输出的速度，单位m/s
+    //float out_velo = 3.0f * move_vec.Length(); // 简单的比例控制，距离越近速度越快，单位m/s
     // 最终的速度应该为三者中的最小值
     float final_velo = fminf(safe_velo, fminf(out_velo, _max_velo)); //单位m/s
 
@@ -520,6 +535,7 @@ bool ChassisType::_Walking()
  */
 bool ChassisType::_Rotating()
 {
+    //_is_pos_locked = true;  // 启用位置锁定
     // 计算旋转向量 （速度Rad / s)
     float rotate_diff = NormalizeAngle(targ_ges.z - System.position.z);
 
