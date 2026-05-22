@@ -11,6 +11,7 @@ StateGraph example_graph("graph_name");
 GetBlock &getblock = GetBlock::GetInstance();
 Connect_CBoard &connect_cboard = Connect_CBoard::GetInstance();
 
+StateGraph example_graph("graph_name");
 void Action_of_Dege(StateCore *core);
 void Action_Suck(StateCore *core);
 void Action_Spit(StateCore *core); // 吐块准备
@@ -48,6 +49,8 @@ void MainFrameCpp()
   core.Enable(0); // 启动状态机核心，指定初始状态图为0号图
   System.RegistApp(getblock);
   System.RegistApp(connect_cboard);
+  APP::state_core.RegistGraph(example_graph);
+  APP::state_core.Enable(0); // 启动状态机核心，指定初始状态图为0号图
 }
 
 void Action_of_Dege(StateCore *core)
