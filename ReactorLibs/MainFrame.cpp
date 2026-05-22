@@ -2,20 +2,18 @@
 #include "Monitor.hpp"
 #include "System.hpp"
 #include "R1GetBlock.hpp"
-#include "CBoard_Connect.hpp"
+#include "Logic.hpp"
+#include "Chassis.hpp"
+#include "CommCenter.hpp"
+#include "BigPitch.hpp"
 
+ChassisType& chas = ChassisType::GetInstance();
 StateCore &core = StateCore::GetInstance();
 Monitor &monit = Monitor::GetInstance();
-StateGraph example_graph("graph_name");
-
 GetBlock &getblock = GetBlock::GetInstance();
-Connect_CBoard &connect_cboard = Connect_CBoard::GetInstance();
-
-StateGraph example_graph("graph_name");
-void Action_of_Dege(StateCore *core);
-void Action_Suck(StateCore *core);
-void Action_Spit(StateCore *core); // 吐块准备
-
+TaskLogic &logic = TaskLogic::GetInstance();
+CommCenter &comm = CommCenter::GetInstance();
+BigPitch &bigpitch = BigPitch::GetInstance();
 
 /**
  * @brief 程序主入口
@@ -23,47 +21,18 @@ void Action_Spit(StateCore *core); // 吐块准备
  */
 void MainFrameCpp()
 {
-  //  System.RegistApp(IMU_Example::GetInstance());
-  // 1. 添加状态块
-  // 下面是取块状态
-  StateBlock &st_suck = example_graph.AddState("Suck");
-  st_suck.StateAction = Action_Suck;
+  System.SetPositionSource(System.odometer.transform);
 
-  // 下面是吐块状态块
-  StateBlock &st_spit= example_graph.AddState("Spit");
-  st_spit.StateAction = Action_Spit;
-
-  // // 2. 建立取块状态链接
-
-  // st_suck.LinkTo(&cond_start_suck, st_sucking);
-
-  // 建立吐块状态链接
-  // st_spit.LinkTo(&cond_spit_start, st_spit_start);
-
-
-  // 配置状态图为简并模式
-  example_graph.Degenerate(Action_of_Dege);
-
+  //System.RegistApp(logic);
+  System.RegistApp(chas);
+  //System.RegistApp(getblock);
+  System.RegistApp(comm);
+  System.RegistApp(bigpitch);
   // 向状态机核心注册
-  core.RegistGraph(example_graph);
+  //core.RegistGraph(example_graph);
   core.Enable(0); // 启动状态机核心，指定初始状态图为0号图
   System.RegistApp(getblock);
-  System.RegistApp(connect_cboard);
-  APP::state_core.RegistGraph(example_graph);
-  APP::state_core.Enable(0); // 启动状态机核心，指定初始状态图为0号图
+  // APP::state_core.RegistGraph(example_graph);
+  // APP::state_core.Enable(0); // 启动状态机核心，指定初始状态图为0号图
 }
 
-void Action_of_Dege(StateCore *core)
-{
-}
-// ======================== 取块 ========================
-void Action_Suck(StateCore *core)
-{
-getblock.Get_Block(200); // TODO: 根据遥控器输入的高度调用不同的函数，目前测试用固定值
-}
-
-// ======================== 吐块 ========================
-void Action_Spit(StateCore *core)
-{
-  getblock.ReleaseBlock();
-}

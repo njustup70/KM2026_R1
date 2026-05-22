@@ -31,17 +31,17 @@ void ChassisType::Start()
                         .CurLimit(10.0f) 
                         .Apply();
             //motors[i].speed_pid.SetDeadband(1.0, 3.5);
-            // ForwardLize(前馈类型, 前馈系数, 被控对象增益K, 时间常数Tc)
+            //ForwardLize(前馈类型, 前馈系数, 被控对象增益K, 时间常数Tc)
             //motors[i].speed_pid.ForwardLize(
             //                    PidGeneral::SpeedForward,  // 前馈类型
             //                    0.015f,                      // 前馈系数 Kf（0~1，权重）
             //                    0.75f,                      // 被控对象增益 K
             //                    0.02f                      // 时间常数 Tc (秒)
             //                    );
-            // motors[i].ConfigADRC()
+            //motors[i].ConfigADRC()
             //             .AsSpeedC()
             //             .ADRC_Womega(42.0f, 9.6f)
-            //             .ADRC_Physic(2.0e-4f, 0.30f, 0.005f)
+            //             .ADRC_Physic(3.0e-4f, 0.30f, 0.005f)
             //             .ADRC_Limit(15.0f)
             //             .SpdLimit(3000.0f)
             //             .ADRC_MaxPlannedVel(3000.0f)
@@ -133,7 +133,7 @@ void ChassisType::Update()
     }
 
     // 遥控器控制逻辑
-    if(farcon.toggle[1] == 1 && farcon.toggle[2] == 0)
+    if(farcon.toggle[1] == 1 && farcon.toggle[2] == 0 && farcon.toggle[3] == 0)
     {
         control_mode = FARCON;
     }
@@ -144,6 +144,11 @@ void ChassisType::Update()
     else
     {
         control_mode = OPEN;
+    }
+
+    if(farcon.toggle[3] == 1)
+    {
+        LockPosition();
     }
 
     if(control_mode == FARCON)
@@ -570,4 +575,21 @@ bool ChassisType::_Rotating()
     Rotate(new_omega);
 		
     return false;
+}
+
+void ChassisType::LockPosition()
+{
+    if (!enabled) return;
+    targ_ges = System.position;
+
+    // 重置控制器，避免继承之前运动遗留的积分
+    _yaw_ctrl.Reset();
+
+    // 清除其他运动任务，进入自锁状态
+    _walking        = false;
+    _rotating       = false;
+    _is_pos_locked  = true;
+    _is_yaw_locked  = true;
+
+    _safe_lock_tick = 100;  // 刷新安全锁
 }

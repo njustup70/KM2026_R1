@@ -146,9 +146,9 @@ class ChassisType : public Application
         /// @param 最大加速度，单位m/s^2
         float _max_accel = 4.0f;       
         /// @param 最大线速度，单位m/s
-        float _max_velo = 1.5f;
+        float _max_velo = 0.2f;
         /// @param 最大角速度，单位rad/s
-        float _max_omega = 2.0f;
+        float _max_omega = 0.2f;
         /// @param 最大角加速度，单位rad/s^2
         float _max_beta = 2.0f;
 
@@ -252,6 +252,7 @@ class ChassisType : public Application
     private:
         PosController  _pos_ctrl;   // XY 位置 PD 控制器
         YawController  _yaw_ctrl;   // Yaw PI 控制器
+        Pids _pos_pidcontroller;
 
 
     public:

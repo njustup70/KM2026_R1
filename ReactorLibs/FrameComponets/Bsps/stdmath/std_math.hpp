@@ -120,6 +120,7 @@ public:
   friend Vec3 operator*(const Vec3 &vec, float scalar);
   friend Vec3 operator*(float scalar, const Vec3 &vec);
   friend Vec3 operator/(const Vec3 &vec, float scalar);
+  friend bool operator==(const Vec3 &lhs, const Vec3 &rhs);
 };
 /*********      运算符重载      **********/
 inline Vec3 operator+(const Vec3 &lhs, const Vec3 &rhs)
@@ -154,6 +155,10 @@ inline Vec3 operator/(const Vec3 &vec, float scalar)
     return Vec3(114514, 114514, 114514); // 避免除以零
   else
     return Vec3(vec.x / scalar, vec.y / scalar, vec.z / scalar);
+}
+inline bool operator ==(const Vec3 &lhs, const Vec3 &rhs)
+{ // vec3向量相等比较
+  return (lhs.x == rhs.x) && (lhs.y == rhs.y) && (lhs.z == rhs.z);
 }
 
 /**

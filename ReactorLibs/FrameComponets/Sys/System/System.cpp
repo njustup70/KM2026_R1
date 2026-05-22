@@ -29,14 +29,13 @@ void SystemType::Init(bool Sc)
     // 颜色偏置因子（用于校正颜色）
     // sys_ledband.BiasFactor = Vec3(0.843f, 1.0f, 0.843f); 
 
-  // 自动开始自检
-  if (Sc)
-    status = Systems::SELF_CHECK;
-
-
-
+    farcon.init(Hardware::huart_farcon);
+    odometer.Init(Hardware::huart_odom, true, false, false, true);
     // 自动开始自检
-    if (Sc) status = Systems::SELF_CHECK;
+    if (Sc)
+        status = Systems::SELF_CHECK;
+    pos_offset = Vec2(0.45f, 0.425f);  
+
 }
 
 /**
@@ -60,6 +59,9 @@ void SystemType::Run()
     if (pos_source != nullptr)
     {
         position = *pos_source;
+        //加入原点的偏差，相当于对坐标系进行一个平移
+        position.x += pos_offset.x;
+        position.y += pos_offset.y;
     }
 
   // 更新全局时间
