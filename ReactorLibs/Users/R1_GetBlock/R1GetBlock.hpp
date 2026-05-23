@@ -75,7 +75,7 @@ public:
 
   // 取 200/400/600 块时抬升电机3508对应的 total_angle 目标值
   float blockheight_2_liftmotortargetpos[3] = {0.0f, 520000.0f, 960000.0f};
-  float realse_block_height=490000;
+  float realse_block_height = 490000;
   // ======================== 取块状态机控制 ========================
   // 取块机构总体参数
   volatile int manble = 0;   // 测试
@@ -89,7 +89,9 @@ public:
   // ======================== 吐块状态机控制 ========================
   bool cond_finish = false;         // 吐块：Prepare → SpitStart
   volatile int begin_spit_flag = 0; // 吐块触发
-
+  volatile int realse_order = 0;    // 吐块顺序
+  volatile int realase_Confirm=0;
+  //   volatile int realse_start=0;//确认吐块
   //**********取块状态停止***********//
 
   // 遥控器按键边沿检测
