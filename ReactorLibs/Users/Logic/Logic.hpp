@@ -62,7 +62,10 @@ class TaskLogic: public Application
 
 };
 
-
+namespace APP 
+{
+    extern TaskLogic& logic;
+};
 
 
 

@@ -4,8 +4,9 @@
 #include "farcon.hpp"
 #include "System.hpp"
 
-extern Farcon farcon;
-ChassisType& test_chas = ChassisType::GetInstance();
+ChassisType& APP::chassis = ChassisType::GetInstance();
+using APP::chassis;
+using MOD::farcon;
 
 void ChassisType::Start()
 {
@@ -50,13 +51,13 @@ void ChassisType::Start()
             motors[i].driver.SetReduRatio(MotorDJIReduConst::redu_M3508_G); 
             motors[i].driver.Enable();
         }
-        test_chas.Enable();
+        chassis.Enable();
     }
     else if(_chas_type == Steer)
     {
         _InitSteerMods();
     }
-    test_chas.enabled = true;
+    chassis.enabled = true;
 }
 
 void ChassisType::_InitSteerMods()
@@ -154,9 +155,9 @@ void ChassisType::Update()
     if(control_mode == FARCON)
     {
         // 读取遥控器数据到底盘控制变量
-        targ_speed.x = -farcon.jy_data_origin[3]*1.0f / 100.f * _max_velo;   // 前后
-        targ_speed.y = -farcon.jy_data_origin[2]*1.0f / 100.f * _max_velo;   // 左右
-        targ_speed.z = -farcon.jy_data_origin[0]*1.0f / 100.f * _max_omega;  // 旋转
+        targ_speed.x = -farcon.jys_value[3]*1.0f / 100.f * _max_velo;   // 前后
+        targ_speed.y = -farcon.jys_value[2]*1.0f / 100.f * _max_velo;   // 左右
+        targ_speed.z = -farcon.jys_value[0]*1.0f / 100.f * _max_omega;  // 旋转
         Move(targ_speed);
     }
 

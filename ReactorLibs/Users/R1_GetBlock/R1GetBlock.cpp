@@ -4,9 +4,9 @@
 #include "farcon.hpp"
 #include "bsp_hardware.hpp"
 #include "StateCore.hpp"
-extern Farcon farcon;
-extern SystemType &System;
-extern GetBlock &getblock;
+
+GetBlock& APP::getblock = GetBlock::GetInstance();
+using APP::getblock;
 
 //取块机构总体参数
 volatile int manble = 0;
@@ -340,7 +340,7 @@ void GetBlock::GetTargetBlockInfo()
 
   for (int i = 0; i < 12; i++)
   {
-    if (farcon.KFS_values[i] != 1)
+    if (MOD::farcon.KFS_values[i / 3][i % 3] != 1)
       continue;
   }
 }

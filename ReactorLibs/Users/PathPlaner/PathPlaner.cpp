@@ -122,7 +122,7 @@ static void AddCornersBetween(PathContainer& path, int from_xid, int to_xid, Vec
  * @param KFS_values  12个KFS块的存在标志（1=存在）
  * @param path        输出路径容器（PathContainer）
  */
-void GetShortestPath(uint8_t KFS_values[12], PathContainer& path)
+void GetShortestPath(Farcon::KFS_Type KFS_values[4][3], PathContainer& path)
 {
     // ── 定义18个路径点的相对坐标（以 X[0] 为原点）──
     Vec2 X[18];
@@ -158,7 +158,7 @@ void GetShortestPath(uint8_t KFS_values[12], PathContainer& path)
 
     for (int i = 0; i < 12; i++)
     {
-        if (KFS_values[i] == 1)
+        if (KFS_values[i / 3][i % 3] == 1)
         {
             int xid = KFSIndexToXIndex(i, 0); // curr=0 
             if (xid < 0) continue; // 无效块跳过

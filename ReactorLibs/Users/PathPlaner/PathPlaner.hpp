@@ -1,6 +1,7 @@
 #pragma once
 
 #include "std_math.hpp"
+#include "farcon.hpp"
 
 #define MAX_PATH 32 // 最大路径点数量
 
@@ -25,6 +26,6 @@ struct PathContainer
     }
 };
 
-void GetShortestPath(uint8_t KFS_values[12], PathContainer& path);
+void GetShortestPath(Farcon::KFS_Type KFS_values[4][3], PathContainer& path);
 
 extern PathContainer Zone2_Path; // 存储路径点的容器

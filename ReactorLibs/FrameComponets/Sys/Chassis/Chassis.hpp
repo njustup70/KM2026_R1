@@ -12,13 +12,13 @@
 class MoveAct;
 class ChassisType;
 
-/**
- * @brief 路径类，包含了一系列路径点
- */
-class Path
-{
-    Vec2 key_points[32];            // 路径点数组
-};
+// /**
+//  * @brief 路径类，包含了一系列路径点
+//  */
+// class Path
+// {
+//     Vec2 key_points[32];            // 路径点数组
+// };
 
 class ChasAPIHandle
 {
@@ -146,9 +146,9 @@ class ChassisType : public Application
         /// @param 最大加速度，单位m/s^2
         float _max_accel = 4.0f;       
         /// @param 最大线速度，单位m/s
-        float _max_velo = 0.2f;
+        float _max_velo = 1.0f;
         /// @param 最大角速度，单位rad/s
-        float _max_omega = 0.2f;
+        float _max_omega = 1.0f;
         /// @param 最大角加速度，单位rad/s^2
         float _max_beta = 2.0f;
 
@@ -276,6 +276,9 @@ class ChassisType : public Application
         //跟通讯相关 CommCenter
         friend class CommCenter;
 };
-
+namespace APP
+{
+    extern ChassisType& chassis;
+}
 
 #endif

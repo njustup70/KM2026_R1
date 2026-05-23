@@ -109,3 +109,8 @@ public:
 
     void GetTargetBlockInfo();
 };
+
+namespace APP
+{
+    extern GetBlock& getblock;
+}

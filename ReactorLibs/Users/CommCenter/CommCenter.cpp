@@ -2,9 +2,11 @@
 #include "Chassis.hpp"
 #include "farcon.hpp"
 
-extern Farcon farcon;
-extern ChassisType& chas;
+using APP::chassis;
+using MOD::board_can;
+using MOD::farcon;
 
+CommCenter& comm = CommCenter::GetInstance(); 
 void R1CBoardCallback(uint8_t task_id, const uint8_t *payload, uint8_t payload_len, void *user_ctx);
 
 void CommCenter::Start()
@@ -13,17 +15,17 @@ void CommCenter::Start()
     // 初始化
     pc.Init(Hardware::huart_host);
     // 注册 SLAM 位置回调 (0xA0)
-    pc.Regist(0xFA, 0xA0, OnSlamPosReceived, this);
+    //pc.Regist(0xFA, 0xA0, OnSlamPosReceived, this);
 
     /**---- 板间通讯 ----**/ 
-    main_board.Init(Hardware::hcan_main, 0x220, false);
-    main_board.RegisterTask(1, R1CBoardCallback, this);
+    board_can.Init(Hardware::hcan_main, 0x220, false);
+    board_can.RegisterTask(1, R1CBoardCallback, this);
 
 }
 
 void CommCenter::Update()
 {
-    pc.SendOdom(chas.chas_odom.pos.x, chas.chas_odom.pos.y, chas.chas_odom.pos.z); 
+    pc.SendOdom(chassis.chas_odom.pos.x, chassis.chas_odom.pos.y, chassis.chas_odom.pos.z); 
     SendButtonData(); //实时发送，目前没发现payload被覆盖的情况
     if (farcon.button_second_half[16 - 8 - 1] == 1)
     {
@@ -68,13 +70,13 @@ void CommCenter::SendKFSdata()
         {
             // 计算原始数据在 src 数组中的绝对索引: i*4 + j
             // 计算位移量: j*2
-            dest[i] |= (farcon.KFS_values[i * 4 + j] & 0x03) << (j * 2);
+            dest[i] |= (farcon.KFS_values[(i * 4 + j) / 3][(i * 4 + j) % 3] & 0x03) << (j * 2);
         }
     }
     payload[2]=dest[0];
     payload[3]=dest[1];
     payload[4]=dest[2];
-    main_board.SendTask(0x210, 1, payload, 8, false);
+    board_can.SendTask(0x210, 1, payload, 8, false);
 }
 
 void CommCenter::SendButtonData()
@@ -94,7 +96,7 @@ void CommCenter::SendButtonData()
     payload[2]=temp_button_add_first;
     payload[3]=temp_button_add_second;
 
-    main_board.SendTask(0x210, 1, payload, 8, false);
+    board_can.SendTask(0x210, 1, payload, 8, false);
 }
 /** -------------------  板间通讯：接收Cboard数据 的回调函数   ------------------------- **/
 void R1CBoardCallback(uint8_t task_id, const uint8_t *payload, uint8_t payload_len, void *user_ctx)
