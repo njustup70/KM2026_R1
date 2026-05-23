@@ -75,7 +75,7 @@ public:
 
   // 取 200/400/600 块时抬升电机3508对应的 total_angle 目标值
   float blockheight_2_liftmotortargetpos[3] = {0.0f, 520000.0f, 960000.0f};
-  float realse_block_height=0;
+  float realse_block_height=490000;
   // ======================== 取块状态机控制 ========================
   // 取块机构总体参数
   volatile int manble = 0;   // 测试

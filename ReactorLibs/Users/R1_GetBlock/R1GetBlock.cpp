@@ -6,8 +6,9 @@
 #include "StateCore.hpp"
 extern Farcon farcon;
 extern SystemType &System;
-extern bool cond_start_spit ;
-  uint8_t height_blcok[3]={0};
+extern bool cond_start_spit;
+uint8_t height_blcok[3] = {0};
+int debug_release=0;
 void GetBlock::Start()
 {
   air_pump_pin = BSP::GPIO::Inst({'D', 12});
@@ -224,10 +225,10 @@ void GetBlock::Get_Block(int block_height)
   //  getblock.air_pump_pin.Write(manble); // 1松，0紧
   // if(farcon.button_first_half[])
 
-height_blcok[0]=0x02;
-height_blcok[1]=block_height>>8;
-height_blcok[2]=(uint8_t)(block_height & 0xFF); // 低 8 位
-farcon.TransmitFarcon(height_blcok,3);
+  height_blcok[0] = 0x02;
+  height_blcok[1] = block_height >> 8;
+  height_blcok[2] = (uint8_t)(block_height & 0xFF); // 低 8 位
+  farcon.TransmitFarcon(height_blcok, 3);
   switch (block_height)
   {
     case 200:
@@ -267,8 +268,8 @@ farcon.TransmitFarcon(height_blcok,3);
     {
       SetTargetState(0.0f, 0.0f, 0.0f, 0.0f, blockheight_2_liftmotortargetpos[1], blockheight_2_liftmotortargetpos[1]);
       Seq::Wait(4);
-      SetTargetState(3800000.0f, 0.0f, 0.0f, 0.0f, blockheight_2_liftmotortargetpos[1], blockheight_2_liftmotortargetpos[1]);
-      Seq::Wait(2);
+      SetTargetState(0.0f, 0.0f, 0.0f, 0.0f, lift_target_pos, lift_target_pos);
+      Seq::Wait(4);
       SetTargetState(3800000.0f, 0.0f, 0.0f, 0.0f, lift_target_pos, lift_target_pos);
     }
     else
@@ -321,8 +322,8 @@ farcon.TransmitFarcon(height_blcok,3);
       }
     }
 
-    liftservo[0].SetAngle(0);
-    liftservo[1].SetAngle(0);
+    // liftservo[0].SetAngle(0);
+    // liftservo[1].SetAngle(0);
     Seq::Wait(1);
 
     if (suck_finish_times == 2)
@@ -337,11 +338,10 @@ farcon.TransmitFarcon(height_blcok,3);
     suck_flag = 0;
   }
 
-  if(farcon.button_first_half[7]==1)
+  if (farcon.button_first_half[7] == 1)
   {
-    cond_start_spit=1;
+    cond_start_spit = 1;
     Seq::Wait(1);
-
   }
 }
 
@@ -353,28 +353,30 @@ void GetBlock::ReleaseBlock()
   liftservo[1].SetAngle(15);
   Loosen_block(); // 松开
 
-height_blcok[0]=0x03;
-farcon.TransmitFarcon(height_blcok,3);
+  height_blcok[0] = 0x03;
+  farcon.TransmitFarcon(height_blcok, 3);
 
   // getblock.air_pump_pin.Write(manble); // 1松，0紧
   //  等待 begin_spit_flag 触发吐块流程
-  if(farcon.button_first_half[7]==1)
+  if (farcon.button_first_half[7] == 1)
   {
-    begin_spit_flag=1;
+    begin_spit_flag = 1;
     Seq::Wait(1);
   }
 
-  if (begin_spit_flag == 1)
+	  if (begin_spit_flag == 1)
   {
-    // 初始化吐块流程参数
+			
+			    // 初始化吐块流程参数
     Clamp_block(); // 夹紧
     suckmotor[0].SetSpd(0);
     suckmotor[1].SetSpd(0);
     // 防止来回触发
     begin_spit_flag = 0;
-
+    SetTargetState(1900000.0f, 1900000.0f, 0.0f, 0.0f, blockheight_2_liftmotortargetpos[1], blockheight_2_liftmotortargetpos[1]);
+     Seq::Wait(2);
     // 开始吐第一个块
-    SetTargetState(1900000.0f, 1810000.0f, 0.0f, 0.0f, realse_block_height, realse_block_height);
+    SetTargetState(1900000.0f, 1900000.0f, 0.0f, 0.0f, realse_block_height, realse_block_height);
     Seq::Wait(2);
 
     suckmotor[0].SetSpd(suck_speed);
@@ -387,37 +389,9 @@ farcon.TransmitFarcon(height_blcok,3);
     suckmotor[1].SetSpd(0);
     Seq::Wait(2);
     // 回到最初位置准备吐
-    SetTargetState(0.0f, 0.0f, 0.0f, 0.0f, realse_block_height, realse_block_height);
+    SetTargetState(0.0f, 0.0f, 0.0f, 0.0f, 0, 0);
+	}
 
-    //    // 开始吐第二个块
-    //    Seq::Wait(3);
-    //    Clamp_block();
-    //    Seq::Wait(1);
-    //    SetTargetState(3800000.0f, 3810000.0f, 0.0f, 0.0f, lift_target_pos, lift_target_pos);
-    //    Seq::Wait(3);
-
-    //    // 加松开往后走再吐
-    //    Loosen_block();
-    //    Seq::Wait(3);
-    //    SetTargetState(0, 0, 0.0f, 0.0f, lift_target_pos, lift_target_pos);
-    //    Seq::Wait(2);
-    //    Clamp_block();
-    //    Seq::Wait(3);
-    //    SetTargetState(3800000, 3810000, 0.0f, 0.0f, lift_target_pos, lift_target_pos);
-    //    Seq::Wait(2);
-    //    suckmotor[0].SetSpd(suck_speed);
-    //    suckmotor[1].SetSpd(-suck_speed);
-
-    //    Seq::Wait(2);
-
-    //    // 回去
-    //    suckmotor[0].SetSpd(0);
-    //    suckmotor[1].SetSpd(0);
-    //    Clamp_block(); // 夹紧
-    //    SetTargetState(0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
-    //    liftservo[0].SetAngle(0);
-    //    liftservo[1].SetAngle(0);
-  }
 }
 
 void GetBlock::Action_LiftToHeight(float height)
