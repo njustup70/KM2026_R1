@@ -6,7 +6,7 @@ using APP::chassis;
 using MOD::board_can;
 using MOD::farcon;
 
-CommCenter& comm = CommCenter::GetInstance(); 
+CommCenter& APP::comm = CommCenter::GetInstance(); 
 void R1CBoardCallback(uint8_t task_id, const uint8_t *payload, uint8_t payload_len, void *user_ctx);
 
 void CommCenter::Start()

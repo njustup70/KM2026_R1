@@ -11,11 +11,13 @@
 #include "R1GetBlock.hpp"
 #include "farcon.hpp"
 
-TaskLogic& logic = TaskLogic::GetInstance();
+TaskLogic& APP::logic = TaskLogic::GetInstance();
 using APP::getblock;
 using APP::chassis;
 using APP::state_core;
+using APP::logic;
 using MOD::farcon;
+
 /**
  * @brief 用于组织状态图并注册到StateCore
  * 
