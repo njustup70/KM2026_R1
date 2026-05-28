@@ -103,7 +103,37 @@ void CommCenter::SendButtonData()
 
     board_can.SendTask(0x210, 1, payload, 8, false);
 }
+
+void CommCenter::SendActionCommand(uint8_t action_id)
+{
+    uint8_t payload[8];
+    memset(payload, 0, sizeof(payload));
+    
+    payload[0] = 0x03;      //  3:ActionCmd
+    payload[1] = action_id; // 具体的动作代号
+    
+    MOD::board_can.SendTask(0x210, 1, payload, 8, false);
+}
+
 /** -------------------  板间通讯：接收Cboard数据 的回调函数   ------------------------- **/
 void R1CBoardCallback(uint8_t task_id, const uint8_t *payload, uint8_t payload_len, void *user_ctx)
 {
+    auto* self = static_cast<CommCenter*>(user_ctx);
+    if (!self || payload_len < 2) return;
+
+    //所有任务都挂载在task_id 1上
+    if (task_id == 1) 
+    {
+        uint8_t proto_type = payload[0];
+        uint8_t action_id  = payload[1];
+        
+        if (proto_type == 0x03) // 动作指令
+        {
+            // 如果上层（比如状态机逻辑）注册了监听器，直接通知上层，CommCenter 本身不处理业务
+            if (self->_action_handler) 
+            {
+                self->_action_handler(action_id, self->_action_ctx);
+            }
+        }
+    }
 }
