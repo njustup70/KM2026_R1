@@ -17,6 +17,7 @@ namespace Hardware
     BSP::UART::UartID huart_farcon = nullptr;
     BSP::UART::UartID huart_odom = nullptr;
     BSP::UART::UartID huart_other = nullptr;
+    BSP::UART::UartID huart_sick = nullptr;
     BSP::UART::UartID huart_log = nullptr;     
 
     /**-----    配置SPI总线    -----**/

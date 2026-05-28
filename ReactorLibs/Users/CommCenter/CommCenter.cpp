@@ -15,7 +15,10 @@ void CommCenter::Start()
     // 初始化
     pc.Init(Hardware::huart_host);
     // 注册 SLAM 位置回调 (0xA0)
-    //pc.Regist(0xFA, 0xA0, OnSlamPosReceived, this);
+    pc.Regist(0xA0, OnSlamPosReceived, this);
+
+    /**---- Sick ----**/ 
+    MOD::sick.Init(Hardware::huart_sick,0x01);
 
     /**---- 板间通讯 ----**/ 
     board_can.Init(Hardware::hcan_main, 0x220, false);
@@ -25,7 +28,9 @@ void CommCenter::Start()
 
 void CommCenter::Update()
 {
-    pc.SendOdom(chassis.chas_odom.pos.x, chassis.chas_odom.pos.y, chassis.chas_odom.pos.z); 
+    pc.SendOdom(System.odometer.transform.x,System.odometer.transform.y,System.odometer.transform.z); 
+    pc.SendSickData(MOD::sick.GetData().raw_frame);
+    
     SendButtonData(); //实时发送，目前没发现payload被覆盖的情况
     if (farcon.button_second_half[16 - 8 - 1] == 1)
     {

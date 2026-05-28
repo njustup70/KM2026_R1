@@ -2,6 +2,7 @@
 #include "System.hpp"
 #include "InterBoardComm.hpp"
 #include "HostPC.hpp"
+#include "Sick.hpp"
 
 class CommCenter : public Application
 {
