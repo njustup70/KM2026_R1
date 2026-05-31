@@ -11,6 +11,18 @@ uint8_t height_blcok[3] = {0};
 
  int R2_LIVING = 0;
 
+//#define Test_device 1
+
+//伸缩电机最远4300000
+#ifdef Test_device
+
+float test_stretch_left=0;
+float test_stretch_right=0;
+float test_suck_speed=0;
+float test_debug_height=0;
+
+#endif // DEBUG
+
 void GetBlock::Start()
 {
   air_pump_pin = BSP::GPIO::Inst({'D', 12});
@@ -225,9 +237,13 @@ void GetBlock::Get_Block(int block_height)
   appstate = STATE_GETBLOCK;
   // // 这里是测试用的，实际使用时请注释
   //  getblock.air_pump_pin.Write(manble); // 1松，0紧
-  // if(farcon.button_first_half[])
 
-  height_blcok[0] = 0x02;
+#ifdef Test_device
+ SetTargetState(test_stretch_left, test_stretch_right, 0.0f, 0.0f,test_debug_height, test_debug_height);
+    suckmotor[0].SetSpd(-test_suck_speed);
+    suckmotor[1].SetSpd(test_suck_speed);
+#else 	
+	  height_blcok[0] = 0x02;
   height_blcok[1] = block_height >> 8;
   height_blcok[2] = (uint8_t)(block_height & 0xFF); // 低 8 位
   farcon.TransmitFarcon(height_blcok, 3);
@@ -273,13 +289,13 @@ void GetBlock::Get_Block(int block_height)
       Seq::Wait(4);
       SetTargetState(0.0f, 0.0f, 0.0f, 0.0f, lift_target_pos, lift_target_pos);
       Seq::Wait(4);
-      SetTargetState(3800000.0f, 0.0f, 0.0f, 0.0f, lift_target_pos, lift_target_pos);
+      SetTargetState(stretch_distance[1], 0.0f, 0.0f, 0.0f, lift_target_pos, lift_target_pos);
     }
     else
     {
       SetTargetState(0.0f, 0.0f, 0.0f, 0.0f, lift_target_pos, lift_target_pos);
       Seq::Wait(3);
-      SetTargetState(3800000.0f, 0.0f, 0.0f, 0.0f, lift_target_pos, lift_target_pos);
+      SetTargetState(stretch_distance[1], 0.0f, 0.0f, 0.0f, lift_target_pos, lift_target_pos);
     }
     liftservo[0].SetAngle(-35);
     liftservo[1].SetAngle(15);
@@ -290,7 +306,7 @@ void GetBlock::Get_Block(int block_height)
     // 右边出去夹块
     suckmotor[0].SetSpd(-suck_speed);
     suckmotor[1].SetSpd(suck_speed);
-    SetTargetState(3800000.0f, 3750000.0f, 0.0f, 0.0f, lift_target_pos, lift_target_pos);
+    SetTargetState(stretch_distance[1], stretch_distance[1], 0.0f, 0.0f, lift_target_pos, lift_target_pos);
     Seq::Wait(2);
     Clamp_block();
     Seq::Wait(2);
@@ -302,13 +318,13 @@ void GetBlock::Get_Block(int block_height)
     {
       if (block_height == 200)
       {
-        SetTargetState(1900000.0f, 1900000.0f, 0.0f, 0.0f, blockheight_2_liftmotortargetpos[1], blockheight_2_liftmotortargetpos[1]);
+        SetTargetState(stretch_distance[0], stretch_distance[0], 0.0f, 0.0f, blockheight_2_liftmotortargetpos[1], blockheight_2_liftmotortargetpos[1]);
         Seq::Wait(4);
-        SetTargetState(1900000.0f, 1900000.0f, 0.0f, 0.0f, blockheight_2_liftmotortargetpos[2], blockheight_2_liftmotortargetpos[2]);
+        SetTargetState(stretch_distance[0], stretch_distance[0], 0.0f, 0.0f, blockheight_2_liftmotortargetpos[2], blockheight_2_liftmotortargetpos[2]);
       }
       else
       {
-        SetTargetState(1900000.0f, 1900000.0f, 0.0f, 0.0f, blockheight_2_liftmotortargetpos[2], blockheight_2_liftmotortargetpos[2]);
+        SetTargetState(stretch_distance[0], stretch_distance[0], 0.0f, 0.0f, blockheight_2_liftmotortargetpos[2], blockheight_2_liftmotortargetpos[2]);
       }
     }
     else
@@ -343,12 +359,16 @@ void GetBlock::Get_Block(int block_height)
 
   if (farcon.button_first_half[7] == 1)
   {
-    SetTargetState(1900000.0f, 1900000.0f, 0.0f, 0.0f, blockheight_2_liftmotortargetpos[1], blockheight_2_liftmotortargetpos[1]);
+    SetTargetState(stretch_distance[0],stretch_distance[0], 0.0f, 0.0f, blockheight_2_liftmotortargetpos[1], blockheight_2_liftmotortargetpos[1]);
     Seq::Wait(2);
-    SetTargetState(1900000.0f, 1900000.0f, 0.0f, 0.0f, blockheight_2_liftmotortargetpos[0], blockheight_2_liftmotortargetpos[0]);
+    SetTargetState(stretch_distance[0],stretch_distance[0], 0.0f, 0.0f, blockheight_2_liftmotortargetpos[0], blockheight_2_liftmotortargetpos[0]);
     Seq::Wait(2);
     cond_start_spit = 1;
   }
+#endif
+
+
+
 }
 
 void GetBlock::ReleaseBlock()
@@ -396,7 +416,7 @@ void GetBlock::ReleaseBlock()
       // 防止来回触发
       begin_spit_flag = 0;
       // 开始吐第一个块
-      SetTargetState(1900000.0f, 1900000.0f, 0.0f, 0.0f, realse_block_height, realse_block_height);
+      SetTargetState(release_strectch_distance[1],release_strectch_distance[1], 0.0f, 0.0f, realse_block_height, realse_block_height);
       Seq::Wait(2);
 
       suckmotor[0].SetSpd(suck_speed);
@@ -419,7 +439,7 @@ void GetBlock::ReleaseBlock()
         suckmotor[0].SetSpd(0);
         suckmotor[1].SetSpd(0);
         // 开始吐第一个块
-        SetTargetState(1900000.0f, 1900000.0f, 0.0f, 0.0f, realse_block_height, realse_block_height);
+        SetTargetState(release_strectch_distance[1], release_strectch_distance[1], 0.0f, 0.0f, realse_block_height, realse_block_height);
         Seq::Wait(2);
 
         suckmotor[0].SetSpd(suck_speed);
@@ -439,7 +459,7 @@ void GetBlock::ReleaseBlock()
         suckmotor[0].SetSpd(0);
         suckmotor[1].SetSpd(0);
         // 开始吐第二个块
-        SetTargetState(1000000.0f, 1000000.0f, 0.0f, 0.0f, realse_block_height, realse_block_height);
+        SetTargetState(release_strectch_distance[0], release_strectch_distance[0], 0.0f, 0.0f, realse_block_height, realse_block_height);
         Seq::Wait(2);
 
         suckmotor[0].SetSpd(suck_speed);
@@ -463,7 +483,7 @@ void GetBlock::ReleaseBlock()
         // 开始吐第三个块
         SetTargetState(0.0f, 0.0f, 0.0f, 0.0f, realse_block_height, realse_block_height);
         Seq::Wait(2);
-        SetTargetState(1000000.0f, 1000000.0f, 0.0f, 0.0f, realse_block_height, realse_block_height);
+        SetTargetState(release_strectch_distance[0], release_strectch_distance[0], 0.0f, 0.0f, realse_block_height, realse_block_height);
         Seq::Wait(2);
         suckmotor[0].SetSpd(suck_speed);
         suckmotor[1].SetSpd(-suck_speed);
