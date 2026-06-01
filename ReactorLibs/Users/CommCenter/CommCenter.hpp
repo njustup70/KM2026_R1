@@ -4,6 +4,14 @@
 #include "HostPC.hpp"
 #include "Sick.hpp"
 
+enum class ActionType : uint8_t 
+{
+    IDLE = 0,
+    BOW = 1,                //对应C板的rod库方法
+    CLAMP = 2,
+    PICK = 3,
+};
+
 void R1CBoardCallback(uint8_t task_id, const uint8_t *payload, uint8_t payload_len, void *user_ctx);
 
 class CommCenter : public Application
@@ -34,7 +42,8 @@ private:
 private:
     // 静态回调函数，负责对接 HostPC 的接口
     static void OnSlamPosReceived(uint8_t func, const uint8_t* payload, uint8_t len, void* ctx);
-
+    static void SlamJYSuccessed(uint8_t func, const uint8_t* payload, uint8_t len, void* ctx);
+    bool _use_slam_data = true; 
 private:  
     // 静态回调函数和发送的任务，负责对接 InterBoardComm 的接口
     void SendKFSdata(); //发送遥控器上的KFS数据，并由按键16按下后确认发送
@@ -44,11 +53,11 @@ public:
      * @brief 通知C板执行特定动作
      * @param action_id 动作枚举或代号（事先规定好）
      */
-    void SendActionCommand(uint8_t action_id);   
+    void SendActionCommand(ActionType action_id);   
     
 public:
     // app层业务逻辑相关的变量
-    volatile Vec3 slam_pos;
+    Vec3 slam_pos;
 
 // public:
 //     uint8_t KFS_values[12];

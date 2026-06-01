@@ -16,6 +16,9 @@ void CommCenter::Start()
     pc.Init(Hardware::huart_host);
     // 注册 SLAM 位置回调 (0xA0)
     pc.Regist(0xA0, OnSlamPosReceived, this);
+    // 注册 SLAM 纠正完成指令回调（0xB2）
+    pc.Regist(0xB2, SlamJYSuccessed, this);
+
 
     /**---- Sick ----**/ 
     MOD::sick.Init(Hardware::huart_sick,0x01);
@@ -35,6 +38,13 @@ void CommCenter::Update()
     if (farcon.button_second_half[16 - 8 - 1] == 1)
     {
         SendKFSdata();
+    }
+
+    if (farcon.button_second_half[15 - 8 - 1] == 1)
+    {
+        pc.SendSlamCorrectionCmd();
+        _use_slam_data = false; 
+        System.SetPositionSource(System.odometer.transform);
     }
 }
 
@@ -59,7 +69,19 @@ void CommCenter::OnSlamPosReceived(uint8_t func, const uint8_t* payload, uint8_t
     self->slam_pos.y = slam_y;
     self->slam_pos.z = slam_yaw;
 }
+void CommCenter::SlamJYSuccessed(uint8_t func, const uint8_t* payload, uint8_t len, void* ctx)
+{
+    // 这里暂时不关心payload内容，收到这个指令就认为SLAM纠正成功了
+    auto* self = static_cast<CommCenter*>(ctx);
+    if (!self) return;
 
+    // // SLAM纠正成功后，通知底盘模块清除位置锁定
+    // chassis._is_pos_locked = false;
+
+    self->_use_slam_data = true; 
+    System.SetPositionSource(self->slam_pos);
+    
+}
 void CommCenter::SendKFSdata()
 {
     uint8_t payload[8];
@@ -104,13 +126,13 @@ void CommCenter::SendButtonData()
     board_can.SendTask(0x210, 1, payload, 8, false);
 }
 
-void CommCenter::SendActionCommand(uint8_t action_id)
+void CommCenter::SendActionCommand(ActionType action_id)
 {
     uint8_t payload[8];
     memset(payload, 0, sizeof(payload));
     
-    payload[0] = 0x03;      //  3:ActionCmd
-    payload[1] = action_id; // 具体的动作代号
+    payload[0] = 0x03;           //  3:ActionCmd
+    payload[1] = (uint8_t)action_id; // 具体的动作代号
     
     MOD::board_can.SendTask(0x210, 1, payload, 8, false);
 }
