@@ -4,21 +4,24 @@
 #include "farcon.hpp"
 #include "bsp_hardware.hpp"
 #include "StateCore.hpp"
+extern Farcon farcon;
+extern SystemType &System;
+extern bool cond_start_spit;
+uint8_t height_blcok[3] = {0};
 
-GetBlock& APP::getblock = GetBlock::GetInstance();
-using APP::getblock;
+ int R2_LIVING = 0;
 
-//取块机构总体参数
-volatile int manble = 0;
-float debug_speed = 13000;
-float lift_target_pos = 0.0f;
-// ======================== 取块状态机控制 ========================
-// 定义全局或静态的布尔变量作为跳转条件
-bool suck_finish = false;
-volatile int suck_flag = 0; // 取块触发
-// ======================== 吐块状态机控制 ========================
-bool cond_finish = false; // 吐块：Prepare → SpitStart
-volatile int begin_spit_flag = 0; // 吐块触发
+//#define Test_device 1
+
+//伸缩电机最远4300000
+#ifdef Test_device
+
+float test_stretch_left=0;
+float test_stretch_right=0;
+float test_suck_speed=0;
+float test_debug_height=0;
+
+#endif // DEBUG
 
 void GetBlock::Start()
 {
@@ -30,9 +33,9 @@ void GetBlock::Start()
 
   // ---- 大疆抬升电机左（M3508，减速比19，CAN1 ID:5，位置串级模式）----
   liftmotor[0].Init(Hardware::hcan_main, 5, DJI_C620);
-  liftmotor[0].ConfigPID().AsPosC().Pos_Coeff(3.0f, 0.0f, 0.3f) // 位置环 kp/ki/kd（待整定）
+  liftmotor[0].ConfigPID().AsPosC().Pos_Coeff(1.0f, 0.0f, 0.3f) // 位置环 kp/ki/kd（待整定）
       .Pos_Limit(500.0f, 4000.0f)                               // 位置环积分限幅、输出速度限幅（rad/s）
-      .Spd_Coeff(0.1f, 0.001, 0.0f)                            // 速度环 kp/ki/kd（待整定）
+      .Spd_Coeff(0.05f, 0.001, 0.0f)                            // 速度环 kp/ki/kd（待整定）
       .Spd_Limit(5.0f, 10.0f)                                   // 速度环积分限幅、电流输出限幅（code）
       .CurLimit(10)
       .Apply();
@@ -40,9 +43,9 @@ void GetBlock::Start()
 
   // ---- 大疆抬升电机右（M3508，减速比19，CAN1 ID:6，位置串级模式）----
   liftmotor[1].Init(Hardware::hcan_main, 6, DJI_C620);
-  liftmotor[1].ConfigPID().AsPosC().Pos_Coeff(3.0f, 0.0f, 0.3f) // 位置环 kp/ki/kd（待整定）
+  liftmotor[1].ConfigPID().AsPosC().Pos_Coeff(1.0f, 0.0f, 0.3f) // 位置环 kp/ki/kd（待整定）
       .Pos_Limit(500.0f, 4000.0f)                               // 位置环积分限幅、输出速度限幅（rad/s）
-      .Spd_Coeff(0.1f, 0.001, 0.0f)                            // 速度环 kp/ki/kd（待整定）
+      .Spd_Coeff(0.05f, 0.001, 0.0f)                            // 速度环 kp/ki/kd（待整定）
       .Spd_Limit(5.0f, 10.0f)                                   // 速度环积分限幅、电流输出限幅（code）
       .CurLimit(10)
       .Apply();
@@ -50,7 +53,7 @@ void GetBlock::Start()
 
   // ---- 大疆吸吮电机左（M2006，减速比36，CAN2 ID:1，位置串级模式）----
   suckmotor[0].Init(Hardware::hcan_sub, 1, DJI_C610);
-  suckmotor[0].ConfigPID().AsSpeedC().Spd_Coeff(0.1f, 0.004, 0.0f) // 速度环 kp/ki/kd（待整定）
+  suckmotor[0].ConfigPID().AsSpeedC().Spd_Coeff(0.02f, 0.002, 0.0f) // 速度环 kp/ki/kd（待整定）
       .SpdLimit(13000)
       .Spd_Limit(3.0f, 10.0f) // 速度环积分限幅、电流输出限幅（code）
       .CurLimit(5)
@@ -59,7 +62,7 @@ void GetBlock::Start()
 
   // ---- 大疆吸吮电机右（M2006，减速比36，CAN2 ID:2，位置串级模式）----
   suckmotor[1].Init(Hardware::hcan_sub, 2, DJI_C610);
-  suckmotor[1].ConfigPID().AsSpeedC().Spd_Coeff(0.1f, 0.004, 0.0f) // 速度环 kp/ki/kd（待整定）
+  suckmotor[1].ConfigPID().AsSpeedC().Spd_Coeff(0.02f, 0.002, 0.0f) // 速度环 kp/ki/kd（待整定）
       .SpdLimit(13000)
       .Spd_Limit(3.0f, 10.0f) // 速度环积分限幅、电流输出限幅（code）
       .CurLimit(5)
@@ -122,7 +125,6 @@ void GetBlock::Update()
   // ---- 状态机 ----
   if (appstate == STATE_INIT)
   {
-    
   }
 }
 
@@ -219,9 +221,16 @@ void GetBlock::SetPosLimit(float stretch_min_L, float stretch_max_L, float stret
   pos_limit[6][0] = suck_min_R;
   pos_limit[6][1] = suck_max_R;
 }
-
 // ======================== 取块动作 ========================
+void GetBlock::Clamp_block()
+{
+  air_pump_pin.Write(1);
+}
 
+void GetBlock::Loosen_block()
+{
+  air_pump_pin.Write(0);
+}
 
 void GetBlock::Get_Block(int block_height)
 {
@@ -229,98 +238,269 @@ void GetBlock::Get_Block(int block_height)
   // // 这里是测试用的，实际使用时请注释
   //  getblock.air_pump_pin.Write(manble); // 1松，0紧
 
+#ifdef Test_device
+ SetTargetState(test_stretch_left, test_stretch_right, 0.0f, 0.0f,test_debug_height, test_debug_height);
+    suckmotor[0].SetSpd(-test_suck_speed);
+    suckmotor[1].SetSpd(test_suck_speed);
+#else 	
+	  height_blcok[0] = 0x02;
+  height_blcok[1] = block_height >> 8;
+  height_blcok[2] = (uint8_t)(block_height & 0xFF); // 低 8 位
+  farcon.TransmitFarcon(height_blcok, 3);
+
+  switch (block_height)
+  {
+    case 200:
+      lift_target_pos = blockheight_2_liftmotortargetpos[0];
+      break;
+    case 400:
+      lift_target_pos = blockheight_2_liftmotortargetpos[1];
+      break;
+    case 600:
+      lift_target_pos = blockheight_2_liftmotortargetpos[2];
+      break;
+    default:
+      lift_target_pos = 0.0f; // 默认值或错误处理
+      break;
+  }
+  if (suck_flag == 0)
+  {
+    if (farcon.button_first_half[5] == 1)
+    {
+      suck_flag = 1;
+    }
+    Seq::Wait(0.1);
+  }
+
+  if (farcon.button_first_half[6] == 1)
+  {
+    suck_flag = 2;
+    Seq::Wait(0.1);
+  }
+
   if (suck_flag == 1)
   {
-    getblock.air_pump_pin.Write(1);
-    getblock.SetTargetState(3900000.0f, 0.0f, 0.0f, 0.0f, lift_target_pos, lift_target_pos);
-    getblock.liftservo[0].SetAngle(-35);
-    getblock.liftservo[1].SetAngle(15);
-    suck_flag = 2;
+    suckmotor[0].SetSpd(0);
+    suckmotor[1].SetSpd(0);
+    Loosen_block();
+    if (block_height == 600)
+    {
+      SetTargetState(0.0f, 0.0f, 0.0f, 0.0f, blockheight_2_liftmotortargetpos[1], blockheight_2_liftmotortargetpos[1]);
+      Seq::Wait(4);
+      SetTargetState(0.0f, 0.0f, 0.0f, 0.0f, lift_target_pos, lift_target_pos);
+      Seq::Wait(4);
+      SetTargetState(stretch_distance[1], 0.0f, 0.0f, 0.0f, lift_target_pos, lift_target_pos);
+    }
+    else
+    {
+      SetTargetState(0.0f, 0.0f, 0.0f, 0.0f, lift_target_pos, lift_target_pos);
+      Seq::Wait(3);
+      SetTargetState(stretch_distance[1], 0.0f, 0.0f, 0.0f, lift_target_pos, lift_target_pos);
+    }
+    liftservo[0].SetAngle(-35);
+    liftservo[1].SetAngle(15);
+    suck_flag = -1;
   }
   if (suck_flag == 2)
   {
     // 右边出去夹块
-    getblock.suckmotor[0].SetSpd(-debug_speed);
-    getblock.suckmotor[1].SetSpd(debug_speed);
-    getblock.SetTargetState(3900000.0f, 3810000.0f, 0.0f, 0.0f, lift_target_pos, lift_target_pos);
+    suckmotor[0].SetSpd(-suck_speed);
+    suckmotor[1].SetSpd(suck_speed);
+    SetTargetState(stretch_distance[1], stretch_distance[1], 0.0f, 0.0f, lift_target_pos, lift_target_pos);
     Seq::Wait(2);
-    getblock.air_pump_pin.Write(0);
+    Clamp_block();
     Seq::Wait(2);
     // 退回起点
-    getblock.suckmotor[0].SetSpd(0);
-    getblock.suckmotor[1].SetSpd(0);
-    getblock.SetTargetState(0.0f, 0.0f, 0.0f, 0.0f, 0, 0);
-    getblock.liftservo[0].SetAngle(0);
-    getblock.liftservo[1].SetAngle(0);
-    Seq::Wait(3);
-    getblock.air_pump_pin.Write(1);
-  }
-}
+    suckmotor[0].SetSpd(0);
+    suckmotor[1].SetSpd(0);
 
+    if (suck_finish_times == 2)
+    {
+      if (block_height == 200)
+      {
+        SetTargetState(stretch_distance[0], stretch_distance[0], 0.0f, 0.0f, blockheight_2_liftmotortargetpos[1], blockheight_2_liftmotortargetpos[1]);
+        Seq::Wait(4);
+        SetTargetState(stretch_distance[0], stretch_distance[0], 0.0f, 0.0f, blockheight_2_liftmotortargetpos[2], blockheight_2_liftmotortargetpos[2]);
+      }
+      else
+      {
+        SetTargetState(stretch_distance[0], stretch_distance[0], 0.0f, 0.0f, blockheight_2_liftmotortargetpos[2], blockheight_2_liftmotortargetpos[2]);
+      }
+    }
+    else
+    {
+      if (block_height == 600)
+      {
+        SetTargetState(0.0f, 0.0f, 0.0f, 0.0f, blockheight_2_liftmotortargetpos[1], blockheight_2_liftmotortargetpos[1]);
+        Seq::Wait(4);
+        SetTargetState(0.0f, 0.0f, 0.0f, 0.0f, 0, 0);
+      }
+      else
+      {
+        SetTargetState(0.0f, 0.0f, 0.0f, 0.0f, 0, 0);
+      }
+    }
+
+    // liftservo[0].SetAngle(0);
+    // liftservo[1].SetAngle(0);
+    Seq::Wait(1);
+
+    if (suck_finish_times == 2)
+    {
+      Clamp_block();
+    }
+    else
+    {
+      Loosen_block();
+    }
+    suck_finish_times++;
+    suck_flag = 0;
+  }
+
+  if (farcon.button_first_half[7] == 1)
+  {
+    SetTargetState(stretch_distance[0],stretch_distance[0], 0.0f, 0.0f, blockheight_2_liftmotortargetpos[1], blockheight_2_liftmotortargetpos[1]);
+    Seq::Wait(2);
+    SetTargetState(stretch_distance[0],stretch_distance[0], 0.0f, 0.0f, blockheight_2_liftmotortargetpos[0], blockheight_2_liftmotortargetpos[0]);
+    Seq::Wait(2);
+    cond_start_spit = 1;
+  }
+#endif
+
+
+
+}
 
 void GetBlock::ReleaseBlock()
 {
   appstate = STATE_RELEASEBLOCK;
-// 舵机位置设置
-  getblock.liftservo[0].SetAngle(-35);
-  getblock.liftservo[1].SetAngle(15);
+  // 舵机位置设置
+  liftservo[0].SetAngle(-35);
+  liftservo[1].SetAngle(15);
+  Loosen_block(); // 松开
+
   // getblock.air_pump_pin.Write(manble); // 1松，0紧
   //  等待 begin_spit_flag 触发吐块流程
+  if (farcon.button_first_half[7] == 1)
+  {
+    begin_spit_flag = 1;
+    Seq::Wait(1);
+  }
+
+  if (farcon.button_first_half[4] == 1)
+  {
+    if (realse_order <= 1)
+      realse_order++;
+    else
+      realse_order = 0;
+    Seq::Wait(1);
+  }
+
+  if (farcon.button_first_half[5] == 1)
+  {
+    realase_Confirm = 1;
+    Seq::Wait(1);
+  }
+
+  height_blcok[0] = 0x03;
+  height_blcok[1] = 0;
+  height_blcok[2] = realse_order;
+  farcon.TransmitFarcon(height_blcok, 3);
   if (begin_spit_flag == 1)
   {
-    // 初始化吐块流程参数
-    getblock.air_pump_pin.Write(0); // 松开
-    getblock.suckmotor[0].SetSpd(0);
-    getblock.suckmotor[1].SetSpd(0);
-    //防止来回触发
-    begin_spit_flag = 0;
+    if (R2_LIVING == 1)
+    {
+      Clamp_block(); // 夹紧
+      suckmotor[0].SetSpd(0);
+      suckmotor[1].SetSpd(0);
+      // 防止来回触发
+      begin_spit_flag = 0;
+      // 开始吐第一个块
+      SetTargetState(release_strectch_distance[1],release_strectch_distance[1], 0.0f, 0.0f, realse_block_height, realse_block_height);
+      Seq::Wait(2);
 
+      suckmotor[0].SetSpd(suck_speed);
+      suckmotor[1].SetSpd(-suck_speed);
+      Seq::Wait(1);
+      Loosen_block(); // 松
 
-    // 开始吐第一个块
-    getblock.SetTargetState(3900000.0f, 3810000.0f, 0.0f, 0.0f, lift_target_pos, lift_target_pos);
-    Seq::Wait(2);
+      Seq::Wait(2);
+      suckmotor[0].SetSpd(0);
+      suckmotor[1].SetSpd(0);
+      Seq::Wait(2);
+      // 回到最初位置准备吐
+      SetTargetState(0.0f, 0.0f, 0.0f, 0.0f, 0, 0);
+    }
+    else if (R2_LIVING == 0)
+    {
+      if (realse_order == 0 && realase_Confirm == 1)
+      {
+        Clamp_block(); // 夹紧
+        suckmotor[0].SetSpd(0);
+        suckmotor[1].SetSpd(0);
+        // 开始吐第一个块
+        SetTargetState(release_strectch_distance[1], release_strectch_distance[1], 0.0f, 0.0f, realse_block_height, realse_block_height);
+        Seq::Wait(2);
 
-    getblock.suckmotor[0].SetSpd(debug_speed);
-    getblock.suckmotor[1].SetSpd(-debug_speed);
-    Seq::Wait(2);
-    getblock.air_pump_pin.Write(1); // 松开
-    Seq::Wait(2);
-    getblock.suckmotor[0].SetSpd(0);
-    getblock.suckmotor[1].SetSpd(0);
+        suckmotor[0].SetSpd(suck_speed);
+        suckmotor[1].SetSpd(-suck_speed);
+        Seq::Wait(1);
+        suckmotor[0].SetSpd(0);
+        suckmotor[1].SetSpd(0);
+        Loosen_block(); // 松
+        Seq::Wait(2);
+        // 回到最初位置准备吐
+				realse_order=1;
+        realase_Confirm = 0;
+      }
+      else if (realse_order == 1 && realase_Confirm == 1)
+      {
+        Clamp_block(); // 夹紧
+        suckmotor[0].SetSpd(0);
+        suckmotor[1].SetSpd(0);
+        // 开始吐第二个块
+        SetTargetState(release_strectch_distance[0], release_strectch_distance[0], 0.0f, 0.0f, realse_block_height, realse_block_height);
+        Seq::Wait(2);
 
-    // 回到最初位置准备吐
-    getblock.SetTargetState(0.0f, 0.0f, 0.0f, 0.0f, lift_target_pos, lift_target_pos);
+        suckmotor[0].SetSpd(suck_speed);
+        suckmotor[1].SetSpd(-suck_speed);
+        Seq::Wait(2);
+        Loosen_block(); // 松
 
-    // 开始吐第二个块
-    Seq::Wait(3);
-    getblock.air_pump_pin.Write(0);
-    Seq::Wait(1);
-    getblock.SetTargetState(3900000.0f, 3810000.0f, 0.0f, 0.0f, lift_target_pos, lift_target_pos);
-    Seq::Wait(3);
+        Seq::Wait(1);
+        suckmotor[0].SetSpd(0);
+        suckmotor[1].SetSpd(0);
+        Seq::Wait(2);
+        // 回到最初位置准备吐
+				realse_order=2;
+        realase_Confirm = 0;
+      }
+      else if (realse_order == 2 && realase_Confirm == 1)
+      {
+        Clamp_block(); // 夹紧
+        suckmotor[0].SetSpd(0);
+        suckmotor[1].SetSpd(0);
+        // 开始吐第三个块
+        SetTargetState(0.0f, 0.0f, 0.0f, 0.0f, realse_block_height, realse_block_height);
+        Seq::Wait(2);
+        SetTargetState(release_strectch_distance[0], release_strectch_distance[0], 0.0f, 0.0f, realse_block_height, realse_block_height);
+        Seq::Wait(2);
+        suckmotor[0].SetSpd(suck_speed);
+        suckmotor[1].SetSpd(-suck_speed);
+        Seq::Wait(2);
+        Loosen_block(); // 松
 
-    // 加松开往后走再吐
-    getblock.air_pump_pin.Write(1);
-    Seq::Wait(3);
-    getblock.SetTargetState(0, 0, 0.0f, 0.0f, lift_target_pos, lift_target_pos);
-    Seq::Wait(2);
-    getblock.air_pump_pin.Write(0);
-    Seq::Wait(3);
-    getblock.SetTargetState(3900000, 3810000, 0.0f, 0.0f, lift_target_pos, lift_target_pos);
-    Seq::Wait(2);
-    getblock.suckmotor[0].SetSpd(debug_speed);
-    getblock.suckmotor[1].SetSpd(-debug_speed);
-
-    Seq::Wait(2);
-
-    //回去
-    getblock.suckmotor[0].SetSpd(0);
-    getblock.suckmotor[1].SetSpd(0);
-    getblock.air_pump_pin.Write(0); // 夹紧
-    getblock.SetTargetState(0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
-    getblock.liftservo[0].SetAngle(0);
-    getblock.liftservo[1].SetAngle(0);
-
+        Seq::Wait(1);
+        suckmotor[0].SetSpd(0);
+        suckmotor[1].SetSpd(0);
+        Seq::Wait(2);
+        // 回到最初位置准备吐
+        SetTargetState(0.0f, 0.0f, 0.0f, 0.0f, 0, 0);
+        realase_Confirm = 0;
+      }
+    }
   }
+  // 初始化吐块流程参数
 }
 
 void GetBlock::Action_LiftToHeight(float height)

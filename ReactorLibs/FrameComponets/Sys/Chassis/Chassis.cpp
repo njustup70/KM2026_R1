@@ -196,6 +196,16 @@ void ChassisType::Update()
 
     // 安全锁倒计时
     _safe_lock_tick -= 5;
+
+    // 安全退debug
+    if(System.out_from_debugmode)
+    {
+        for(int i = 0; i < 4; i++)
+        {
+            motors[i].Neutral();
+            motors[i].driver.Disable();
+        }
+    }
 }
 
 
@@ -503,6 +513,8 @@ bool ChassisType::_Walking()
     {
         Move(Vec2(0, 0));           // 停止移动
         _walking = false;
+        // 当走位完成且启用了yaw锁定时，保持yaw锁定状态
+        // 这样可以继续稳定yaw角直到显式调用其他函数
         return true;                 // 动作完成
     }
 
