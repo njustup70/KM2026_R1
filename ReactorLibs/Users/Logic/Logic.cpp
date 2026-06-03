@@ -10,6 +10,7 @@
 #include "Chassis.hpp"
 #include "R1GetBlock.hpp"
 #include "farcon.hpp"
+#include "CommCenter.hpp"
 
 TaskLogic& APP::logic = TaskLogic::GetInstance();
 using APP::getblock;
@@ -74,11 +75,11 @@ void TaskLogic::Start()
  */
 void TaskLogic::Update()
 {
-    logic.is_ready_to_dock = (System.position == Vec3(0.55,4.0,-1.57f));
-    logic.is_ready_to_plan = (System.position == Vec3(2.6,3.0,0.0f));
+    //logic.is_ready_to_dock = (System.position == Vec3(0.55,4.0,-1.57f));
+    //logic.is_ready_to_plan = (System.position == Vec3(2.6,3.0,0.0f));
 
     // 底盘模式
-    logic.is_APIauto_mode = (chassis.control_mode == chassis._ChasConMode::API);
+logic.is_APIauto_mode = (chassis.control_mode == chassis._ChasConMode::API);
 
     // 可以开始导航的条件：路径已生成 + API模式
     logic.is_ready_to_nav = logic.is_APIauto_mode && logic.is_path_generated;
@@ -288,8 +289,12 @@ void TaskLogic::Action_NavToBlock(StateCore *state_core)
         });
         // 第二阶段：移动x
         chassis.MoveAt(Vec2(target.x, System.position.y));
-        if (is_corner)
+        if (is_corner && target_xid != 0)
         {
+            Seq::WaitUntil([]() -> bool
+            {
+                return (chassis._Walking() == 1);
+            });
             logic.BarrelToMid(target_xid);
             Seq::WaitUntil([]() -> bool
             {
@@ -307,8 +312,12 @@ void TaskLogic::Action_NavToBlock(StateCore *state_core)
         });
         // 第二阶段：移动y
         chassis.MoveAt(Vec2(System.position.x, target.y));
-        if (is_corner)
+        if (is_corner && target_xid != 0)
         {
+            Seq::WaitUntil([]() -> bool
+            {
+                return (chassis._Walking() == 1);
+            });
             logic.BarrelToMid(target_xid);
             Seq::WaitUntil([]() -> bool
             {

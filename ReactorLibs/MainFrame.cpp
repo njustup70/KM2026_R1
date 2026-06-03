@@ -32,11 +32,11 @@ void MainFrameCpp()
 
   System.RegistApp(APP::logic);
   System.RegistApp(APP::chassis);
-  System.RegistApp(APP::getblock);
+  //System.RegistApp(APP::getblock);
   System.RegistApp(APP::comm);
   System.RegistApp(APP::path_chaser);
 
-  APP::state_core.RegistGraph(example_graph);
+  //APP::state_core.RegistGraph(example_graph);
   APP::state_core.Enable(0); // 启动状态机核心，指定初始状态图为0号图
 }
 

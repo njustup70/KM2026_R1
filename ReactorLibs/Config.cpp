@@ -16,6 +16,7 @@ void Hardware::Config_Hardwares()
     Hardware::huart_farcon = ToID(&huart3);
     Hardware::huart_odom = ToID(&huart7);
     Hardware::huart_sick = ToID(&huart2);
+    Hardware::huart_log = ToID(&huart8);
     Hardware::huart_other = nullptr;
  
     /**-----    配置SPI总线    -----**/

@@ -4,9 +4,11 @@
 #include "farcon.hpp"
 #include "bsp_hardware.hpp"
 #include "StateCore.hpp"
+
 using MOD::farcon;
-extern SystemType &System;
-extern bool cond_start_spit;
+GetBlock& APP::getblock = GetBlock::GetInstance();
+
+//extern bool cond_start_spit;
 uint8_t height_blcok[3] = {0};
 
 GetBlock  & APP::getblock=GetBlock::GetInstance();
@@ -91,6 +93,12 @@ void GetBlock::Start()
   stretchmotor[1].driver.Enable(); // 右边target_pos是1000000左右合适，且-的往前
 
   SetTargetState(0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
+
+  // liftservo[0].Init(ToID(&htim5), TIM_CHANNEL_2); //-35度锁死，0度松开
+  // liftservo[0].Enable();
+
+  // liftservo[1].Init(ToID(&htim5), TIM_CHANNEL_3); // 15度锁死，0度松开
+  // liftservo[1].Enable();
 
   appstate = STATE_INIT;
   Enable();
@@ -326,6 +334,7 @@ void GetBlock::Get_Block(int block_height)
     Seq::Wait(2);
     SetTargetState(stretch_distance[0],stretch_distance[0], 0.0f, 0.0f, blockheight_2_liftmotortargetpos[0], blockheight_2_liftmotortargetpos[0]);
     Seq::Wait(2);
+    //cond_start_spit = 1;
   }
 #endif
 

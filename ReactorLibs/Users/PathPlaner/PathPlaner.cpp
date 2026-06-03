@@ -129,7 +129,7 @@ void GetShortestPath(Farcon::KFS_Type KFS_values[4][3], PathContainer& path)
     // 下边（y = 0）
     X[0]  = Vec2(0,         0        );
     X[1]  = Vec2(0,         UNIT*1.0f);
-    X[2]  = Vec2(0,         UNIT*2.0f); // 拐角
+    X[2]  = Vec2(-0.08f,2.4865f); // 拐角
     // 左边（x 递增，y = UNIT*2）
     X[3]  = Vec2(UNIT*1.0f, UNIT*2.0f);
     X[4]  = Vec2(UNIT*2.0f, UNIT*2.0f);
@@ -146,15 +146,22 @@ void GetShortestPath(Farcon::KFS_Type KFS_values[4][3], PathContainer& path)
     X[13] = Vec2(UNIT*3.0f,-UNIT*2.0f);
     X[14] = Vec2(UNIT*2.0f,-UNIT*2.0f);
     X[15] = Vec2(UNIT*1.0f,-UNIT*2.0f);
-    X[16] = Vec2(0,        -UNIT*2.0f); // 拐角
+    X[16] = Vec2(-0.115f,-2.35f); // 拐角
     // 回到下边
     X[17] = Vec2(0,        -UNIT*1.0f);
 
     // ── Step 1：收集所有待取块 ──
-    int  pending_xid[12];   // 每个待取块对应的X[]索引（先用curr=0做初始映射）
-    int  pending_kid[12];   // 对应的 KFS 块编号
+    path.size = 0;
+    path.index = 0;
+    path.have_block_count = 0; 
+    // 安全起见，将标签和块索引数组也刷新
+    for (int i = 0; i < MAX_PATH; i++) path.labels[i] = -1;
+    for (int i = 0; i < 12; i++)       path.have_block_xids[i] = -1;
+
+    int  pending_xid[12] = {0};   
+    int  pending_kid[12] = {0};   
     int  pending_count = 0;
-    bool visited[12] = {};
+    bool visited[12] = {false};
 
     for (int i = 0; i < 12; i++)
     {
