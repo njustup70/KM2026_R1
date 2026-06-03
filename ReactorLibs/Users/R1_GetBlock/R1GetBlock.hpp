@@ -74,8 +74,8 @@ public:
                            {0.0f, 0.0f}};
 
   // 取 200/400/600 块时抬升电机3508对应的 total_angle 目标值
-  float blockheight_2_liftmotortargetpos[3] = {0.0f, 520000.0f, 960000.0f};
-	float stretch_distance[2]={2100000,4300000};
+  float blockheight_2_liftmotortargetpos[3] = {90000.0f, 460000.0f, 870000.0f};
+	float stretch_distance[2]={2100000,4200000};
 	float release_strectch_distance[2]={1000000.0f,2100000};
   float realse_block_height = 490000;
   // ======================== 取块状态机控制 ========================
@@ -85,6 +85,7 @@ public:
 
   float suck_speed = 13000;
   float lift_target_pos = 0.0f;
+	float last_height=0;
   // 定义全局或静态的布尔变量作为跳转条件
   bool suck_finish = false;
   volatile int suck_flag = 0; // 取块触发
@@ -136,7 +137,6 @@ public:
 
   void GetTargetBlockInfo();
 };
-
 namespace APP
 {
     extern GetBlock& getblock;
