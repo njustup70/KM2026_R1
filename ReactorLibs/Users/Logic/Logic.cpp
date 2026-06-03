@@ -18,6 +18,9 @@ using APP::state_core;
 using APP::logic;
 using MOD::farcon;
 
+
+float target_height = 200; // 200高度
+ int block_time = 1;
 /**
  * @brief 用于组织状态图并注册到StateCore
  * 
@@ -346,12 +349,29 @@ void TaskLogic::Action_NavToBlock(StateCore *state_core)
 // 状态：取块
 void TaskLogic::Action_GetBlock(StateCore *state_core) 
 {
+ if (farcon.button_first_half[4] == 1&&block_time!=3)
+  {
+    block_time++;
+    Seq::Wait(0.1);
+  }else if(farcon.button_first_half[4] == 1&&block_time==3)
+  {
+    block_time=1;
+     Seq::Wait(0.1);
+  }
 
+  switch (block_time) {
+  case 1:target_height=200;break;
+   case 2:target_height=400;break;
+    case 3:target_height=600;break;
+    default:break;
+  }
+
+  getblock.Get_Block(target_height); // TODO: 根据遥控器输入的高度调用不同的函数，目前测试用固定值
 }
 
 void TaskLogic::Action_LayBlock(StateCore *state_core) 
 {
-    
+      getblock.ReleaseBlock();
 }
 
 
