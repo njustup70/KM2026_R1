@@ -147,10 +147,10 @@ void ChassisType::Update()
         control_mode = OPEN;
     }
 
-    if(farcon.toggle[3] == 1)
-    {
-        LockPosition();
-    }
+    // if(farcon.toggle[3] == 1)
+    // {
+    //     LockPosition();
+    // }
 
     if(control_mode == FARCON)
     {

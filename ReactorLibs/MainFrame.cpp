@@ -32,7 +32,7 @@ void MainFrameCpp()
 
   System.RegistApp(APP::logic);
   System.RegistApp(APP::chassis);
-  //System.RegistApp(APP::getblock);
+  System.RegistApp(APP::getblock);
   System.RegistApp(APP::comm);
   System.RegistApp(APP::path_chaser);
 

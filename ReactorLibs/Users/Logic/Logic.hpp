@@ -25,6 +25,7 @@ class TaskLogic: public Application
         float target_x, target_y;
 
     public:
+        bool is_ready_to_rod = false;
         bool is_ready_to_dock = false; 
         bool is_ready_to_plan = false;
 
@@ -50,14 +51,13 @@ class TaskLogic: public Application
         StateGraph area2_graph{"AutoGetBlock"};
     private:    
         //Action函数定义
+        static void Action_GetToRodCmd(StateCore* core);   // 获取到杆的命令
+        static void Action_NavToRod(StateCore* core);      // 导航到杆
         static void Action_GetRod(StateCore *core);    // 取杆动作,跑点然后取杆然后到对接点准备对接
         static void Action_Dock(StateCore *core);      // 对接动作，对接完后进入梅林的初始点
-
         static void Action_Planning(StateCore* core);      // 规划到块的路径
         static void Action_NavToBlock(StateCore* core);    // 移动
-        // static void Action_WaitButton(StateCore* core);    // 等待按键
         static void Action_GetBlock(StateCore* core);    // 取块动作
-        // static void Action_NextPlanning(StateCore* core);  // 规划到终点的路径
         static void Action_LayBlock(StateCore* core);    // 放块动作
 
 };

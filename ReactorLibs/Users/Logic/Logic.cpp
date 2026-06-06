@@ -11,6 +11,8 @@
 #include "R1GetBlock.hpp"
 #include "farcon.hpp"
 #include "CommCenter.hpp"
+#include "PathChaser.hpp"
+#include "R1_area1_rod.hpp"
 
 TaskLogic& APP::logic = TaskLogic::GetInstance();
 using APP::getblock;
@@ -18,6 +20,7 @@ using APP::chassis;
 using APP::state_core;
 using APP::logic;
 using MOD::farcon;
+using APP::path_chaser;
 
 
 float target_height = 200; // 200高度
@@ -29,8 +32,10 @@ float target_height = 200; // 200高度
 void TaskLogic::Start()
 {
     //1.添加状态块
-    //StateBlock& s_rod = area2_graph.AddState("GetRod");
-    //StateBlock& s_dock = area2_graph.AddState("Docking");
+    StateBlock& s_chaser = area2_graph.AddState("PlanToRod");
+    StateBlock& s_run = area2_graph.AddState("NavToRod");    
+    StateBlock& s_rod = area2_graph.AddState("GetRod");
+    StateBlock& s_dock = area2_graph.AddState("Docking");
 
     StateBlock& s_plan = area2_graph.AddState("Planning");
     StateBlock& s_move = area2_graph.AddState("NavtoBlock");
@@ -40,8 +45,10 @@ void TaskLogic::Start()
     StateBlock& s_lay = area2_graph.AddState("LayBlock");
 
     //2.绑定状态的动作函数
-    //s_rod.StateAction = Action_GetRod;
-    //s_dock.StateAction = Action_Dock;
+    s_chaser.StateAction = Action_GetToRodCmd;
+    s_run.StateAction = Action_NavToRod;
+    s_rod.StateAction = Action_GetRod;
+    s_dock.StateAction = Action_Dock;
 
     s_plan.StateAction = Action_Planning;
     s_move.StateAction = Action_NavToBlock;
@@ -49,14 +56,16 @@ void TaskLogic::Start()
     s_lay.StateAction = Action_LayBlock;
 
     //3.设置linkto
-    //s_rod.LinkTo(&is_ready_to_dock, s_dock);
-    //s_dock.LinkTo(&is_ready_to_plan, s_plan);
+    s_chaser.LinkTo(&APP::chassis.enabled, s_run);
+    s_run.LinkTo(&is_ready_to_rod, s_rod);
+    s_rod.LinkTo(&is_ready_to_dock, s_dock);
+    s_dock.LinkTo(&is_ready_to_plan, s_plan);
 
     // Planning TO NavToBlock：路径已生成且底盘在API自动模式
     s_plan.LinkTo(&is_ready_to_nav, s_move);
  
     // NavToBlock TO GetBlock：当前目标点有块，需要取块
-    s_move.LinkTo(&is_ready_to_pick, s_pick);
+    s_move.LinkTo(&is_at_block_point, s_pick);
     s_move.LinkTo(&is_ready_to_lay,s_lay);
 
  
@@ -77,17 +86,22 @@ void TaskLogic::Update()
 {
     //logic.is_ready_to_dock = (System.position == Vec3(0.55,4.0,-1.57f));
     //logic.is_ready_to_plan = (System.position == Vec3(2.6,3.0,0.0f));
-
+    logic.is_ready_to_rod = APP::path_chaser.IsFinished();
     // 底盘模式
-logic.is_APIauto_mode = (chassis.control_mode == chassis._ChasConMode::API);
+    logic.is_APIauto_mode = (chassis.control_mode == chassis._ChasConMode::API);
 
     // 可以开始导航的条件：路径已生成 + API模式
     logic.is_ready_to_nav = logic.is_APIauto_mode && logic.is_path_generated;
 
-    logic.is_ready_to_pick = logic.is_at_block_point && logic.btn_pick_start;
+    //logic.is_ready_to_pick = logic.is_at_block_point && logic.btn_pick_start;
 
     logic.is_ready_to_lay = logic.is_final_goal_reached && logic.btn_lay_start;
  
+    // 遥控器按键14：对接成功，准备开始规划
+    if (farcon.button_second_half[14 - 8 - 1] == 1)
+    {
+        logic.is_ready_to_plan = true;
+    }
     // 遥控器按键10：确认KFS数据已发好
     if (farcon.button_second_half[10 - 8 - 1] == 1)
     {
@@ -101,7 +115,7 @@ logic.is_APIauto_mode = (chassis.control_mode == chassis._ChasConMode::API);
     // 遥控器按键12：确认吸块完成
     if (farcon.button_second_half[12 - 8 - 1] == 1)
     {
-        logic.btn_pick_done= true;
+        logic.is_pick_done= true;
     }
     // 遥控器按键13：确认放块开始
     if (farcon.button_second_half[13 - 8 - 1] == 1)
@@ -178,22 +192,33 @@ void TaskLogic::BarrelToMid(int target_xid)
     } 
 }
 
+void TaskLogic::Action_GetToRodCmd(StateCore *core)
+{
+  Seq::WaitUntil([]() -> bool 
+  {
+      return MOD::farcon.button_second_half[9-8-1] == 1;
+  });
+  APP::path_chaser.ChasePath(GeneratedPath);
+}
+
+void TaskLogic::Action_NavToRod(StateCore *core)
+{
+  Vec3 cmd_body = APP::path_chaser.GetCmdBody();
+  APP::chassis.Move(cmd_body);
+}
+
 void TaskLogic::Action_GetRod(StateCore *state_core)
 {
-    Seq::WaitUntil([]() -> bool 
-    {
-        return farcon.button_second_half[9 - 8 - 1] == 1;
-    });
-    // 绕过障碍物
-    chassis.MoveAt(Vec2(1.4, 1.4));
+    // // 绕过障碍物
+    // chassis.MoveAt(Vec2(1.4, 1.4));
 
-    // 不等完全到达，只需要足够接近
-    Seq::WaitUntil([]() {
-        float dist = (System.position.ToVec2() - Vec2(1.4, 1.4)).Length();
-        return dist < 0.3f;  // 30cm以内继续
-    });
-    chassis.MoveAt(Vec2(0.80,2.8));
-    chassis.RotateAt(3.14159f);
+    // // 不等完全到达，只需要足够接近
+    // Seq::WaitUntil([]() {
+    //     float dist = (System.position.ToVec2() - Vec2(1.4, 1.4)).Length();
+    //     return dist < 0.3f;  // 30cm以内继续
+    // });
+    // chassis.MoveAt(Vec2(0.80,2.8));
+    // chassis.RotateAt(-3.14159f);
 
     Seq::WaitUntil([]() -> bool 
     {
@@ -209,15 +234,17 @@ void TaskLogic::Action_GetRod(StateCore *state_core)
     });
     Seq::WaitUntil([]() -> bool 
     {
-        return farcon.button_first_half[4 - 1] == 1;  //发送按键4，此时确认夹到杆后移动到对接点
+        return farcon.button_first_half[4 - 1] == 1;  //发送按键4，此时夹紧
     }); 
-    chassis.MoveAt(Vec2(0.55,4));
+    chassis.MoveAt(Vec2(0.9,3.3));
     chassis.RotateAt(-1.57f);
+    logic.is_ready_to_dock = true; 
 }
 
 void TaskLogic::Action_Dock(StateCore *state_core)
 {
     //对接动作
+
 }
 
 // 状态：规划路径
@@ -254,8 +281,16 @@ void TaskLogic::Action_Planning(StateCore *state_core)
  */
 void TaskLogic::Action_NavToBlock(StateCore *state_core) 
 {
+    // 如果刚从取块状态回来，推进index继续导航
+    if (logic.is_at_block_point)
+    {
+        logic.is_pick_done = false; 
+        logic.is_at_block_point = false;
+        Zone2_Path.index++;
+    }
+
     // 复位取块完成标志（每次进入NavToBlock时清除）
-    // logic.is_pick_done    = false;
+    logic.is_pick_done    = false;
     logic.is_ready_to_nav = false;
  
     // 判断是否已走完全部路径点
@@ -326,7 +361,7 @@ void TaskLogic::Action_NavToBlock(StateCore *state_core)
         }
     }
 
-     // ── 已到达目标点，查have_block_xids判断是否需要取块 ──
+    // ── 已到达目标点，查have_block_xids判断是否需要取块 ──
     bool is_kfs_point = false;
     for (int i = 0; i < Zone2_Path.have_block_count; i++)
     {
@@ -358,29 +393,32 @@ void TaskLogic::Action_NavToBlock(StateCore *state_core)
 // 状态：取块
 void TaskLogic::Action_GetBlock(StateCore *state_core) 
 {
- if (farcon.button_first_half[4] == 1&&block_time!=3)
-  {
-    block_time++;
-    Seq::Wait(0.1);
-  }else if(farcon.button_first_half[4] == 1&&block_time==3)
-  {
-    block_time=1;
-     Seq::Wait(0.1);
-  }
+    //logic.is_pick_done = false; 
+    if (farcon.button_first_half[4] == 1&&block_time!=3)
+    {
+        block_time++;
+        Seq::Wait(0.1);
+    }
+    else if(farcon.button_first_half[4] == 1&&block_time==3)
+    {
+        block_time=1;
+        Seq::Wait(0.1);
+    }
 
-  switch (block_time) {
-  case 1:target_height=200;break;
-   case 2:target_height=400;break;
-    case 3:target_height=600;break;
-    default:break;
-  }
+    switch (block_time) 
+    {
+        case 1:target_height=200;break;
+        case 2:target_height=400;break;
+        case 3:target_height=600;break;
+            default:break;
+    }
 
-  getblock.Get_Block(target_height); // TODO: 根据遥控器输入的高度调用不同的函数，目前测试用固定值
-}
+    getblock.Get_Block(target_height); // TODO: 根据遥控器输入的高度调用不同的函数，目前测试用固定值
+    }
 
 void TaskLogic::Action_LayBlock(StateCore *state_core) 
 {
-      getblock.ReleaseBlock();
+    getblock.ReleaseBlock();
 }
 
 

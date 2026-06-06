@@ -7,12 +7,9 @@
 
 using MOD::farcon;
 GetBlock& APP::getblock = GetBlock::GetInstance();
-
-//extern bool cond_start_spit;
 uint8_t height_blcok[3] = {0};
 
-GetBlock  & APP::getblock=GetBlock::GetInstance();
- int R2_LIVING = 0;
+int R2_LIVING = 0;
 
 //#define Test_device 1
 
