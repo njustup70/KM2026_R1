@@ -13,6 +13,7 @@
 #include "CommCenter.hpp"
 #include "PathChaser.hpp"
 #include "R1_area1_rod.hpp"
+#include "R1_area3.hpp"
 
 TaskLogic &APP::logic = TaskLogic::GetInstance();
 using APP::chassis;
@@ -30,8 +31,8 @@ int block_time = 1;
 void TaskLogic::Start()
 {
     //1.添加状态块
-    StateBlock& s_chaser = area2_graph.AddState("PlanToRod");
-    StateBlock& s_run = area2_graph.AddState("NavToRod");    
+    StateBlock& s_chaser = area2_graph.AddState("GetCmd");
+    StateBlock& s_run = area2_graph.AddState("RunCmd");    
     StateBlock& s_rod = area2_graph.AddState("GetRod");
     StateBlock& s_dock = area2_graph.AddState("Docking");
 
@@ -43,8 +44,8 @@ void TaskLogic::Start()
     StateBlock &s_lay = area2_graph.AddState("LayBlock");
 
     //2.绑定状态的动作函数
-    s_chaser.StateAction = Action_GetToRodCmd;
-    s_run.StateAction = Action_NavToRod;
+    s_chaser.StateAction = Action_GetPathCmd;
+    s_run.StateAction = Action_RunCmd;
     s_rod.StateAction = Action_GetRod;
     s_dock.StateAction = Action_Dock;
 
@@ -56,6 +57,8 @@ void TaskLogic::Start()
     //3.设置linkto
     s_chaser.LinkTo(&APP::chassis.enabled, s_run);
     s_run.LinkTo(&is_ready_to_rod, s_rod);
+    s_run.LinkTo(&is_ready_to_lay, s_lay); 
+
     s_rod.LinkTo(&is_ready_to_dock, s_dock);
     s_dock.LinkTo(&is_ready_to_plan, s_plan);
 
@@ -64,11 +67,11 @@ void TaskLogic::Start()
  
     // NavToBlock TO GetBlock：当前目标点有块，需要取块
     s_move.LinkTo(&is_at_block_point, s_pick);
-    s_move.LinkTo(&is_ready_to_lay,s_lay);
+    // s_move.LinkTo(&is_ready_to_lay,s_lay);
+    s_move.LinkTo(&is_final_goal_reached, s_chaser);
 
     // NavToBlock TO GetBlock：当前目标点有块，需要取块
     s_move.LinkTo(&is_ready_to_pick, s_pick);
-    s_move.LinkTo(&is_ready_to_lay, s_lay);
 
     // GetBlock TO NavToBlock：取块完成（按键确认），继续导航
     s_pick.LinkTo(&is_pick_done, s_move);
@@ -76,6 +79,7 @@ void TaskLogic::Start()
 
     // 注册图
     state_core.RegistGraph(area2_graph);
+    logic.current_area = Area::Area1; 
 }
 
 /**
@@ -86,7 +90,8 @@ void TaskLogic::Update()
 {
     //logic.is_ready_to_dock = (System.position == Vec3(0.55,4.0,-1.57f));
     //logic.is_ready_to_plan = (System.position == Vec3(2.6,3.0,0.0f));
-    logic.is_ready_to_rod = APP::path_chaser.IsFinished();
+    logic.is_ready_to_rod = (APP::path_chaser.IsFinished() && logic.current_area == Area::Area1);
+    logic.is_ready_to_lay = (APP::path_chaser.IsFinished() && logic.current_area == Area::Area3);
     // 底盘模式
     logic.is_APIauto_mode = (chassis.control_mode == chassis._ChasConMode::API);
 
@@ -94,8 +99,6 @@ void TaskLogic::Update()
     logic.is_ready_to_nav = logic.is_APIauto_mode && logic.is_path_generated;
 
     //logic.is_ready_to_pick = logic.is_at_block_point && logic.btn_pick_start;
-
-    logic.is_ready_to_lay = logic.is_final_goal_reached;
  
     // 遥控器按键14：对接成功，准备开始规划
     if (farcon.button_second_half[14 - 8 - 1] == 1)
@@ -200,24 +203,35 @@ void TaskLogic::BarrelToMid(int target_xid)
     }
     if (target_xid == 11)
     {
-        chassis.RotateAt(1.5708f);
+        chassis.RotateAt(0.0f);
     }
     if (target_xid == 16)
     {
-        chassis.RotateAt(0.0f);
+        chassis.RotateAt(1.57f);
     }
 }
 
-void TaskLogic::Action_GetToRodCmd(StateCore *core)
+void TaskLogic::Action_GetPathCmd(StateCore *core)
 {
     Seq::WaitUntil([]() -> bool 
     {
         return MOD::farcon.button_second_half[9 - 8 - 1] == 1;
     });
-    APP::path_chaser.ChasePath(GeneratedPath);
+    if(logic.current_area == Area1)
+    {
+        APP::path_chaser.ChasePath(Area1RodPath);
+    }
+    else if(logic.current_area == Area3)
+    {
+        APP::path_chaser.ChasePath(Area3Path);
+    }
+    else 
+    {
+        
+    }
 }
 
-void TaskLogic::Action_NavToRod(StateCore *core)
+void TaskLogic::Action_RunCmd(StateCore *core)
 {
     Vec3 cmd_body = APP::path_chaser.GetCmdBody();
     APP::chassis.Move(cmd_body);
@@ -304,7 +318,7 @@ void TaskLogic::Action_NavToBlock(StateCore *state_core)
         logic.is_at_block_point = false;
         Zone2_Path.index++;
     }
-
+    
     // 复位取块完成标志（每次进入NavToBlock时清除）
     logic.is_pick_done    = false;
     logic.is_ready_to_nav = false;
@@ -314,6 +328,7 @@ void TaskLogic::Action_NavToBlock(StateCore *state_core)
     {
         logic.is_final_goal_reached = true;
         logic.is_path_generated     = false;
+        logic.current_area = Area::Area3; 
         return;
     }
  
@@ -324,13 +339,6 @@ void TaskLogic::Action_NavToBlock(StateCore *state_core)
     bool  is_corner = (target_xid == 2 || target_xid == 7 ||
                         target_xid == 11 || target_xid == 16);
 
-  // 判断是否已走完全部路径点
-  if (Zone2_Path.index >= Zone2_Path.size)
-  {
-    logic.is_final_goal_reached = true;
-    logic.is_path_generated = false;
-    return;
-  }
 
   // 分步移动
   // 下边(0) / 上边(2) / 回程下边(4)：先对齐y，再对齐x
@@ -438,5 +446,6 @@ void TaskLogic::Action_LayBlock(StateCore *state_core)
     {
         return MOD::farcon.button_second_half[13 - 8 - 1] == 1;
     });
+
     getblock.ReleaseBlock();
 }

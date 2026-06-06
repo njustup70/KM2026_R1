@@ -8,7 +8,7 @@
 // total_length(grid): 3.323608
 // total_time(s): 10.806083
 
-static const Path<83> GeneratedPath = {
+static const Path<83> Area1RodPath = {
     {
         {{0.000000f, 0.000000f}, 0.000000f, {0.000000f, 0.000000f}, 0.000000f, 0.000000f},
         {{0.033333f, 0.033333f}, 0.000000f, {0.217119f, 0.217119f}, 0.000000f, 0.307052f},

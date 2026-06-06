@@ -148,7 +148,7 @@ class ChassisType : public Application
         /// @param 最大线速度，单位m/s
         float _max_velo = 0.5f;
         /// @param 最大角速度，单位rad/s
-        float _max_omega = 0.5f;
+        float _max_omega = 0.8f;
         /// @param 最大角加速度，单位rad/s^2
         float _max_beta = 2.0f;
 

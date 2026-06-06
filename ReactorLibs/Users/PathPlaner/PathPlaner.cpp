@@ -140,7 +140,7 @@ void GetShortestPath(Farcon::KFS_Type KFS_values[4][3], PathContainer& path)
     X[8]  = Vec2(UNIT*5.0f, UNIT*1.0f);
     X[9]  = Vec2(UNIT*5.0f, UNIT*0.0f);
     X[10] = Vec2(UNIT*5.0f,-UNIT*1.0f);
-    X[11] = Vec2(UNIT*5.0f,-UNIT*2.0f); // 拐角（终点）
+    X[11] = Vec2(UNIT*5.0f,0.60); // 拐角（终点）
     // 右边（x 递减，y = -UNIT*2）
     X[12] = Vec2(UNIT*4.0f,-UNIT*2.0f);
     X[13] = Vec2(UNIT*3.0f,-UNIT*2.0f);
@@ -177,7 +177,7 @@ void GetShortestPath(Farcon::KFS_Type KFS_values[4][3], PathContainer& path)
 
     // ── Step 2：初始化路径 ──
     path.size = 0;
-    path.add(ToGlobal(X[0]), 0); // 起点 X[0]
+    //path.add(ToGlobal(X[0]), 0); // 起点 X[0]
 
     int curr_xid = 0;
 
