@@ -377,9 +377,14 @@ void GetBlock::ReleaseBlock()
     // R2死了
 		if(release_pre_flag==1)
 		{
-		SetTargetState(release_strectch_distance[1], release_strectch_distance[1], 0.0f, 0.0f, realse_block_height, realse_block_height);
+			SetTargetState(release_strectch_distance[1]/4, release_strectch_distance[1]/4, 0.0f, 0.0f, realse_block_height/4, realse_block_height/4);
+		Seq::Wait(1);
+			SetTargetState(release_strectch_distance[1]/2, release_strectch_distance[1]/2, 0.0f, 0.0f, realse_block_height/2, realse_block_height/2);
 		Seq::Wait(2);
+		SetTargetState(release_strectch_distance[1], release_strectch_distance[1], 0.0f, 0.0f, realse_block_height, realse_block_height);
+		Seq::Wait(1);
 		Clamp_block();
+				Seq::Wait(1);
 		release_pre_flag=0;
 		}
 		
@@ -407,13 +412,14 @@ void GetBlock::ReleaseBlock()
       SetTargetState(release_strectch_distance[1], release_strectch_distance[1], 0.0f, 0.0f, realse_block_height, realse_block_height);
       Seq::Wait(2);
       Clamp_block();
-      suckmotor[0].SetSpd(suck_speed);
-      suckmotor[1].SetSpd(-suck_speed);
-      Seq::Wait(1);
+      suckmotor[0].SetSpd(suck_speed*0.7);
+      suckmotor[1].SetSpd(-suck_speed*0.7);
+      Seq::Wait(0.8);
       suckmotor[0].SetSpd(0);
       suckmotor[1].SetSpd(0);
       Loosen_block(); // 松
       Seq::Wait(2);
+			Clamp_block(); // 夹紧
       // 回到最初位置准备吐
       realse_order = 1;
       realase_Confirm = 0;
@@ -484,6 +490,10 @@ void GetBlock::ReleaseBlock()
     SetTargetState(0.0f, 0.0f, 0.0f, 0.0f, 0, 0);
 
 #endif // DEBUG
+if(realse_order==0)
+{
+ Clamp_block(); // 夹紧
+}
   }
 //	      SetTargetState(release_strectch_distance[1], release_strectch_distance[1], 0.0f, 0.0f, realse_block_height, realse_block_height);
   // 初始化吐块流程参数
