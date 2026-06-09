@@ -98,7 +98,7 @@ void StateCore::Run()
 
     // 执行 `当前状态图` 的 `对应状态`的 状态函数
     StateGraph& graph = *graphs[at_graph_id];
-    StateBlock* state = &graph.current_state;
+    StateBlock* state = graph.current_state;
 
     // 执行当前状态图的全局状态函数
     if (graph.GlobalAction != nullptr) graph.GlobalAction(this);
@@ -115,7 +115,7 @@ void StateCore::Run()
     if (next_id != graph.executor_at_id) 
     {
         graph.executor_at_id = next_id;
-        graph.current_state = graph.states[next_id];// 指针重定向
+        graph.current_state = &graph.states[next_id];// 指针重定向
     }
 }
 
@@ -128,7 +128,7 @@ void StateCore::Enable(uint8_t first_graph)
     }
 }
 
-StateBlock& StateCore::GetCurState()
+StateBlock* StateCore::GetCurState()
 {
     StateGraph& graph = *graphs[at_graph_id];
     return graph.current_state; 
