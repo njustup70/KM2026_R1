@@ -25,6 +25,7 @@ class TaskLogic: public Application
         float GetInwardYaw(int xid);
         Vec2 GetInwardTarget(Vec3 cur_pos, int xid, float dist);
         void BarrelToMid(int target_xid);
+        int GetBlockHeight(int block_xid);
 
     private:
         //底盘运动路径点类
@@ -52,6 +53,7 @@ class TaskLogic: public Application
         bool is_moving_in = false;     
         bool btn_pick_done = false;
         bool is_pick_done = false;      // 取块动作完成
+        bool is_just_picked = false;     // 是否刚取完块
 
         bool is_final_goal_reached = false;
         bool btn_lay_start = false;      // 放块动作开始

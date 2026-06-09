@@ -67,11 +67,7 @@ void TaskLogic::Start()
  
     // NavToBlock TO GetBlock：当前目标点有块，需要取块
     s_move.LinkTo(&is_at_block_point, s_pick);
-    // s_move.LinkTo(&is_ready_to_lay,s_lay);
     s_move.LinkTo(&is_final_goal_reached, s_chaser);
-
-    // NavToBlock TO GetBlock：当前目标点有块，需要取块
-    s_move.LinkTo(&is_ready_to_pick, s_pick);
 
     // GetBlock TO NavToBlock：取块完成（按键确认），继续导航
     s_pick.LinkTo(&is_pick_done, s_move);
@@ -110,21 +106,21 @@ void TaskLogic::Update()
     {
         logic.btn_kfs_confirm = true;
     }
-     // 遥控器按键11：确认可以吸块
-    if (farcon.button_second_half[11 - 8 - 1] == 1)
-    {
-        logic.btn_pick_start = true;
-    }
+    //  // 遥控器按键11：确认可以吸块
+    // if (farcon.button_second_half[11 - 8 - 1] == 1)
+    // {
+    //     logic.btn_pick_start = true;
+    // }
     // 遥控器按键12：确认吸块完成
     if (farcon.button_second_half[12 - 8 - 1] == 1)
     {
         logic.is_pick_done= true;
     }
-    // // 遥控器按键13：确认放块开始
-    // if (farcon.button_second_half[13 - 8 - 1] == 1)
-    // {
-    //     logic.btn_lay_start = true;
-    // }
+    // 遥控器按键13：确认放块开始
+    if (farcon.button_second_half[13 - 8 - 1] == 1)
+    {
+        logic.btn_lay_start = true;
+    }
 }
 
 /**
@@ -211,6 +207,23 @@ void TaskLogic::BarrelToMid(int target_xid)
     }
 }
 
+int TaskLogic::GetBlockHeight(int index_id)
+{
+    if (index_id == 0 || index_id == 6 || index_id == 8 || index_id == 10 || index_id == 12 || index_id == 14)
+    {
+        return 200; // 200高度
+    }
+    else if (index_id == 4 || index_id == 15)
+    {
+        return 600; // 600高度
+    }
+    else
+    {
+        return 400; // 400高度
+    }
+    return 0; 
+}
+
 void TaskLogic::Action_GetPathCmd(StateCore *core)
 {
     Seq::WaitUntil([]() -> bool 
@@ -225,9 +238,9 @@ void TaskLogic::Action_GetPathCmd(StateCore *core)
     {
         APP::path_chaser.ChasePath(Area3Path);
     }
-    else 
+    else
     {
-        
+        return;
     }
 }
 
@@ -283,13 +296,6 @@ void TaskLogic::Action_Planning(StateCore *state_core)
     // 等待遥控器确认KFS数据已发好
     if (!logic.btn_kfs_confirm)
         return;
-
-    // 重置路径与导航状态
-    logic.is_path_generated = false;
-    logic.is_final_goal_reached = false;
-    logic.is_at_block_point = false;
-    logic.is_pick_done = false;
-    logic.btn_pick_start = false;
     Zone2_Path.index = 0;
 
     // 调用路径规划
@@ -311,14 +317,14 @@ void TaskLogic::Action_Planning(StateCore *state_core)
  */
 void TaskLogic::Action_NavToBlock(StateCore *state_core)
 {
-    // 如果刚从取块状态回来，推进index继续导航
-    if (logic.is_at_block_point)
+    // 如果刚从取块状态回来，推进index继续导航，
+    if (logic.is_just_picked)
     {
-        logic.is_pick_done = false; 
-        logic.is_at_block_point = false;
+        // logic.is_pick_done = false; 
+        logic.is_just_picked = false;
         Zone2_Path.index++;
     }
-    
+
     // 复位取块完成标志（每次进入NavToBlock时清除）
     logic.is_pick_done    = false;
     logic.is_ready_to_nav = false;
@@ -326,119 +332,134 @@ void TaskLogic::Action_NavToBlock(StateCore *state_core)
     // 判断是否已走完全部路径点
     if (Zone2_Path.index >= Zone2_Path.size)
     {
-        logic.is_final_goal_reached = true;
+        Zone2_Path.index = 0; 
         logic.is_path_generated     = false;
         logic.current_area = Area::Area3; 
+        logic.is_final_goal_reached = true;
         return;
     }
- 
-    // 获取当前目标路径点
-    Vec2  target = Zone2_Path.points[Zone2_Path.index];
-    int   target_xid = Zone2_Path.labels[Zone2_Path.index];
-    int   edge = logic.GetEdge(target_xid);
-    bool  is_corner = (target_xid == 2 || target_xid == 7 ||
-                        target_xid == 11 || target_xid == 16);
-
-
-  // 分步移动
-  // 下边(0) / 上边(2) / 回程下边(4)：先对齐y，再对齐x
-  // 左边(1) / 右边(3)：先对齐x，再对齐y
-  bool y_first = (edge == 0 || edge == 2);
-
-  if (y_first)
-  {
-    // 第一阶段：移动y
-    chassis.MoveAt(Vec2(System.position.x, target.y));
-    Seq::WaitUntil([]() -> bool
-                { return (chassis._Walking() == 1); });
-    // 第二阶段：移动x
-    chassis.MoveAt(Vec2(target.x, System.position.y));
-    if (is_corner && target_xid != 0)
+    
+    if(! logic.is_final_goal_reached)
     {
-        Seq::WaitUntil([]() -> bool
+        // 获取当前目标路径点
+        Vec2  target = Zone2_Path.points[Zone2_Path.index];
+        int   target_xid = Zone2_Path.labels[Zone2_Path.index];
+        int   edge = logic.GetEdge(target_xid);
+        bool  is_corner = (target_xid == 2 || target_xid == 7 ||
+                            target_xid == 11 || target_xid == 16);
+
+
+        // 分步移动
+        // 下边(0) / 上边(2) / 回程下边(4)：先对齐y，再对齐x
+        // 左边(1) / 右边(3)：先对齐x，再对齐y
+        bool y_first = (edge == 0 || edge == 2);
+
+        if (y_first)
+        {
+            // 第一阶段：移动y
+            chassis.MoveAt(Vec2(System.position.x, target.y));
+            Seq::WaitUntil([]() -> bool
                         { return (chassis._Walking() == 1); });
-        logic.BarrelToMid(target_xid);
-        Seq::WaitUntil([]() -> bool
-                        { return (chassis._Rotating() == 1); });
-    }
-  }
-  else
-  {
-    // 第一阶段：移动x
-    chassis.MoveAt(Vec2(target.x, System.position.y));
-    Seq::WaitUntil([]() -> bool
-                   { return (chassis._Walking() == 1); });
-    // 第二阶段：移动y
-    chassis.MoveAt(Vec2(System.position.x, target.y));
-    if (is_corner && target_xid != 0)
-    {
-      Seq::WaitUntil([]() -> bool
-                     { return (chassis._Walking() == 1); });
-      logic.BarrelToMid(target_xid);
-      Seq::WaitUntil([]() -> bool
-                     { return (chassis._Rotating() == 1); });
-    }
-  }
+            // 第二阶段：移动x
+            chassis.MoveAt(Vec2(target.x, target.y));
+            if (is_corner && target_xid != 0)
+            {
+                Seq::WaitUntil([]() -> bool
+                                { return (chassis._Walking() == 1); });
+                logic.BarrelToMid(target_xid);
+                Seq::WaitUntil([]() -> bool
+                                { return (chassis._Rotating() == 1); });
+            }
+        }
+        else
+        {
+            // 第一阶段：移动x
+            chassis.MoveAt(Vec2(target.x, System.position.y));
+            Seq::WaitUntil([]() -> bool
+                        { return (chassis._Walking() == 1); });
+            // 第二阶段：移动y
+            chassis.MoveAt(Vec2(target.x, target.y));
+            if (is_corner && target_xid != 0)
+            {
+            Seq::WaitUntil([]() -> bool
+                            { return (chassis._Walking() == 1); });
+            logic.BarrelToMid(target_xid);
+            Seq::WaitUntil([]() -> bool
+                            { return (chassis._Rotating() == 1); });
+            }
+        }
 
-  // ── 已到达目标点，查have_block_xids判断是否需要取块 ──
-  bool is_kfs_point = false;
-  for (int i = 0; i < Zone2_Path.have_block_count; i++)
-  {
-    if (Zone2_Path.have_block_xids[i] == target_xid)
-    {
-      is_kfs_point = true;
-      break;
-    }
-  }
+        // ── 已到达目标点，查have_block_xids判断是否需要取块 ──
+        bool is_kfs_point = false;
+        for (int i = 0; i < Zone2_Path.have_block_count; i++)
+        {
+            if (Zone2_Path.have_block_xids[i] == target_xid)
+            {
+            is_kfs_point = true;
+            break;
+            }
+        }
 
-  if (is_kfs_point)
-  {
-    // 触发取块状态
-    logic.is_at_block_point = true;
-    // 不推进index，取块完成后回来NavToBlock会继续推进
-  }
-  else
-  {
-    // 普通通过点，直接前进
-    Zone2_Path.index++;
-    if (Zone2_Path.index >= Zone2_Path.size)
-    {
-      logic.is_final_goal_reached = true;
-      logic.is_path_generated = false;
+        if (is_kfs_point)
+        {
+            // 触发取块状态
+            logic.is_at_block_point = true;
+            // 不推进index，取块完成后回来NavToBlock会继续推进
+        }
+        else
+        {
+                // 普通通过点，直接前进
+                Zone2_Path.index++;
+        //     if (Zone2_Path.index >= Zone2_Path.size)
+        //     {
+        //         logic.is_path_generated = false;
+        //         logic.current_area = Area::Area3; 
+        //         logic.is_final_goal_reached = true;
+        //     }
+        }
     }
-  }
+    else 
+    {
+        return;
+    }
 }
 
 // 状态：取块
 void TaskLogic::Action_GetBlock(StateCore *state_core)
 {
-    if (farcon.button_first_half[4] == 1 && block_time != 3)
+    logic.is_just_picked = true; 
+    logic.is_at_block_point = false; 
+    Seq::WaitUntil([]() -> bool 
     {
-        block_time++;
-        Seq::Wait(0.1);
-    }
-    else if (farcon.button_first_half[4] == 1 && block_time == 3)
-    {
-        block_time = 1;
-        Seq::Wait(0.1);
-    }
+        return MOD::farcon.button_second_half[11 - 8 - 1] == 1;
+    });
+    // if (farcon.button_first_half[4] == 1 && block_time != 3)
+    // {
+    //     block_time++;
+    //     Seq::Wait(0.1);
+    // }
+    // else if (farcon.button_first_half[4] == 1 && block_time == 3)
+    // {
+    //     block_time = 1;
+    //     Seq::Wait(0.1);
+    // }
 
-    switch (block_time)
-    {
-        case 1:
-        target_height = 200;
-        break;
-        case 2:
-        target_height = 400;
-        break;
-        case 3:
-        target_height = 600;
-        break;
-        default:
-        break;
-    }
-    getblock.Get_Block(target_height); // TODO: 根据遥控器输入的高度调用不同的函数，目前测试用固定值
-    }
+    // switch (block_time)
+    // {
+    //     case 1:
+    //     target_height = 200;
+    //     break;
+    //     case 2:
+    //     target_height = 400;
+    //     break;
+    //     case 3:
+    //     target_height = 600;
+    //     break;
+    //     default:
+    //     break;
+    // }
+    // getblock.Get_Block(target_height); // TODO: 根据遥控器输入的高度调用不同的函数，目前测试用固定值
+}
 
 void TaskLogic::Action_LayBlock(StateCore *state_core)
 {
