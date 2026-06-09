@@ -15,7 +15,7 @@ namespace Hardware
     /// @brief 其他串口
     extern BSP::UART::UartID huart_other;
     /// @brief sick串口
-    extern BSP::UART::UartID huart_sick;     // 专用日志串口（如果需要）
+    extern BSP::UART::UartID huart_sick;    
     /// @brief 日志串口
     extern BSP::UART::UartID huart_log;     // 专用日志串口（如果需要）
 

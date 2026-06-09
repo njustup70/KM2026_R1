@@ -28,7 +28,8 @@ void MainFrameCpp()
   s_move.StateAction = Move;
   s_plan.LinkTo(&APP::chassis.enabled, s_move);
   
-  System.SetPositionSource(System.odometer.transform);
+  // System.SetPositionSource(System.odometer.transform);
+  System.SetPositionSource(APP::comm.slam_pos);
 
   System.RegistApp(APP::logic);
   System.RegistApp(APP::chassis);

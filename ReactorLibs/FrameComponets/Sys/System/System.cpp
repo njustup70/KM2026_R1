@@ -18,6 +18,10 @@ LedWs2812 sys_ledband;
 float target_speed=0;
 void SystemType::Init(bool Sc)
 {
+    // 输出系统启动信息
+    BspLog_LogInfo("\n\n");
+    BspLog_LogSpec("/----^---^-- Welcome to REACTOR SYSTEM --^---^----/");
+    BspLog_LogInfo("Waiting for system initialization...\n\n");
 
     DWT_Init(CPU_HERT_A_BOARD_MHZ);
 
@@ -58,8 +62,8 @@ void SystemType::Run()
     {
         position = *pos_source;
         //加入原点的偏差，相当于对坐标系进行一个平移
-        position.x += pos_offset.x;
-        position.y += pos_offset.y;
+        // position.x += pos_offset.x;
+        // position.y += pos_offset.y;
     }
 
   // 更新全局时间
