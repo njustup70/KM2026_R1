@@ -12,7 +12,7 @@
 #include "farcon.hpp"
 #include "CommCenter.hpp"
 #include "PathChaser.hpp"
-#include "R1_area1_rod.hpp"
+#include "R1_area1_rod2.hpp"
 #include "R1_area3.hpp"
 
 TaskLogic &APP::logic = TaskLogic::GetInstance();
@@ -55,7 +55,7 @@ void TaskLogic::Start()
     s_lay.StateAction = Action_LayBlock;
 
     //3.设置linkto
-    s_chaser.LinkTo(&APP::chassis.enabled, s_run);
+    s_chaser.LinkTo(&is_ready_to_run, s_run);
     s_run.LinkTo(&is_ready_to_rod, s_rod);
     s_run.LinkTo(&is_ready_to_lay, s_lay); 
 
@@ -86,8 +86,18 @@ void TaskLogic::Update()
 {
     //logic.is_ready_to_dock = (System.position == Vec3(0.55,4.0,-1.57f));
     //logic.is_ready_to_plan = (System.position == Vec3(2.6,3.0,0.0f));
-    logic.is_ready_to_rod = (APP::path_chaser.IsFinished() && logic.current_area == Area::Area1);
-    logic.is_ready_to_lay = (APP::path_chaser.IsFinished() && logic.current_area == Area::Area3);
+    logic.is_ready_to_run = (APP::chassis.enabled && (!APP::path_chaser.IsFinished()));
+    logic.is_ready_to_rod = ((APP::path_chaser.IsFinished()) && (logic.current_area == Area::Area1));
+    logic.is_ready_to_lay = ((APP::path_chaser.IsFinished()) && (logic.current_area == Area::Area3));
+    // if (APP::path_chaser.IsFinished() && logic.current_area == Area::Area1 && !logic.is_ready_to_rod)
+    // {
+    //     logic.is_ready_to_rod = true;
+    // }
+
+    // if (APP::path_chaser.IsFinished() && logic.current_area == Area::Area3 && !logic.is_ready_to_lay)
+    // {
+    //     logic.is_ready_to_lay = true;
+    // }
     // 底盘模式
     logic.is_APIauto_mode = (chassis.control_mode == chassis._ChasConMode::API);
 
@@ -262,7 +272,7 @@ void TaskLogic::Action_GetRod(StateCore *state_core)
     // });
     // chassis.MoveAt(Vec2(0.80,2.8));
     // chassis.RotateAt(-3.14159f);
-
+    // logic.is_ready_to_rod = false;  // 消耗
     Seq::WaitUntil([]() -> bool 
     {
         return farcon.button_first_half[1 - 1] == 1;  //发送按键1，此时会触发bow动作,在c板处理动作接口
@@ -348,46 +358,54 @@ void TaskLogic::Action_NavToBlock(StateCore *state_core)
         bool  is_corner = (target_xid == 2 || target_xid == 7 ||
                             target_xid == 11 || target_xid == 16);
 
-
-        // 分步移动
-        // 下边(0) / 上边(2) / 回程下边(4)：先对齐y，再对齐x
-        // 左边(1) / 右边(3)：先对齐x，再对齐y
-        bool y_first = (edge == 0 || edge == 2);
-
-        if (y_first)
+        chassis.MoveAt(Vec2(target.x, target.y));
+        if (is_corner && target_xid != 0)
         {
-            // 第一阶段：移动y
-            chassis.MoveAt(Vec2(System.position.x, target.y));
-            Seq::WaitUntil([]() -> bool
-                        { return (chassis._Walking() == 1); });
-            // 第二阶段：移动x
-            chassis.MoveAt(Vec2(target.x, target.y));
-            if (is_corner && target_xid != 0)
-            {
-                Seq::WaitUntil([]() -> bool
-                                { return (chassis._Walking() == 1); });
-                logic.BarrelToMid(target_xid);
-                Seq::WaitUntil([]() -> bool
-                                { return (chassis._Rotating() == 1); });
-            }
-        }
-        else
-        {
-            // 第一阶段：移动x
-            chassis.MoveAt(Vec2(target.x, System.position.y));
-            Seq::WaitUntil([]() -> bool
-                        { return (chassis._Walking() == 1); });
-            // 第二阶段：移动y
-            chassis.MoveAt(Vec2(target.x, target.y));
-            if (is_corner && target_xid != 0)
-            {
             Seq::WaitUntil([]() -> bool
                             { return (chassis._Walking() == 1); });
             logic.BarrelToMid(target_xid);
             Seq::WaitUntil([]() -> bool
                             { return (chassis._Rotating() == 1); });
-            }
         }
+        // // 分步移动
+        // // 下边(0) / 上边(2) / 回程下边(4)：先对齐y，再对齐x
+        // // 左边(1) / 右边(3)：先对齐x，再对齐y
+        // bool y_first = (edge == 0 || edge == 2);
+
+        // if (y_first)
+        // {
+        //     // 第一阶段：移动y
+        //     chassis.MoveAt(Vec2(System.position.x, target.y));
+        //     Seq::WaitUntil([]() -> bool
+        //                 { return (chassis._Walking() == 1); });
+        //     // 第二阶段：移动x
+        //     chassis.MoveAt(Vec2(target.x, target.y));
+        //     if (is_corner && target_xid != 0)
+        //     {
+        //         Seq::WaitUntil([]() -> bool
+        //                         { return (chassis._Walking() == 1); });
+        //         logic.BarrelToMid(target_xid);
+        //         Seq::WaitUntil([]() -> bool
+        //                         { return (chassis._Rotating() == 1); });
+        //     }
+        // }
+        // else
+        // {
+        //     // 第一阶段：移动x
+        //     chassis.MoveAt(Vec2(target.x, System.position.y));
+        //     Seq::WaitUntil([]() -> bool
+        //                 { return (chassis._Walking() == 1); });
+        //     // 第二阶段：移动y
+        //     chassis.MoveAt(Vec2(target.x, target.y));
+        //     if (is_corner && target_xid != 0)
+        //     {
+        //     Seq::WaitUntil([]() -> bool
+        //                     { return (chassis._Walking() == 1); });
+        //     logic.BarrelToMid(target_xid);
+        //     Seq::WaitUntil([]() -> bool
+        //                     { return (chassis._Rotating() == 1); });
+        //     }
+        // }
 
         // ── 已到达目标点，查have_block_xids判断是否需要取块 ──
         bool is_kfs_point = false;
@@ -429,40 +447,41 @@ void TaskLogic::Action_GetBlock(StateCore *state_core)
 {
     logic.is_just_picked = true; 
     logic.is_at_block_point = false; 
-    Seq::WaitUntil([]() -> bool 
+    // Seq::WaitUntil([]() -> bool 
+    // {
+    //     return MOD::farcon.button_second_half[11 - 8 - 1] == 1;
+    // });
+    if (farcon.button_first_half[4] == 1 && block_time != 3)
     {
-        return MOD::farcon.button_second_half[11 - 8 - 1] == 1;
-    });
-    // if (farcon.button_first_half[4] == 1 && block_time != 3)
-    // {
-    //     block_time++;
-    //     Seq::Wait(0.1);
-    // }
-    // else if (farcon.button_first_half[4] == 1 && block_time == 3)
-    // {
-    //     block_time = 1;
-    //     Seq::Wait(0.1);
-    // }
+        block_time++;
+        Seq::Wait(0.1);
+    }
+    else if (farcon.button_first_half[4] == 1 && block_time == 3)
+    {
+        block_time = 1;
+        Seq::Wait(0.1);
+    }
 
-    // switch (block_time)
-    // {
-    //     case 1:
-    //     target_height = 200;
-    //     break;
-    //     case 2:
-    //     target_height = 400;
-    //     break;
-    //     case 3:
-    //     target_height = 600;
-    //     break;
-    //     default:
-    //     break;
-    // }
-    // getblock.Get_Block(target_height); // TODO: 根据遥控器输入的高度调用不同的函数，目前测试用固定值
+    switch (block_time)
+    {
+        case 1:
+        target_height = 200;
+        break;
+        case 2:
+        target_height = 400;
+        break;
+        case 3:
+        target_height = 600;
+        break;
+        default:
+        break;
+    }
+    getblock.Get_Block(target_height); // TODO: 根据遥控器输入的高度调用不同的函数，目前测试用固定值
 }
 
 void TaskLogic::Action_LayBlock(StateCore *state_core)
 {
+    // logic.is_ready_to_lay = false;
     Seq::WaitUntil([]() -> bool 
     {
         return MOD::farcon.button_second_half[13 - 8 - 1] == 1;

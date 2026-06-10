@@ -35,6 +35,7 @@ class TaskLogic: public Application
 
     public:
         Area current_area = Area::Area1;
+        bool is_ready_to_run = false;
         bool is_ready_to_rod = false;
         bool is_ready_to_dock = false; 
         bool is_ready_to_plan = false;
