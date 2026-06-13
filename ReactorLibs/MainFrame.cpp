@@ -83,6 +83,6 @@ void MainFrameCpp()
 
 // ======================== 吐块 ========================
 void Action_Spit(StateCore *core)
-{
+{	
   getblock.ReleaseBlock();
 }
