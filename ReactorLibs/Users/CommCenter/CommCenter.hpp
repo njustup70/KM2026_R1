@@ -3,6 +3,7 @@
 #include "InterBoardComm.hpp"
 #include "HostPC.hpp"
 #include "Sick.hpp"
+#include "optical_comm.hpp"
 
 enum class ActionType : uint8_t 
 {
@@ -38,6 +39,7 @@ private:
 private:
     HostPC& pc = HostPC::GetInstance(); // HostPC单例模式
     //BoardComm* _board_can = nullptr;//单例，看是否需要加到成员变量里，现在cpp先用命名空间直接引用
+    OpticalComm& optcomm = OpticalComm::GetInstance();
 
 private:
     // 静态回调函数，负责对接 HostPC 的接口
@@ -54,6 +56,9 @@ public:
      * @param action_id 动作枚举或代号（事先规定好）
      */
     void SendActionCommand(ActionType action_id);   
+    void PackAndSendKFS(); //光通讯用
+    void SimplePackAndSendKFS(); //光通讯用
+
     
 public:
     // app层业务逻辑相关的变量
