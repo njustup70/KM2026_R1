@@ -4,6 +4,7 @@
 #include "motor_dji.hpp"
 #include "bsp_gpio.hpp"
 #include "servo.hpp"
+#include "Chassis.hpp"
 // 块中心在场地坐标系的位置，xy 单位为米，height 单位为毫米
 struct BlockInfo
 {
@@ -115,7 +116,7 @@ public:
 
   void Enable();
   void Stop();
-
+  void Aim_Block();
   void SetTargetHeight(float lift_pos_L, float lift_pos_R);
   void SmoothMoveTo(float start_stretch, float end_stretch, 
                             float start_lift, float end_lift, 
@@ -152,4 +153,5 @@ public:
 namespace APP
 {
 extern GetBlock &getblock;
+extern ChassisType &chassis;
 }
