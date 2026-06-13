@@ -476,28 +476,10 @@ void GetBlock::ReleaseBlock()
     // R2死了
     if (release_pre_flag == 1)
     {
-      // 1. 设置平滑过渡的参数
-      int total_steps = 100;       // 分成 100 步执行（步数越多越平滑）
-      float wait_per_step = 0.04f; // 每步间隔 0.04 秒 (100 * 0.04 = 4秒总时长)
-
-      // 2. 循环递增目标位置
-      for (int i = 1; i <= total_steps; i++)
-      {
-        // 计算当前进度比例 (从 0.01 慢慢加到 1.00)
-        float progress = (float)i / total_steps;
-
-        // 根据进度算出当前的绝对位置
-        float current_stretch = release_strectch_distance[1] * progress;
-        float current_lift = realse_block_height * progress;
-
-        // 下发极其微小的一步位置
-        SetTargetState(current_stretch, current_stretch,
-                       0.0f, 0.0f,
-                       current_lift, current_lift);
-
-        // 短暂延时
-        Seq::Wait(wait_per_step);
-      }
+      // 从 0 平滑移动到目标位置，总耗时 4.0 秒，切分 100 步完成
+        SmoothMoveTo(0.0f, release_strectch_distance[1], 
+                     0.0f, realse_block_height, 
+                     4.0f, 100);
       Clamp_block();
       Seq::Wait(1);
       release_pre_flag = 0;
@@ -527,15 +509,17 @@ void GetBlock::ReleaseBlock()
       SetTargetState(release_strectch_distance[1], release_strectch_distance[1], 0.0f, 0.0f, realse_block_height, realse_block_height);
       Seq::Wait(2);
       Clamp_block();
-      suckmotor[0].SetSpd(suck_speed * 0.7);
-      suckmotor[1].SetSpd(-suck_speed * 0.7);
+      suckmotor[0].SetSpd(suck_speed * 0.9);
+      suckmotor[1].SetSpd(-suck_speed * 0.9);
       // Seq::Wait(0.8);
       Seq::WaitUntil([&]()
                      { return block_exist[0]  == 0; });//检测到没有块在上面的时候
       suckmotor[0].SetSpd(0);
       suckmotor[1].SetSpd(0);
       Loosen_block(); // 松
-      Seq::Wait(2);
+			Seq::Wait(2);							 
+      SetTargetState(0, 0, 0.0f, 0.0f, realse_block_height, realse_block_height);
+      
       // 回到最初位置准备吐
       realse_order = 1;
       realase_Confirm = 0;
@@ -551,16 +535,19 @@ void GetBlock::ReleaseBlock()
       SetTargetState(release_strectch_distance[0], release_strectch_distance[0], 0.0f, 0.0f, realse_block_height, realse_block_height);
       Seq::Wait(2);
 
-      suckmotor[0].SetSpd(suck_speed);
-      suckmotor[1].SetSpd(-suck_speed);
+      suckmotor[0].SetSpd(suck_speed*0.9);
+      suckmotor[1].SetSpd(-suck_speed*0.9);
       Seq::WaitUntil([&]()
                      { return block_exist[0]  == 1; });//检测到有块在上面的时候
       Seq::WaitUntil([&]()
                      { return block_exist[0]  == 0; });//检测到没有块在上面的时候               
       Loosen_block(); // 松
       Seq::Wait(1);
+      
       suckmotor[0].SetSpd(0);
       suckmotor[1].SetSpd(0);
+      SetTargetState(0, 0, 0.0f, 0.0f, realse_block_height, realse_block_height);
+
       Seq::Wait(2);
       // 回到最初位置准备吐
       realse_order = 2;
@@ -572,6 +559,8 @@ void GetBlock::ReleaseBlock()
       Clamp_block(); // 夹紧
       suckmotor[0].SetSpd(suck_speed);
       suckmotor[1].SetSpd(-suck_speed);
+       Seq::WaitUntil([&]()
+                     { return block_exist[1]  == 1; });//检测到有块在上面的时候
       // 开始吐第三个块
       SetTargetState(0.0f, 0.0f, 0.0f, 0.0f, realse_block_height, realse_block_height);
       Seq::Wait(2);
@@ -580,13 +569,11 @@ void GetBlock::ReleaseBlock()
                      { return block_exist[0]  == 1; });//检测到有块在上面的时候
       Seq::WaitUntil([&]()
                      { return block_exist[0]  == 0; });//检测到没有块在上面的时候  
-
       Loosen_block(); // 松
-
-      Seq::Wait(1);
       suckmotor[0].SetSpd(0);
       suckmotor[1].SetSpd(0);
-      Seq::Wait(2);
+      Seq::WaitUntil([&]()
+                     { return farcon.button_first_half[7]   == 1; });//检测到有块在上面的时候
       // 回到最初位置准备吐
       SetTargetState(0.0f, 0.0f, 0.0f, 0.0f, 0, 0);
       realase_Confirm = 0;
