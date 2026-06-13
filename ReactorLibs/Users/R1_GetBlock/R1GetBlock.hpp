@@ -43,6 +43,10 @@ public:
   Servo liftservo[2]; // 抬升舵机（大疆 M3508，CAN1 ID:左5，右6）预留
 
   BSP::GPIO::Inst air_pump_pin;
+  BSP::GPIO::Inst lsy_pin;//(left_small_yellow)
+  BSP::GPIO::Inst rsy_pin;
+  BSP::GPIO::Inst fmy_pin;
+  BSP::GPIO::Inst mmy_pin;
 
 private:
   bool enabled = false;
@@ -74,10 +78,12 @@ public:
                            {0.0f, 0.0f}};
 
   // 取 200/400/600 块时抬升电机3508对应的 total_angle 目标值
-  float blockheight_2_liftmotortargetpos[3] = {90000.0f, 460000.0f, 870000.0f};
+  float blockheight_2_liftmotortargetpos[3] = {40000.0f, 460000.0f, 870000.0f};
 	float stretch_distance[2]={2100000,4200000};
 	float release_strectch_distance[2]={1000000.0f,2800000};
   float realse_block_height = 500000;
+  int block_detect[2]={0};//左右两边块是否在范围内
+  int block_exist[3]={0};//三个位置的块检测
   // ======================== 取块状态机控制 ========================
   // 取块机构总体参数
   volatile int manble = 0;   // 测试
@@ -108,6 +114,8 @@ public:
 
   void Enable();
   void Stop();
+
+	void SetTargetHeight(float lift_pos_L, float lift_pos_R);
 
   /**
    * @brief 设置三个电机的目标状态并立即下发
