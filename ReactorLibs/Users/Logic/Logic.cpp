@@ -22,7 +22,7 @@ using APP::logic;
 using APP::state_core;
 using MOD::farcon;
 
-float target_height = 200; // 200高度
+int target_height = 200; // 200高度
 int block_time = 1;
 /**
  * @brief 用于组织状态图并注册到StateCore
@@ -66,7 +66,7 @@ void TaskLogic::Start()
     s_plan.LinkTo(&is_ready_to_nav, s_move);
  
     // NavToBlock TO GetBlock：当前目标点有块，需要取块
-    s_move.LinkTo(&is_at_block_point, s_pick);
+    s_move.LinkTo(&is_ready_to_pick, s_pick);
     s_move.LinkTo(&is_final_goal_reached, s_chaser);
 
     // GetBlock TO NavToBlock：取块完成（按键确认），继续导航
@@ -104,7 +104,7 @@ void TaskLogic::Update()
     // 可以开始导航的条件：路径已生成 + API模式
     logic.is_ready_to_nav = logic.is_APIauto_mode && logic.is_path_generated;
 
-    //logic.is_ready_to_pick = logic.is_at_block_point && logic.btn_pick_start;
+    logic.is_ready_to_pick = logic.is_at_block_point && logic.btn_pick_start;
  
     // 遥控器按键14：对接成功，准备开始规划
     if (farcon.button_second_half[14 - 8 - 1] == 1)
@@ -116,11 +116,11 @@ void TaskLogic::Update()
     {
         logic.btn_kfs_confirm = true;
     }
-    //  // 遥控器按键11：确认可以吸块
-    // if (farcon.button_second_half[11 - 8 - 1] == 1)
-    // {
-    //     logic.btn_pick_start = true;
-    // }
+     // 遥控器按键11：确认可以吸块
+    if (farcon.button_second_half[11 - 8 - 1] == 1)
+    {
+        logic.btn_pick_start = true;
+    }
     // 遥控器按键12：确认吸块完成
     if (farcon.button_second_half[12 - 8 - 1] == 1)
     {
@@ -130,6 +130,33 @@ void TaskLogic::Update()
     if (farcon.button_second_half[13 - 8 - 1] == 1)
     {
         logic.btn_lay_start = true;
+    }
+
+    if (farcon.button_first_half[5 - 1] == 1 && block_time != 3)
+    {
+        block_time++;
+    }
+    else if (farcon.button_first_half[5 - 1] == 1 && block_time == 3)
+    {
+        block_time = 1;
+    }
+
+    // static uint8_t last_btn6_state = 0;
+    // uint8_t current_btn6_state = farcon.button_first_half[6 - 1];
+
+    // if (current_btn6_state == 1 && last_btn6_state == 0) // 只有松开后再按下的一瞬间成立
+    // {
+    //     getblock.suck_flag = 1; 
+    // }
+    // last_btn6_state = current_btn6_state;
+    if (farcon.button_first_half[6 - 1] == 1)
+    {
+        getblock.suck_flag = 1;
+    }
+
+    if (farcon.button_first_half[7 - 1] == 1)
+    {
+        getblock.suck_flag = 2;
     }
 }
 
@@ -337,7 +364,7 @@ void TaskLogic::Action_NavToBlock(StateCore *state_core)
 
     // 复位取块完成标志（每次进入NavToBlock时清除）
     logic.is_pick_done    = false;
-    logic.is_ready_to_nav = false;
+    // logic.is_ready_to_nav = false;
  
     // 判断是否已走完全部路径点
     if (Zone2_Path.index >= Zone2_Path.size)
@@ -406,7 +433,6 @@ void TaskLogic::Action_NavToBlock(StateCore *state_core)
         //                     { return (chassis._Rotating() == 1); });
         //     }
         // }
-
         // ── 已到达目标点，查have_block_xids判断是否需要取块 ──
         bool is_kfs_point = false;
         for (int i = 0; i < Zone2_Path.have_block_count; i++)
@@ -445,23 +471,32 @@ void TaskLogic::Action_NavToBlock(StateCore *state_core)
 // 状态：取块
 void TaskLogic::Action_GetBlock(StateCore *state_core)
 {
+    // // 引入一个静态的运行状态标志位（锁）
+    // static bool is_has_blocked = false;
+
+    static bool is_this_action_running = false;
+    if (is_this_action_running)
+    {
+        return; // 如果由于 RTOS 挂起导致重入，直接乱棍打出，绝不重复执行
+    }
+
+    logic.btn_pick_start = false; 
     logic.is_just_picked = true; 
     logic.is_at_block_point = false; 
     // Seq::WaitUntil([]() -> bool 
     // {
     //     return MOD::farcon.button_second_half[11 - 8 - 1] == 1;
     // });
-    if (farcon.button_first_half[4] == 1 && block_time != 3)
-    {
-        block_time++;
-        Seq::Wait(0.1);
-    }
-    else if (farcon.button_first_half[4] == 1 && block_time == 3)
-    {
-        block_time = 1;
-        Seq::Wait(0.1);
-    }
-
+    // if (farcon.button_first_half[4] == 1 && block_time != 3)
+    // {
+    //     block_time++;
+    //     Seq::Wait(0.1);
+    // }
+    // else if (farcon.button_first_half[4] == 1 && block_time == 3)
+    // {
+    //     block_time = 1;
+    //     Seq::Wait(0.1);
+    // }
     switch (block_time)
     {
         case 1:
@@ -476,7 +511,131 @@ void TaskLogic::Action_GetBlock(StateCore *state_core)
         default:
         break;
     }
-    getblock.Get_Block(target_height); // TODO: 根据遥控器输入的高度调用不同的函数，目前测试用固定值
+    //getblock.Get_Block(target_height); // TODO: 根据遥控器输入的高度调用不同的函数，目前测试用固定值
+//     //   appstate = STATE_GETBLOCK;
+//     //
+// #ifdef Test_device
+//   SetTargetState(test_stretch_left, test_stretch_right, 0.0f, 0.0f, test_debug_height, test_debug_height);
+//   suckmotor[0].SetSpd(-test_suck_speed);
+//   suckmotor[1].SetSpd(test_suck_speed);
+// #else
+    extern uint8_t height_blcok[3];
+    height_blcok[0] = 0x02;
+    height_blcok[1] = target_height >> 8;
+    height_blcok[2] = (uint8_t)(target_height & 0xFF); // 低 8 位
+    farcon.TransmitFarcon(height_blcok, 3);
+
+    // 如果已经在跑序列了，直接拦截退出，绝不允许往下跑，更不允许读遥控器
+    // if (is_sequence_running) 
+    // {
+    //     return;     
+    // }
+
+    switch (target_height)
+    {
+        case 200:
+        getblock.lift_target_pos = getblock.blockheight_2_liftmotortargetpos[0];
+        break;
+        case 400:
+        getblock.lift_target_pos = getblock.blockheight_2_liftmotortargetpos[1];
+        break;
+        case 600:
+        getblock.lift_target_pos = getblock.blockheight_2_liftmotortargetpos[2];
+        break;
+        default:
+        getblock.lift_target_pos = 0.0f; // 默认值或错误处理
+        break;
+    }
+
+    // if (farcon.button_first_half[5] == 1)
+    // {
+    //     getblock.suck_flag = 1;
+    //     Seq::Wait(0.1);
+    // }
+
+    // if (farcon.button_first_half[6] == 1)
+    // {
+
+    //     getblock.suck_flag = 2;
+    //     Seq::Wait(0.1);
+    // }
+
+    if (getblock.suck_flag == 1)
+    {
+        is_this_action_running = true;
+        //is_has_blocked = true; 
+        getblock.suck_flag = -1;
+        getblock.suckmotor[0].SetSpd(0);
+        getblock.suckmotor[1].SetSpd(0);
+        getblock.Loosen_block();
+
+        // if (getblock.last_height == 200 && target_height == 600)
+        // {
+        // getblock.SetTargetState(0.0f, 0.0f, 0.0f, 0.0f, getblock.blockheight_2_liftmotortargetpos[1], getblock.blockheight_2_liftmotortargetpos[1]);
+        // Seq::Wait(3);
+        // getblock.SetTargetState(0.0f, 0.0f, 0.0f, 0.0f, getblock.lift_target_pos, getblock.lift_target_pos);
+        // Seq::Wait(4);
+        // getblock.SetTargetState(getblock.stretch_distance[1], getblock.stretch_distance[1], 0.0f, 0.0f, getblock.lift_target_pos, getblock.lift_target_pos);
+        // }
+        // else if (getblock.last_height == 600 && target_height == 200)
+        // {
+        // getblock.SetTargetState(0.0f, 0.0f, 0.0f, 0.0f, getblock.blockheight_2_liftmotortargetpos[1], getblock.blockheight_2_liftmotortargetpos[1]);
+        // Seq::Wait(3);
+        // getblock.SetTargetState(0.0f, 0.0f, 0.0f, 0.0f, getblock.lift_target_pos, getblock.lift_target_pos);
+        // Seq::Wait(4);
+        // getblock.SetTargetState(getblock.stretch_distance[1], getblock.stretch_distance[1], 0.0f, 0.0f, getblock.lift_target_pos, getblock.lift_target_pos);
+        // }
+        // else
+        // {
+        // getblock.SetTargetState(0.0f, 0.0f, 0.0f, 0.0f, getblock.lift_target_pos, getblock.lift_target_pos);
+        // // Seq::Wait(4);
+        // Seq::WaitUntil([]() -> bool 
+        // {
+        //     return getblock.liftmotor[0].IsReached() && getblock.liftmotor[1].IsReached();
+        // });
+        getblock.SetTargetState(getblock.stretch_distance[1], getblock.stretch_distance[1], 0.0f, 0.0f, getblock.lift_target_pos, getblock.lift_target_pos);
+        //}
+        //Seq::Wait(2);
+        Seq::WaitUntil([]() -> bool 
+        {
+            return (getblock.stretchmotor[0].IsReached() && getblock.stretchmotor[1].IsReached());
+        });
+        getblock.Clamp_block(); // 夹紧
+        getblock.suckmotor[0].SetSpd(-getblock.suck_speed);
+        getblock.suckmotor[1].SetSpd(getblock.suck_speed);
+        //Seq::Wait(2);
+        getblock.SetTargetState(0.0f, 0.0f, 0.0f, 0.0f, getblock.lift_target_pos, getblock.lift_target_pos);
+        //Seq::Wait(2);
+        Seq::WaitUntil([]() -> bool 
+        {
+            return (getblock.stretchmotor[0].IsReached() && getblock.stretchmotor[1].IsReached());
+        });
+        getblock.suckmotor[0].SetSpd(0);
+        getblock.suckmotor[1].SetSpd(0);
+        getblock.suck_flag = -1;
+        is_this_action_running = false;
+
+    }
+    else if (getblock.suck_flag == 2)
+    {
+        getblock.suck_flag = -1;
+        getblock.SetTargetState(0.0f, 0.0f, 0.0f, 0.0f, getblock.lift_target_pos, getblock.lift_target_pos);
+    }
+    else 
+    {
+        return;
+    }
+    // 记录上次高度
+    getblock.last_height = target_height;
+    // if (farcon.button_first_half[7] == 1)
+    // {
+    //     getblock.SetTargetState(getblock.stretch_distance[0], getblock.stretch_distance[0], 0.0f, 0.0f, getblock.blockheight_2_liftmotortargetpos[1], getblock.blockheight_2_liftmotortargetpos[1]);
+    //     Seq::Wait(2);
+    //     getblock.SetTargetState(getblock.stretch_distance[0], getblock.stretch_distance[0], 0.0f, 0.0f, getblock.blockheight_2_liftmotortargetpos[0], getblock.blockheight_2_liftmotortargetpos[0]);
+    //     Seq::Wait(2);
+    //     // cond_start_spit = 1;
+    // }
+// #endif
 }
 
 void TaskLogic::Action_LayBlock(StateCore *state_core)
