@@ -53,7 +53,7 @@ struct SteerMods
 */
 struct PosController
 {
-    float kp = 3.0f;     // 比例系数，单位: (m/s)/m
+    float kp = 6.0f;     // 比例系数，单位: (m/s)/m
     float kd = 0.2f;     // 微分系数（实际速度反馈阻尼），单位: (m/s)/(m/s) 无量纲
 
     /**
@@ -144,13 +144,13 @@ class ChassisType : public Application
 
         /*<     底盘速度与加速度限制    >*/
         /// @param 最大加速度，单位m/s^2
-        float _max_accel = 4.0f;       
+        float _max_accel =0.5f;       
         /// @param 最大线速度，单位m/s
-        float _max_velo = 0.5f;
+        float _max_velo = 1.0f;
         /// @param 最大角速度，单位rad/s
-        float _max_omega = 0.8f;
+        float _max_omega = 1.2f;
         /// @param 最大角加速度，单位rad/s^2
-        float _max_beta = 2.0f;
+        float _max_beta = 0.5f;
 
         /*<     死区参数    >*/
         /// @param 线速度死区，单位m/s（小于此值设为0）
@@ -215,6 +215,7 @@ class ChassisType : public Application
             API,        // 由电控API控制
             HOST,       // 由工控机控制
             FARCON,     // 由遥控器控制
+            LOCKYAW,
             OPEN,       // 开放控制（直接Move控制）
         }_ChasConMode;
 

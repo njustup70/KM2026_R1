@@ -24,13 +24,13 @@ void ChassisType::Start()
         {
             // 初始化PID
             motors[i].Init(Hardware::hcan_main, i + 1, DJI_C620);
-            motors[i].ConfigPID()
-                        .AsSpeedC()
-                        .Spd_Coeff(0.1f, 0.07f, 0.0f)    
-                        .Spd_Limit(5.0f, 10.0f)
-                        .SpdLimit(7000.0f)       //469rpm（手册的额定转速应该是输出轴的） * 268/17（减速比）
-                        .CurLimit(10.0f) 
-                        .Apply();
+            // motors[i].ConfigPID()
+            //             .AsSpeedC()
+            //             .Spd_Coeff(0.1f, 0.07f, 0.0f)    
+            //             .Spd_Limit(5.0f, 10.0f)
+            //             .SpdLimit(7000.0f)       //469rpm（手册的额定转速应该是输出轴的） * 268/17（减速比）
+            //             .CurLimit(10.0f) 
+            //             .Apply();
             //motors[i].speed_pid.SetDeadband(1.0, 3.5);
             //ForwardLize(前馈类型, 前馈系数, 被控对象增益K, 时间常数Tc)
             //motors[i].speed_pid.ForwardLize(
@@ -39,15 +39,15 @@ void ChassisType::Start()
             //                    0.75f,                      // 被控对象增益 K
             //                    0.02f                      // 时间常数 Tc (秒)
             //                    );
-            //motors[i].ConfigADRC()
-            //             .AsSpeedC()
-            //             .ADRC_Womega(42.0f, 9.6f)
-            //             .ADRC_Physic(3.0e-4f, 0.30f, 0.005f)
-            //             .ADRC_Limit(15.0f)
-            //             .SpdLimit(3000.0f)
-            //             .ADRC_MaxPlannedVel(3000.0f)
-            //             .ADRC_SOTF(0.5f)
-            //             .Apply();
+            motors[i].ConfigADRC()
+                        .AsSpeedC()
+                        .ADRC_Womega(42.0f, 9.6f)
+                        .ADRC_Physic(2.3e-4f, 0.30f, 0.005f)
+                        .ADRC_Limit(6.0f)
+                        .SpdLimit(6000.0f)
+                        .ADRC_MaxPlannedVel(6000.0f)
+                        .ADRC_SOTF(0.5f)
+                        .Apply();
             motors[i].driver.SetReduRatio(MotorDJIReduConst::redu_M3508_G); 
             motors[i].driver.Enable();
         }
@@ -142,6 +142,10 @@ void ChassisType::Update()
     {
         control_mode = API; //可启用自动规划路径并自动巡航 见Logic.cpp
     }
+    else if(farcon.toggle[1] == 1 && farcon.toggle[2] == 0 && farcon.toggle[3] == 1)
+    {
+        control_mode = LOCKYAW; // 锁定当前朝向，允许xy但不允许旋转
+    }
     else
     {
         control_mode = OPEN;
@@ -149,17 +153,33 @@ void ChassisType::Update()
 
     // if(farcon.toggle[3] == 1)
     // {
-    //     LockPosition();
+    //     // _is_yaw_locked = true;   // 锁定当前朝向
+    //     chassis.RotateAt(-1.57);
+    // }
+    // else
+    // {
+    //     _is_yaw_locked = false;
     // }
 
     if(control_mode == FARCON)
     {
         // 读取遥控器数据到底盘控制变量
+        _walking = false;
+        _rotating = false;   
         targ_speed.x = -farcon.jys_value[3]*1.0f / 100.f * _max_velo;   // 前后
         targ_speed.y = -farcon.jys_value[2]*1.0f / 100.f * _max_velo;   // 左右
         targ_speed.z = -farcon.jys_value[0]*1.0f / 100.f * _max_omega;  // 旋转
         Move(targ_speed);
     }
+    if(control_mode == LOCKYAW)
+    {
+        // 读取遥控器数据到底盘控制变量
+        targ_speed.x = -farcon.jys_value[3]*1.0f / 100.f * _max_velo;   // 前后
+        targ_speed.y = -farcon.jys_value[2]*1.0f / 100.f * _max_velo;   // 左右
+        Move(Vec2(targ_speed.x, targ_speed.y));
+        chassis.RotateAt(-1.57f);  
+    }
+    
 
     bool walking_complete = false; //这个变量只在这一帧有用
     bool rotaing_complete = false;
@@ -170,11 +190,11 @@ void ChassisType::Update()
         walking_complete = _Walking();
     }
 
-    // 当MoveAt完成且只是位置锁定（不是显式RotateTo）时，清除yaw锁定
-    if (walking_complete && _is_yaw_locked && !_rotating)
-    {
-        _is_yaw_locked = false;
-    }
+    // // 当MoveAt完成且只是位置锁定（不是显式RotateTo）时，清除yaw锁定
+    // if (walking_complete && _is_yaw_locked && !_rotating)
+    // {
+    //     _is_yaw_locked = false;
+    // }
 
     if (_rotating || _is_yaw_locked)
     {
@@ -501,7 +521,7 @@ void ChassisType::Rotate(float omega)
  */
 bool ChassisType::_Walking()
 {
-    _is_yaw_locked = true;  // 启用yaw锁定
+   // _is_yaw_locked = true;  // 启用yaw锁定
 
     // 计算移动向量
     Vec2 move_vec = targ_ges.ToVec2() - System.position.ToVec2();
