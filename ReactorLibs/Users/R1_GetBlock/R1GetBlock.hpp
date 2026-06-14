@@ -117,6 +117,7 @@ public:
   void Enable();
   void Stop();
   void Aim_Block();
+  void SetTargetStretch(float stretch_pos_L, float stretch_pos_R);
   void SetTargetHeight(float lift_pos_L, float lift_pos_R);
   void SmoothMoveTo(float start_stretch, float end_stretch, 
                             float start_lift, float end_lift, 

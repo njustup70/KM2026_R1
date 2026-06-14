@@ -186,6 +186,22 @@ void GetBlock::Stop()
 }
 
 // ======================== SetTargetState ========================
+void GetBlock::SetTargetStretch(float stretch_pos_L, float stretch_pos_R)
+{
+  // 3->左伸缩, 4->右伸缩
+  target_state_pos[3] = stretch_pos_L;
+  target_state_pos[4] = -stretch_pos_R;
+
+  // 软限位约束 (仅针对抬升电机 1 和 2)
+  for (int i = 1; i <= 2; i++)
+  {
+    // target_state_pos[i] = std::clamp(target_state_pos[i], pos_limit[i][0], pos_limit[i][1]);
+  }
+
+  // 下发给大疆电机 (抬升电机)
+  stretchmotor[0].SetPos(target_state_pos[3]);
+  stretchmotor[1].SetPos(target_state_pos[4]);
+}
 void GetBlock::SetTargetHeight(float lift_pos_L, float lift_pos_R)
 {
   // 1->左抬升, 2->右抬升
@@ -198,7 +214,6 @@ void GetBlock::SetTargetHeight(float lift_pos_L, float lift_pos_R)
     // target_state_pos[i] = std::clamp(target_state_pos[i], pos_limit[i][0], pos_limit[i][1]);
   }
 
-  // 下发给大疆电机 (抬升电机)
   liftmotor[0].SetPos(target_state_pos[1]);
   liftmotor[1].SetPos(target_state_pos[2]);
 }
@@ -315,7 +330,7 @@ void GetBlock::Aim_Block()
 {
   if (block_detect[0] == 1)
   {
-    Spd = Vec2{0, 0.3};
+    Spd = Vec2{0, 0.1};
     aim_right = 0;
     Seq::WaitUntil([&]()
                    { return block_detect[0] == 0; }); // 检测到没有块在上面的时候
@@ -323,7 +338,7 @@ void GetBlock::Aim_Block()
   }
   else if (block_detect[1] == 1)
   {
-    Spd = Vec2{0, -0.3};
+    Spd = Vec2{0, -0.10};
     aim_right = 0;
     Seq::WaitUntil([&]()
                    { return block_detect[1] == 0; }); // 检测到没有块在上面的时候
@@ -378,17 +393,26 @@ void GetBlock::Get_Block(int block_height)
 
   if (farcon.button_first_half[7] == 1)
   {
-    if (suck_finish_times < 3)
-      suck_finish_times++;
-    else if (suck_finish_times >= 3)
-    {
-      suck_finish_times = 0;
-    }
-
+    suck_flag = 3; // 完成第三个取块
     Seq::Wait(0.5);
-    farcon.button_first_half[7] = 0;
   }
 
+  if (suck_flag == 3)
+  {
+    Loosen_block();
+    suckmotor[0].SetSpd(0);
+    suckmotor[1].SetSpd(0);
+    Seq::Wait(2);
+    SetTargetStretch(release_strectch_distance[1], release_strectch_distance[1]);
+    suckmotor[0].SetSpd(-suck_speed*0.7);
+    suckmotor[1].SetSpd(suck_speed*0.7);
+    Seq::Wait(4);
+    Clamp_block(); // 夹紧
+    Seq::Wait(1);
+    suckmotor[0].SetSpd(0);
+    suckmotor[1].SetSpd(0);
+    suck_flag=-1;
+  }
   if (suck_flag == 1)
   {
     suckmotor[0].SetSpd(0);
@@ -419,22 +443,21 @@ void GetBlock::Get_Block(int block_height)
       SetTargetState(stretch_distance[1], stretch_distance[1], 0.0f, 0.0f, lift_target_pos, lift_target_pos);
     }
     Seq::Wait(2);
-    // 对准
 
     // 实际取块
     Clamp_block(); // 夹紧
     suckmotor[0].SetSpd(-suck_speed);
     suckmotor[1].SetSpd(suck_speed);
     Seq::Wait(4);
-    if (suck_finish_times == 2)
-      SetTargetState(release_strectch_distance[1], release_strectch_distance[1], 0.0f, 0.0f, lift_target_pos, lift_target_pos);
-    else
-      SetTargetState(0, 0, 0.0f, 0.0f, lift_target_pos, lift_target_pos);
+    SetTargetState(0, 0, 0.0f, 0.0f, lift_target_pos, lift_target_pos);
     Seq::Wait(2);
     suckmotor[0].SetSpd(0);
     suckmotor[1].SetSpd(0);
+    Clamp_block(); // 夹紧
+    Seq::Wait(1);
     suck_flag = -1;
   }
+
   if (suck_flag == 2)
   {
     SetTargetHeight(lift_target_pos, lift_target_pos);
@@ -442,13 +465,7 @@ void GetBlock::Get_Block(int block_height)
   }
   // 记录上次高度
   last_height = block_height;
-  // if (farcon.button_first_half[7] == 1)
-  // {
-  //   SetTargetState(stretch_distance[0], stretch_distance[0], 0.0f, 0.0f, blockheight_2_liftmotortargetpos[1], blockheight_2_liftmotortargetpos[1]);
-  //   Seq::Wait(2);
-  //   SetTargetState(stretch_distance[0], stretch_distance[0], 0.0f, 0.0f, blockheight_2_liftmotortargetpos[0], blockheight_2_liftmotortargetpos[0]);
-  //   Seq::Wait(2);
-  // }
+
 #endif
 }
 
