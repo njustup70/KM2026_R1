@@ -9,6 +9,8 @@ using MOD::farcon;
 GetBlock &APP::getblock = GetBlock::GetInstance();
 // extern bool cond_start_spit;
 uint8_t height_blcok[3] = {0};
+int aim_right = 1;
+Vec2 Spd = {0, 0};
 uint32_t delta_time_ms = 0;
 int stretch_debug = 2100000;
 int push_height_debug = 580000;
@@ -146,6 +148,10 @@ void GetBlock::Update()
   block_exist[0] = 1 - fmy_pin.Read();
   block_exist[1] = 1 - mmy_pin.Read();
 
+  if (aim_right == 0)
+  {
+    chassis.Move(Spd);
+  }
   // ---- 状态机 ----
   if (appstate == STATE_INIT)
   {
@@ -307,24 +313,23 @@ void GetBlock::Loosen_block()
 
 void GetBlock::Aim_Block()
 {
-   Vec2 Spd = {0, 0};
   if (block_detect[0] == 1)
   {
-     Spd = Vec2{0, 0.3};
-    chassis.Move(Spd);
+    Spd = Vec2{0, 0.3};
+    aim_right = 0;
     Seq::WaitUntil([&]()
                    { return block_detect[0] == 0; }); // 检测到没有块在上面的时候
-
+    aim_right = 1;
   }
   else if (block_detect[1] == 1)
   {
-     Spd = Vec2{0, -0.3};
-    chassis.Move(Spd);
+    Spd = Vec2{0, -0.3};
+    aim_right = 0;
     Seq::WaitUntil([&]()
                    { return block_detect[1] == 0; }); // 检测到没有块在上面的时候
-
+    aim_right = 1;
   }
-      chassis.Move({0, 0});
+  chassis.Move({0, 0});
 }
 
 void GetBlock::Get_Block(int block_height)
@@ -389,7 +394,7 @@ void GetBlock::Get_Block(int block_height)
     suckmotor[0].SetSpd(0);
     suckmotor[1].SetSpd(0);
     Loosen_block();
-        Aim_Block();
+    Aim_Block();
     // 实际取块操作
     if (last_height == 200 && block_height == 600)
     {
