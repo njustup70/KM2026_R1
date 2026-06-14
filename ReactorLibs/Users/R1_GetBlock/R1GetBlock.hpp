@@ -4,6 +4,7 @@
 #include "motor_dji.hpp"
 #include "bsp_gpio.hpp"
 #include "servo.hpp"
+#include "Chassis.hpp"
 // 块中心在场地坐标系的位置，xy 单位为米，height 单位为毫米
 struct BlockInfo
 {
@@ -43,6 +44,10 @@ public:
   Servo liftservo[2]; // 抬升舵机（大疆 M3508，CAN1 ID:左5，右6）预留
 
   BSP::GPIO::Inst air_pump_pin;
+  BSP::GPIO::Inst lsy_pin; //(left_small_yellow)
+  BSP::GPIO::Inst rsy_pin;
+  BSP::GPIO::Inst fmy_pin;
+  BSP::GPIO::Inst mmy_pin;
 
 private:
   bool enabled = false;
@@ -74,10 +79,12 @@ public:
                            {0.0f, 0.0f}};
 
   // 取 200/400/600 块时抬升电机3508对应的 total_angle 目标值
-  float blockheight_2_liftmotortargetpos[3] = {90000.0f, 460000.0f, 870000.0f};
-	float stretch_distance[2]={2100000,4200000};
-	float release_strectch_distance[2]={1000000.0f,2800000};
+  float blockheight_2_liftmotortargetpos[3] = {40000.0f, 460000.0f, 870000.0f};
+  float stretch_distance[2] = {2100000, 4200000};
+  float release_strectch_distance[2] = {1000000.0f, 2800000};
   float realse_block_height = 500000;
+  volatile int block_detect[2] = {0}; // 左右两边块是否在范围内
+  volatile int block_exist[3] = {0};  // 三个位置的块检测
   // ======================== 取块状态机控制 ========================
   // 取块机构总体参数
   volatile int manble = 0;   // 测试
@@ -85,16 +92,17 @@ public:
 
   float suck_speed = 13000;
   float lift_target_pos = 0.0f;
-	float last_height=0;
+  float last_height = 0;
   // 定义全局或静态的布尔变量作为跳转条件
   bool suck_finish = false;
   volatile int suck_flag = 0; // 取块触发
   // ======================== 吐块状态机控制 ========================
   bool cond_finish = false;         // 吐块：Prepare → SpitStart
   volatile int begin_spit_flag = 0; // 吐块触发
-	volatile int release_pre_flag=0;
-  volatile int realse_order = 0;    // 吐块顺序
-  volatile int realase_Confirm=0;
+  volatile int release_pre_flag = 0;
+  volatile int realse_order = 0; // 吐块顺序
+  volatile int realase_Confirm = 0;
+  int spit_finish_flag = 0; // 上个块取完
   //   volatile int realse_start=0;//确认吐块
   //**********取块状态停止***********//
 
@@ -108,7 +116,12 @@ public:
 
   void Enable();
   void Stop();
-
+  void Aim_Block();
+  void SetTargetStretch(float stretch_pos_L, float stretch_pos_R);
+  void SetTargetHeight(float lift_pos_L, float lift_pos_R);
+  void SmoothMoveTo(float start_stretch, float end_stretch, 
+                            float start_lift, float end_lift, 
+                            float duration_sec, int steps);
   /**
    * @brief 设置三个电机的目标状态并立即下发
    * @param strech_pos   伸出电机目标位置（code，total_angle 语义）
@@ -140,5 +153,6 @@ public:
 };
 namespace APP
 {
-    extern GetBlock& getblock;
+extern GetBlock &getblock;
+extern ChassisType &chassis;
 }
