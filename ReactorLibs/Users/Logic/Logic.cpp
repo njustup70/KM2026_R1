@@ -8,7 +8,7 @@
 #include "LogicGragh.hpp"
 #include "farcon.hpp"
 #include "PathChaser.hpp"
-#include "R1GetBlock.hpp"
+// #include "R1GetBlock.hpp"
 
 TaskLogic &APP::logic = TaskLogic::GetInstance();
 using namespace MOD;
@@ -72,13 +72,13 @@ void TaskLogic::Update()
         block_time = 1;
     }
 
-    if (farcon.button_first_half[6 - 1] == 1)
-    {
-        getblock.suck_flag = 1;
-    }
+    // if (farcon.button_first_half[6 - 1] == 1)
+    // {
+    //     getblock.suck_flag = 1;
+    // }
 
-    if (farcon.button_first_half[7 - 1] == 1)
-    {
-        getblock.suck_flag = 2;
-    }
+    // if (farcon.button_first_half[7 - 1] == 1)
+    // {
+    //     getblock.suck_flag = 2;
+    // }
 }

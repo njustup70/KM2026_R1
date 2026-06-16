@@ -8,7 +8,7 @@
 #include "PathPlaner.hpp"
 #include "System.hpp"
 #include "Chassis.hpp"
-#include "R1GetBlock.hpp"
+// #include "R1GetBlock.hpp"
 #include "farcon.hpp"
 #include "CommCenter.hpp"
 #include "PathChaser.hpp"
@@ -20,8 +20,8 @@
 using namespace APP;
 using namespace MOD;
 
-extern SemaphoreHandle_t g_getblock_start_sem;
-extern SemaphoreHandle_t g_getblock_done_sem;
+// extern SemaphoreHandle_t g_getblock_start_sem;
+// extern SemaphoreHandle_t g_getblock_done_sem;
 
 // --- 1. 全局状态标志位 ---
 Area current_area = Area::Area1;
@@ -336,7 +336,7 @@ void Action_GetBlock(StateCore *state_core)
     
     // // 等待取块完成（阻塞在这里，但只消耗StateCore极浅的栈帧）
     // xSemaphoreTake(g_getblock_done_sem, portMAX_DELAY);
-    getblock.Get_Block(target_height); // TODO: 根据遥控器输入的高度调用不同的函数，目前测试用固定值
+    //getblock.Get_Block(target_height); // TODO: 根据遥控器输入的高度调用不同的函数，目前测试用固定值
 }
 
 void Action_LayBlock(StateCore *state_core)
@@ -347,7 +347,7 @@ void Action_LayBlock(StateCore *state_core)
         return MOD::farcon.button_second_half[13 - 8 - 1] == 1;
     });
 
-    getblock.ReleaseBlock();
+    //getblock.ReleaseBlock();
 }
 
 // ================================初始化========================================================================
