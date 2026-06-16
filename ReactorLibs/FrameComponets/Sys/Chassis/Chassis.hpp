@@ -53,7 +53,7 @@ struct SteerMods
 */
 struct PosController
 {
-    float kp = 6.0f;     // 比例系数，单位: (m/s)/m
+    float kp = 0.5f;     // 比例系数，单位: (m/s)/m
     float kd = 0.2f;     // 微分系数（实际速度反馈阻尼），单位: (m/s)/(m/s) 无量纲
 
     /**
@@ -146,9 +146,9 @@ class ChassisType : public Application
         /// @param 最大加速度，单位m/s^2
         float _max_accel =0.5f;       
         /// @param 最大线速度，单位m/s
-        float _max_velo = 1.0f;
+        float _max_velo = 0.5f;
         /// @param 最大角速度，单位rad/s
-        float _max_omega = 1.2f;
+        float _max_omega = 0.8f;
         /// @param 最大角加速度，单位rad/s^2
         float _max_beta = 0.5f;
 

@@ -179,8 +179,6 @@ void GetBlock::Stop()
   liftmotor[1].Neutral();
   liftmotor[1].driver.Disable();
   air_pump_pin.Write(false);
-  liftservo[0].Disable();
-  liftservo[1].Disable();
   enabled = false;
 }
 

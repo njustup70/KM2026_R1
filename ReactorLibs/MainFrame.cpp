@@ -8,12 +8,12 @@
 #include "PathChaser.hpp"
 #include "farcon.hpp"
 #include "test_rotate.hpp"
+#include "LogicGragh.hpp"
 
-StateGraph example_graph("test");
-void ActionDege(StateCore *core);
-void Getcmdbody(StateCore *core);
-void Move(StateCore *core);
-
+using namespace APP;
+using namespace MOD;
+void GetBlock(StateCore *core);
+StateGraph boom_test{"Test"};
 
 /**
  * @brief 程序主入口
@@ -21,59 +21,56 @@ void Move(StateCore *core);
  */
 void MainFrameCpp()
 {
-  // example_graph.Degenerate(ActionDege);
-  StateBlock& s_plan = example_graph.AddState("Plan");
-  StateBlock& s_move = example_graph.AddState("Nav");
-  s_plan.StateAction = Getcmdbody;
-  s_move.StateAction = Move;
-  s_plan.LinkTo(&APP::chassis.enabled, s_move);
-  
+  StateBlock &s_pick = boom_test.AddState("GetBlocking");
+  s_pick.StateAction = GetBlock;
   // System.SetPositionSource(System.odometer.transform);
   System.SetPositionSource(APP::comm.slam_pos);
 
-  System.RegistApp(APP::logic);
+  //System.RegistApp(APP::logic);
   System.RegistApp(APP::chassis);
   System.RegistApp(APP::getblock);
   System.RegistApp(APP::comm);
   System.RegistApp(APP::path_chaser);
+  // Logic_Init();
 
-  //APP::state_core.RegistGraph(example_graph);
+
+  APP::state_core.RegistGraph(boom_test);
   APP::state_core.Enable(0); // 启动状态机核心，指定初始状态图为0号图
-}
-
-void Getcmdbody(StateCore *core)
-{
-  Seq::WaitUntil([]() -> bool 
-  {
-      return MOD::farcon.button_second_half[9-8-1] == 1;
-  });
-  APP::path_chaser.ChasePath(GeneratedPath);
-}
-
-void Move(StateCore *core)
-{
-  Vec3 cmd_body = APP::path_chaser.GetCmdBody();
-  APP::chassis.Move(cmd_body);
 }
 
 static uint8_t enter_flag = 0;
 void ActionDege(StateCore *core)
 {
-  enter_flag++;
-  APP::path_chaser.ChasePath(GeneratedPath);
-    //   Seq::WaitUntil([]() -> bool 
-    // {
-    //     return farcon.button_second_half[9-8-1] == 1;
-    // });
-  Vec3 cmd_body = APP::path_chaser.GetCmdBody();
-  APP::chassis.Move(Vec3(cmd_body.x,cmd_body.y,cmd_body.z));
-  // Seq::WaitUntil([]() -> bool 
-  // {
-  //     return APP::path_chaser.IsFinished();
-  // });
-  if (APP::path_chaser.IsFinished())
-  {
-    APP::chassis.Rotate(0.5);
-  }
+
 }
+
+void GetBlock(StateCore *state_core)
+{
+    if (farcon.button_first_half[4] == 1 && block_time != 3)
+    {
+      block_time++;
+      Seq::Wait(0.1);
+    }
+    else if (farcon.button_first_half[4] == 1 && block_time == 3)
+    {
+      block_time = 1;
+      Seq::Wait(0.1);
+    }
+
+    if (block_time == 1)
+    {
+      target_height = 200;
+    }
+    else if (block_time == 2)
+    {
+      target_height = 400;
+    }
+    else if (block_time == 3)
+    {
+      target_height = 600;
+    }
+
+    getblock.Get_Block(target_height); // TODO: 根据遥控器输入的高度调用不同的函数，目前测试用固定值
+}
+
 
