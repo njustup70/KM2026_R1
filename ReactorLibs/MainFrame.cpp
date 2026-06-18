@@ -12,7 +12,7 @@
 #include "R1Block.hpp"
 using namespace APP;
 using namespace MOD;
-void GetBlock(StateCore *core);
+void PushBlock(StateCore *core);
 StateGraph boom_test{"Test"};
 using APP::r1block;
 /**
@@ -21,8 +21,11 @@ using APP::r1block;
  */
 void MainFrameCpp()
 {
-  StateBlock &s_pick = boom_test.AddState("GetBlocking");
-  s_pick.StateAction = GetBlock;
+  // StateBlock &s_pick = boom_test.AddState("GetBlocking");
+  // s_pick.StateAction = GetBlock;
+    StateBlock &s_pick = boom_test.AddState("PushBlock");
+  s_pick.StateAction = PushBlock;
+
   // System.SetPositionSource(System.odometer.transform);
   System.SetPositionSource(APP::comm.slam_pos);
 
@@ -44,32 +47,37 @@ void ActionDege(StateCore *core)
 
 }
 
-void GetBlock(StateCore *state_core)
+// void GetBlock(StateCore *state_core)
+// {
+//     if (farcon.button_first_half[4] == 1 && block_time != 3)
+//     {
+//       block_time++;
+//       Seq::Wait(0.1);
+//     }
+//     else if (farcon.button_first_half[4] == 1 && block_time == 3)
+//     {
+//       block_time = 1;
+//       Seq::Wait(0.1);
+//     }
+
+//     if (block_time == 1)
+//     {
+//       target_height = 200;
+//     }
+//     else if (block_time == 2)
+//     {
+//       target_height = 400;
+//     }
+//     else if (block_time == 3)
+//     {
+//       target_height = 600;
+//     }
+// 		r1block.Get_Block(target_height);
+// }
+
+
+void PushBlock(StateCore *core)
 {
-    if (farcon.button_first_half[4] == 1 && block_time != 3)
-    {
-      block_time++;
-      Seq::Wait(0.1);
-    }
-    else if (farcon.button_first_half[4] == 1 && block_time == 3)
-    {
-      block_time = 1;
-      Seq::Wait(0.1);
-    }
-
-    if (block_time == 1)
-    {
-      target_height = 200;
-    }
-    else if (block_time == 2)
-    {
-      target_height = 400;
-    }
-    else if (block_time == 3)
-    {
-      target_height = 600;
-    }
-		r1block.Get_Block(target_height);
+r1block.ReleaseBlock();
+  Seq::Wait(0.1);
 }
-
-

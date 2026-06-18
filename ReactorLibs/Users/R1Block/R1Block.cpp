@@ -508,18 +508,18 @@ void R1Block::ReleaseBlock()
     }
 
 #ifdef R2_dead
-    if (release_test_flag == 1)
-    {
-      SetTargetState(stretch_debug, stretch_debug, 0.0f, 0.0f, push_height_debug, push_height_debug);
-      if (calm_flag == 1)
-      {
-        Clamp_block();
-      }
-      else
-      {
-        Loosen_block(); // 松开
-      }
-    }
+    // if (release_test_flag == 1)
+    // {
+    //   SetTargetState(stretch_debug, stretch_debug, 0.0f, 0.0f, push_height_debug, push_height_debug);
+    //   if (calm_flag == 1)
+    //   {
+    //     Clamp_block();
+    //   }
+    //   else
+    //   {
+    //     Loosen_block(); // 松开
+    //   }
+    // }
 
     ///////////
     if (realse_order == 0 && realase_Confirm == 1)
@@ -600,6 +600,7 @@ void R1Block::ReleaseBlock()
       SetTargetState(0.0f, 0.0f, 0.0f, 0.0f, 0, 0);
       realase_Confirm = 0;
     }
+
 #else
     Clamp_block(); // 夹紧
     suckmotor[0].SetSpd(0);
