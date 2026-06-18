@@ -387,7 +387,7 @@ void R1Block::Get_Block(int block_height)
     Seq::Wait(1);
     suckmotor[0].SetSpd(0);
     suckmotor[1].SetSpd(0);
-    suck_flag=-1;
+    suck_flag=2;
   }
   if (suck_flag == 1)
   {
@@ -431,17 +431,16 @@ void R1Block::Get_Block(int block_height)
     suckmotor[1].SetSpd(0);
     Clamp_block(); // 夹紧
     Seq::Wait(1);
-    suck_flag = -1;
+    suck_flag = 2;
   }
 
   if (suck_flag == 2)
   {
-    SetTargetHeight(lift_target_pos, lift_target_pos);
-    suck_flag = -1;
+   SetTargetHeight(lift_target_pos, lift_target_pos);
+		Seq::Wait(2);
   }
   // 记录上次高度
   last_height = block_height;
-
 #endif
 }
 

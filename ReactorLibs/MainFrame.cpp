@@ -9,12 +9,12 @@
 #include "farcon.hpp"
 #include "test_rotate.hpp"
 #include "LogicGragh.hpp"
-
+#include "R1Block.hpp"
 using namespace APP;
 using namespace MOD;
 void GetBlock(StateCore *core);
 StateGraph boom_test{"Test"};
-
+using APP::r1block;
 /**
  * @brief 程序主入口
  * @warning 严禁阻塞
@@ -28,7 +28,7 @@ void MainFrameCpp()
 
   //System.RegistApp(APP::logic);
   System.RegistApp(APP::chassis);
-  // System.RegistApp(APP::getblock);
+   System.RegistApp(APP::r1block);
   System.RegistApp(APP::comm);
   System.RegistApp(APP::path_chaser);
   // Logic_Init();
@@ -69,8 +69,7 @@ void GetBlock(StateCore *state_core)
     {
       target_height = 600;
     }
-
-    //getblock.Get_Block(target_height); // TODO: 根据遥控器输入的高度调用不同的函数，目前测试用固定值
+		r1block.Get_Block(target_height);
 }
 
 
