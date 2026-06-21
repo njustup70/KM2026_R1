@@ -150,7 +150,7 @@ int GetBlockHeight(int index_id)
     {
         return 400; // 400高度
     }
-    return 0; 
+    return 200; 
 }
 
 //====================状态函数组织=======================================================================================
@@ -293,6 +293,7 @@ void Action_NavToBlock(StateCore *state_core)
 
         if (is_kfs_point)
         {
+            target_height = GetBlockHeight(target_xid);
             // 触发取块状态
             is_at_block_point = true;
             // 不推进index，取块完成后回来NavToBlock会继续推进
@@ -324,20 +325,20 @@ void Action_GetBlock(StateCore *state_core)
     btn_pick_start = false; 
     is_just_picked = true; 
     is_at_block_point = false; 
-    switch (block_time)
-    {
-        case 1:
-        target_height = 200;
-        break;
-        case 2:
-        target_height = 400;
-        break;
-        case 3:
-        target_height = 600;
-        break;
-        default:
-        break;
-    }
+    // switch (block_time)
+    // {
+    //     case 1:
+    //     target_height = 200;
+    //     break;
+    //     case 2:
+    //     target_height = 400;
+    //     break;
+    //     case 3:
+    //     target_height = 600;
+    //     break;
+    //     default:
+    //     break;
+    // }
     // // 触发 GetBlock 任务执行
     // xSemaphoreGive(g_getblock_start_sem);
     
