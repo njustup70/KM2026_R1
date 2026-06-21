@@ -349,10 +349,10 @@ void Action_GetBlock(StateCore *state_core)
 void Action_LayBlock(StateCore *state_core)
 {
     // is_ready_to_lay = false;
-    Seq::WaitUntil([]() -> bool 
-    {
-        return MOD::farcon.button_second_half[13 - 8 - 1] == 1;
-    });
+    // Seq::WaitUntil([]() -> bool 
+    // {
+    //     return MOD::farcon.button_second_half[13 - 8 - 1] == 1;
+    // });
 
     r1block.ReleaseBlock();
     //Seq::Wait(0.1);

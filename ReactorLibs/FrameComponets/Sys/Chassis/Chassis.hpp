@@ -53,8 +53,8 @@ struct SteerMods
 */
 struct PosController
 {
-    float kp = 0.5f;     // 比例系数，单位: (m/s)/m
-    float kd = 0.2f;     // 微分系数（实际速度反馈阻尼），单位: (m/s)/(m/s) 无量纲
+    float kp = 1.3f;     // 比例系数，单位: (m/s)/m
+    float kd = 0.001f;     // 微分系数（实际速度反馈阻尼），单位: (m/s)/(m/s) 无量纲
 
     /**
     * @param error      位置误差向量，单位 m
@@ -72,7 +72,7 @@ struct PosController
 */
 struct YawController
 {
-    float kp            = 2.0f;    // 比例系数，单位: (rad/s)/rad
+    float kp            = 1.3f;    // 比例系数，单位: (rad/s)/rad
     float ki            = 0.4f;    // 积分系数，单位: (rad/s)/(rad·s)
     float integral_limit = 0.6f;   // 积分限幅，单位 rad（防止 windup）
 
@@ -144,13 +144,13 @@ class ChassisType : public Application
 
         /*<     底盘速度与加速度限制    >*/
         /// @param 最大加速度，单位m/s^2
-        float _max_accel =0.5f;       
+        float _max_accel =3.5f;       
         /// @param 最大线速度，单位m/s
-        float _max_velo = 0.5f;
+        float _max_velo = 2.0f;
         /// @param 最大角速度，单位rad/s
-        float _max_omega = 0.8f;
+        float _max_omega = 2.0f;
         /// @param 最大角加速度，单位rad/s^2
-        float _max_beta = 0.5f;
+        float _max_beta = 4.0f;
 
         /*<     死区参数    >*/
         /// @param 线速度死区，单位m/s（小于此值设为0）

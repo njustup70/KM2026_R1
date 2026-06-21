@@ -359,19 +359,19 @@ void R1Block::Get_Block(int block_height)
   if (farcon.button_first_half[5] == 1)
   {
     suck_flag = 1;
-    Seq::Wait(0.1);
+    // Seq::Wait(0.1);
   }
 
   if (farcon.button_first_half[6] == 1)
   {
     suck_flag = 2;
-    Seq::Wait(0.1);
+    // Seq::Wait(0.1);
   }
 
   if (farcon.button_first_half[7] == 1)
   {
     suck_flag = 3; // 完成第三个取块
-    Seq::Wait(0.5);
+    // Seq::Wait(0.5);
   }
 
   if (suck_flag == 3)
@@ -388,7 +388,7 @@ void R1Block::Get_Block(int block_height)
     Seq::Wait(1);
     suckmotor[0].SetSpd(0);
     suckmotor[1].SetSpd(0);
-    suck_flag = 0;
+    suck_flag = 100;
   }
   if (suck_flag == 1)
   {
@@ -410,19 +410,19 @@ void R1Block::Get_Block(int block_height)
     suckmotor[1].SetSpd(0);
     Clamp_block(); // 夹紧
     Seq::Wait(1);
-    suck_flag = 0;
+    suck_flag = 100;
   }
 
   if (suck_flag == 2)
   {
     SetTargetHeight(lift_target_pos, lift_target_pos);
-    suck_flag = 0;
+    suck_flag = 100;
   }
 
-  // if (suck_flag == 0)
-  // {
-  Seq::Wait(0.2);
-  // }
+  if (suck_flag == 100)
+  {
+  Seq::Wait(0.1);
+  }
   // 记录上次高度
   last_height = block_height;
 #endif
@@ -442,7 +442,7 @@ void R1Block::ReleaseBlock()
   if (farcon.button_first_half[6] == 1)
   {
     release_pre_flag = 1;
-    //Seq::Wait(1);
+    // Seq::Wait(1);
   }
 
   if (farcon.button_first_half[4] == 1)
@@ -451,19 +451,19 @@ void R1Block::ReleaseBlock()
       realse_order++;
     else
       realse_order = 0;
-    //Seq::Wait(1);
+    // Seq::Wait(1);
   }
 
   if (farcon.button_first_half[5] == 1)
   {
     realase_Confirm = 1;
-    //Seq::Wait(1);
+    // Seq::Wait(1);
   }
 
   if (farcon.button_first_half[7] == 1)
   {
     spit_finish_flag = 1;
-    //Seq::Wait(1);
+    // Seq::Wait(1);
   }
 
   if (spit_finish_flag == 1)
@@ -517,14 +517,13 @@ void R1Block::ReleaseBlock()
       Clamp_block();
       suckmotor[0].SetSpd(suck_speed * 0.9);
       suckmotor[1].SetSpd(-suck_speed * 0.9);
-      // Seq::Wait(0.8);
       Seq::WaitUntil([&]()
                      { return block_exist[0] == 0; }); // 检测到没有块在上面的时候
       suckmotor[0].SetSpd(0);
       suckmotor[1].SetSpd(0);
       Loosen_block(); // 松
-      Seq::Wait(2);
-      SetTargetState(0, 0, 0.0f, 0.0f, realse_block_height, realse_block_height);
+      Seq::Wait(1);
+      SetTargetState(release_strectch_distance[0]-400000, release_strectch_distance[0]-400000, 0.0f, 0.0f, realse_block_height, realse_block_height);
 
       // 回到最初位置准备吐
       realse_order = 1;
@@ -584,6 +583,10 @@ void R1Block::ReleaseBlock()
       SetTargetState(0.0f, 0.0f, 0.0f, 0.0f, 0, 0);
       realase_Confirm = 0;
     }
+    else
+    {
+      Seq::Wait(0.1);
+    }
 
 #else
     Clamp_block(); // 夹紧
@@ -609,7 +612,11 @@ void R1Block::ReleaseBlock()
 
 #endif // DEBUG
   }
-  Seq::Wait(0.2);
+  else
+  {
+    Seq::Wait(0.1);
+  }
+
   //	      SetTargetState(release_strectch_distance[1], release_strectch_distance[1], 0.0f, 0.0f, realse_block_height, realse_block_height);
   // 初始化吐块流程参数
 }
