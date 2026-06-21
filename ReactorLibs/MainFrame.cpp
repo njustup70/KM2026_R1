@@ -1,43 +1,33 @@
 #include "MainFrame.hpp"
 #include "Monitor.hpp"
 #include "System.hpp"
-// #include "R1GetBlock.hpp"
+#include "R1Block.hpp"
 #include "Logic.hpp"
 #include "Chassis.hpp"
 #include "CommCenter.hpp"
 #include "PathChaser.hpp"
 #include "farcon.hpp"
-#include "test_rotate.hpp"
 #include "LogicGragh.hpp"
-#include "R1Block.hpp"
+
 using namespace APP;
 using namespace MOD;
-void PushBlock(StateCore *core);
-StateGraph boom_test{"Test"};
-using APP::r1block;
+
 /**
  * @brief 程序主入口
  * @warning 严禁阻塞
  */
 void MainFrameCpp()
 {
-  // StateBlock &s_pick = boom_test.AddState("GetBlocking");
-  // s_pick.StateAction = GetBlock;
-    StateBlock &s_pick = boom_test.AddState("PushBlock");
-  s_pick.StateAction = PushBlock;
-
-  // System.SetPositionSource(System.odometer.transform);
+  //System.SetPositionSource(System.odometer.transform);
   System.SetPositionSource(APP::comm.slam_pos);
 
-  //System.RegistApp(APP::logic);
+  System.RegistApp(APP::logic);
   System.RegistApp(APP::chassis);
-   System.RegistApp(APP::r1block);
+  System.RegistApp(APP::r1block);
   System.RegistApp(APP::comm);
   System.RegistApp(APP::path_chaser);
-  // Logic_Init();
+  Logic_Init();
 
-
-  APP::state_core.RegistGraph(boom_test);
   APP::state_core.Enable(0); // 启动状态机核心，指定初始状态图为0号图
 }
 
@@ -45,39 +35,4 @@ static uint8_t enter_flag = 0;
 void ActionDege(StateCore *core)
 {
 
-}
-
-// void GetBlock(StateCore *state_core)
-// {
-//     if (farcon.button_first_half[4] == 1 && block_time != 3)
-//     {
-//       block_time++;
-//       Seq::Wait(0.1);
-//     }
-//     else if (farcon.button_first_half[4] == 1 && block_time == 3)
-//     {
-//       block_time = 1;
-//       Seq::Wait(0.1);
-//     }
-
-//     if (block_time == 1)
-//     {
-//       target_height = 200;
-//     }
-//     else if (block_time == 2)
-//     {
-//       target_height = 400;
-//     }
-//     else if (block_time == 3)
-//     {
-//       target_height = 600;
-//     }
-// 		r1block.Get_Block(target_height);
-// }
-
-
-void PushBlock(StateCore *core)
-{
-r1block.ReleaseBlock();
-  Seq::Wait(0.1);
 }

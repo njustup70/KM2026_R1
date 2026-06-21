@@ -15,7 +15,7 @@
 #include "Monitor.hpp"
 
 // #include "R1GetBlock.hpp"
-#include "LogicGragh.hpp"
+//#include "LogicGragh.hpp"
 
 // SemaphoreHandle_t g_getblock_start_sem = nullptr;
 // SemaphoreHandle_t g_getblock_done_sem  = nullptr;
@@ -38,7 +38,7 @@ void StateCoreCpp();
 void ControlCpp();
 void SpiReadCpp();
 void SpiConsumeCpp();
-void GetBlockTaskCpp();
+//void GetBlockTaskCpp();
 
 
 /* ================= 内部适配器 ================= */

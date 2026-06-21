@@ -154,5 +154,4 @@ public:
 namespace APP
 {
 extern R1Block &r1block;
-extern ChassisType &chassis;
 }
