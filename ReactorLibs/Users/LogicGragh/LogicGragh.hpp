@@ -29,6 +29,10 @@ extern bool btn_pick_start;
 extern bool btn_lay_start;
 extern bool is_just_picked;
 
+extern bool is_at_area1;
+extern bool is_at_area2;
+extern bool is_at_area3;
+
 // 初始化接口
 void Logic_Init(void);
 void Logic_Update(void); 

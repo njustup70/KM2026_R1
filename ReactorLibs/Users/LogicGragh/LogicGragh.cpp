@@ -8,20 +8,16 @@
 #include "PathPlaner.hpp"
 #include "System.hpp"
 #include "Chassis.hpp"
-// #include "R1GetBlock.hpp"
+#include "R1Block.hpp"
 #include "farcon.hpp"
 #include "CommCenter.hpp"
 #include "PathChaser.hpp"
 #include "R1_area1_rod2.hpp"
 #include "R1_area3.hpp"
-#include "freertos.h"
-#include "semphr.h"
+
 
 using namespace APP;
 using namespace MOD;
-
-// extern SemaphoreHandle_t g_getblock_start_sem;
-// extern SemaphoreHandle_t g_getblock_done_sem;
 
 // --- 1. 全局状态标志位 ---
 Area current_area = Area::Area1;
@@ -44,6 +40,10 @@ bool is_at_block_point = false;
 bool btn_pick_start = false;
 bool btn_lay_start = false;
 bool is_just_picked = false;
+
+bool is_at_area1 = true;
+bool is_at_area2 = false;
+bool is_at_area3 = false;
 
 int target_height = 200; // 200高度
 int block_time = 1;
@@ -154,6 +154,11 @@ int GetBlockHeight(int index_id)
 }
 
 //====================状态函数组织=======================================================================================
+void Action_ChooseArea(StateCore *core)
+{
+    
+}
+
 void Action_GetPathCmd(StateCore *core)
 {
     Seq::WaitUntil([]() -> bool 
@@ -199,6 +204,8 @@ void Action_GetRod(StateCore *state_core)
         return farcon.button_first_half[4 - 1] == 1;  //发送按键4，此时夹紧
     }); 
     chassis.MoveAt(Vec2(0.9,3.3));
+    Seq::WaitUntil([]() -> bool
+                            { return (chassis._Walking() == 1); });
     chassis.RotateAt(-1.57f);
     is_ready_to_dock = true; 
 }
@@ -336,7 +343,7 @@ void Action_GetBlock(StateCore *state_core)
     
     // // 等待取块完成（阻塞在这里，但只消耗StateCore极浅的栈帧）
     // xSemaphoreTake(g_getblock_done_sem, portMAX_DELAY);
-    //getblock.Get_Block(target_height); // TODO: 根据遥控器输入的高度调用不同的函数，目前测试用固定值
+    r1block.Get_Block(target_height); // TODO: 根据遥控器输入的高度调用不同的函数，目前测试用固定值
 }
 
 void Action_LayBlock(StateCore *state_core)
@@ -347,13 +354,15 @@ void Action_LayBlock(StateCore *state_core)
         return MOD::farcon.button_second_half[13 - 8 - 1] == 1;
     });
 
-    //getblock.ReleaseBlock();
+    r1block.ReleaseBlock();
+    //Seq::Wait(0.1);
 }
 
 // ================================初始化========================================================================
 void Logic_Init(void)
 {
     //1.添加状态块
+    StateBlock& s_choosearea = total_flow.AddState("Choose Area");
     StateBlock& s_chaser = total_flow.AddState("GetCmd");
     StateBlock& s_run = total_flow.AddState("RunCmd");    
     StateBlock& s_rod = total_flow.AddState("GetRod");
@@ -367,6 +376,7 @@ void Logic_Init(void)
     StateBlock &s_lay = total_flow.AddState("LayBlock");
 
     //2.绑定状态的动作函数
+    s_choosearea.StateAction = Action_ChooseArea;
     s_chaser.StateAction = Action_GetPathCmd;
     s_run.StateAction = Action_RunCmd;
     s_rod.StateAction = Action_GetRod;
@@ -378,6 +388,11 @@ void Logic_Init(void)
     s_lay.StateAction = Action_LayBlock;
 
     //3.设置linkto
+    //选择从哪一区开始
+    s_choosearea.LinkTo(&is_at_area1, s_chaser);
+    s_choosearea.LinkTo(&is_at_area2, s_plan);
+    s_choosearea.LinkTo(&is_at_area3, s_chaser);
+
     s_chaser.LinkTo(&is_ready_to_run, s_run);
     s_run.LinkTo(&is_ready_to_rod, s_rod);
     s_run.LinkTo(&is_ready_to_lay, s_lay); 
@@ -398,7 +413,7 @@ void Logic_Init(void)
 
     // 注册图
     state_core.RegistGraph(total_flow);
-    current_area = Area::Area1; 
+    current_area = Area::Area3; 
 }
 
 // --- 4. 逻辑更新 ---

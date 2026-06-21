@@ -25,6 +25,31 @@ void TaskLogic::Start()
  */
 void TaskLogic::Update()
 {
+    if (current_area == Area::Area1)
+    {
+        is_at_area1 = true;
+        is_at_area2 = false;
+        is_at_area3 = false;
+    }
+    else if (current_area == Area::Area2)
+    {
+        is_at_area1 = false;
+        is_at_area2 = true;
+        is_at_area3 = false;        
+    }
+    else if (current_area == Area::Area3)
+    {
+        is_at_area1 = false;
+        is_at_area2 = false;
+        is_at_area3 = true;          
+    }
+    else
+    {
+        is_at_area1 = true;
+        is_at_area2 = false;
+        is_at_area3 = false;
+    }
+
     is_ready_to_run = (APP::chassis.enabled && (!APP::path_chaser.IsFinished()));
     is_ready_to_rod = ((APP::path_chaser.IsFinished()) && (current_area == Area::Area1));
     is_ready_to_lay = ((APP::path_chaser.IsFinished()) && (current_area == Area::Area3));
