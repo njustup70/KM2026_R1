@@ -5,7 +5,8 @@
 #include "bsp_hardware.hpp"
 #include "StateCore.hpp"
 
-using APP::chassis;
+
+ using APP::chassis;
 using MOD::farcon;
 R1Block &APP::r1block = R1Block::GetInstance();
 
@@ -17,6 +18,8 @@ int stretch_debug = 2100000;
 int push_height_debug = 580000;
 int release_test_flag = 0;
 int calm_flag = 0;
+
+
 // #define Test_device 1
 #define R2_dead 1
 // 伸缩电机最远4300000
@@ -36,12 +39,12 @@ void R1Block::Start()
   rsy_pin = BSP::GPIO::Inst({'D', 15});
   fmy_pin = BSP::GPIO::Inst({'H', 11});
   mmy_pin = BSP::GPIO::Inst({'H', 12});
-
+  bmy_pin = BSP::GPIO::Inst({'I', 0});
   // ---- 大疆抬升电机左（M3508，减速比19，CAN1 ID:5，位置串级模式）----
   liftmotor[0].Init(Hardware::hcan_main, 5, DJI_C620);
-  liftmotor[0].ConfigPID().AsPosC().Pos_Coeff(1.0f, 0.0f, 0.3f) // 位置环 kp/ki/kd（待整定）
+  liftmotor[0].ConfigPID().AsPosC().Pos_Coeff(1.5f, 0.0f, 0.2f) // 位置环 kp/ki/kd（待整定）
       .Pos_Limit(500.0f, 4000.0f)                               // 位置环积分限幅、输出速度限幅（rad/s）
-      .Spd_Coeff(0.06f, 0.01, 0.0f)                             // 速度环 kp/ki/kd（待整定）
+      .Spd_Coeff(0.08f, 0.05, 0.0f)                             // 速度环 kp/ki/kd（待整定）
       .Spd_Limit(5.0f, 10.0f)                                   // 速度环积分限幅、电流输出限幅（code）
       .CurLimit(10)
       .Apply();
@@ -49,9 +52,9 @@ void R1Block::Start()
 
   // ---- 大疆抬升电机右（M3508，减速比19，CAN1 ID:6，位置串级模式）----
   liftmotor[1].Init(Hardware::hcan_main, 6, DJI_C620);
-  liftmotor[1].ConfigPID().AsPosC().Pos_Coeff(1.0f, 0.0f, 0.3f) // 位置环 kp/ki/kd（待整定）
+  liftmotor[1].ConfigPID().AsPosC().Pos_Coeff(1.5f, 0.0f, 0.2f) // 位置环 kp/ki/kd（待整定）
       .Pos_Limit(500.0f, 4000.0f)                               // 位置环积分限幅、输出速度限幅（rad/s）
-      .Spd_Coeff(0.06f, 0.01, 0.0f)                             // 速度环 kp/ki/kd（待整定）
+      .Spd_Coeff(0.08f, 0.05, 0.0f)                             // 速度环 kp/ki/kd（待整定）
       .Spd_Limit(5.0f, 10.0f)                                   // 速度环积分限幅、电流输出限幅（code）
       .CurLimit(10)
       .Apply();
@@ -124,7 +127,12 @@ void R1Block::Update()
   block_detect[1] = 1 - rsy_pin.Read();
   block_exist[0] = 1 - fmy_pin.Read();
   block_exist[1] = 1 - mmy_pin.Read();
+  block_exist[2] = 1 - bmy_pin.Read();
 
+  llift_reached = liftmotor[0].IsReached();
+  rlift_reached = liftmotor[1].IsReached();
+  lstretch_reached=stretchmotor[0].IsReached();
+  rstretch_reached=stretchmotor[1].IsReached();
   if (aim_right == 0)
   {
     chassis.Move(Spd);
@@ -237,6 +245,58 @@ void R1Block::SetTargetState(float stretch_pos_L, float stretch_pos_R,
   suckmotor[1].SetPos(target_state_pos[6]);
 }
 /**
+ * @brief 仅平滑移动抬升电机到目标高度 (保持伸缩电机当前位置不变)
+ * @param target_lift 目标高度
+ * @param duration_sec 耗时
+ * @param steps 步数 (默认 100)
+ */
+void R1Block::SmoothMoveLiftToTarget(float start_lift, float target_lift, float duration_sec, int steps = 100)
+{
+  // 计算每一步需要等待的时间
+  float wait_per_step = duration_sec / steps;
+
+  for (int i = 1; i <= steps; i++)
+  {
+    // 计算当前进度比例 (从 0.0 到 1.0)
+    float progress = (float)i / steps;
+
+    // 线性插值公式：当前位置 = 起点 + (终点 - 起点) * 进度
+    float current_lift = start_lift + (target_lift - start_lift) * progress;
+
+    // 下发当前插值得到的位置（默认 suck 吸吮轴为 0.0f，视你需求可再加参数）
+    SetTargetHeight(current_lift, current_lift);
+    // 短暂延时
+    Seq::Wait(wait_per_step);
+  }
+}
+
+/**
+ * @brief 仅平滑移动抬升电机到目标高度 (保持伸缩电机当前位置不变)
+ * @param target_lift 目标高度
+ * @param duration_sec 耗时
+ * @param steps 步数 (默认 100)
+ */
+void R1Block::SmoothMoveStretchToTarget(float start_stretch, float end_stretch, float duration_sec, int steps = 100)
+{
+  // 计算每一步需要等待的时间
+  float wait_per_step = duration_sec / steps;
+
+  for (int i = 1; i <= steps; i++)
+  {
+    // 计算当前进度比例 (从 0.0 到 1.0)
+    float progress = (float)i / steps;
+
+    // 线性插值公式：当前位置 = 起点 + (终点 - 起点) * 进度
+    float current_st = start_stretch + (end_stretch - start_stretch) * progress;
+
+    // 下发当前插值得到的位置（默认 suck 吸吮轴为 0.0f，视你需求可再加参数）
+    SetTargetStretch(current_st, current_st);
+    // 短暂延时
+    Seq::Wait(wait_per_step);
+  }
+}
+
+/**
  * @brief 平滑控制伸缩和抬升电机
  * * @param start_stretch 伸缩电机的起始位置
  * @param end_stretch   伸缩电机的目标位置
@@ -326,11 +386,11 @@ void R1Block::Aim_Block()
 
 int R1Block::trans_height(int block_height)
 {
-  int temp_block=block_height;
+  int temp_block = block_height;
   switch (temp_block)
   {
     case 200:
-     return blockheight_2_liftmotortargetpos[0];
+      return blockheight_2_liftmotortargetpos[0];
       break;
     case 400:
       return blockheight_2_liftmotortargetpos[1];
@@ -342,8 +402,6 @@ int R1Block::trans_height(int block_height)
       return 0.0f; // 默认值或错误处理
       break;
   }
-
-
 }
 
 void R1Block::Get_Block(int block_height)
@@ -362,8 +420,7 @@ void R1Block::Get_Block(int block_height)
   height_blcok[2] = (uint8_t)(block_height & 0xFF); // 低 8 位
   farcon.TransmitFarcon(height_blcok, 3);
 
-
-lift_target_pos=trans_height(block_height);
+  lift_target_pos = trans_height(block_height);
   if (farcon.button_first_half[5] == 1)
   {
     suck_flag = 1;
@@ -403,36 +460,45 @@ lift_target_pos=trans_height(block_height);
     suckmotor[0].SetSpd(0);
     suckmotor[1].SetSpd(0);
     Loosen_block();
-    SmoothMoveTo(0, 0, trans_height(last_height), lift_target_pos, 7, 100);
+    if (last_height != block_height)
+    {
+      SmoothMoveLiftToTarget(trans_height(last_height), lift_target_pos, 2);
+        Seq::WaitUntil([&]()
+                   { return (llift_reached && rlift_reached); }); // 检测到没有块在上面的时候
+    }
+
+    Seq::Wait(1);     //安全保护         
     Aim_Block();
-    SmoothMoveTo(0, stretch_distance[1], lift_target_pos, lift_target_pos, 4, 100);
+    SmoothMoveStretchToTarget(0, stretch_distance[1], 2);
     Seq::Wait(2);
     // 实际取块
     Clamp_block(); // 夹紧
     suckmotor[0].SetSpd(-suck_speed);
     suckmotor[1].SetSpd(suck_speed);
     Seq::Wait(4);
-    SmoothMoveTo(0, 0, lift_target_pos, lift_target_pos, 5, 100);
+    SmoothMoveStretchToTarget(stretch_distance[1], 0, 2);
     Seq::Wait(2);
     suckmotor[0].SetSpd(0);
     suckmotor[1].SetSpd(0);
     Clamp_block(); // 夹紧
     Seq::Wait(1);
+    last_height = block_height;
     suck_flag = 100;
   }
 
   if (suck_flag == 2)
   {
-    SetTargetHeight(lift_target_pos, lift_target_pos);
+    SmoothMoveLiftToTarget(trans_height(last_height), lift_target_pos, 2);
+    last_height = block_height;
     suck_flag = 100;
   }
 
   if (suck_flag == 100)
   {
-  Seq::Wait(0.1);
+    Seq::Wait(0.1);
   }
   // 记录上次高度
-  last_height = block_height;
+
 #endif
 }
 
@@ -531,7 +597,7 @@ void R1Block::ReleaseBlock()
       suckmotor[1].SetSpd(0);
       Loosen_block(); // 松
       Seq::Wait(1);
-      SetTargetState(release_strectch_distance[0]-400000, release_strectch_distance[0]-400000, 0.0f, 0.0f, realse_block_height, realse_block_height);
+      SetTargetState(release_strectch_distance[0] - 400000, release_strectch_distance[0] - 400000, 0.0f, 0.0f, realse_block_height, realse_block_height);
 
       // 回到最初位置准备吐
       realse_order = 1;
