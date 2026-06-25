@@ -152,6 +152,10 @@ class ChassisType : public Application
         /// @param 最大角加速度，单位rad/s^2
         float _max_beta = 4.0f;
 
+        /*<     底盘系数设置    >*/
+        /// @param FARCON模式速度削减系数，为了提高手动的控制精度（手动不求很大的速度），且保持自动挡较高的速度
+        float _farcon_decspeed = 0.7f;
+
         /*<     死区参数    >*/
         /// @param 线速度死区，单位m/s（小于此值设为0）
         float _speed_deadzone = 0.05f;
@@ -215,6 +219,7 @@ class ChassisType : public Application
             API,        // 由电控API控制
             HOST,       // 由工控机控制
             FARCON,     // 由遥控器控制
+            UPHILL,
             LOCKYAW,
             OPEN,       // 开放控制（直接Move控制）
         }_ChasConMode;
