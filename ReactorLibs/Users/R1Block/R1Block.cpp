@@ -324,6 +324,28 @@ void R1Block::Aim_Block()
   chassis.Move({0, 0});
 }
 
+int R1Block::trans_height(int block_height)
+{
+  int temp_block=block_height;
+  switch (temp_block)
+  {
+    case 200:
+     return blockheight_2_liftmotortargetpos[0];
+      break;
+    case 400:
+      return blockheight_2_liftmotortargetpos[1];
+      break;
+    case 600:
+      return blockheight_2_liftmotortargetpos[2];
+      break;
+    default:
+      return 0.0f; // 默认值或错误处理
+      break;
+  }
+
+
+}
+
 void R1Block::Get_Block(int block_height)
 {
   appstate = STATE_GETBLOCK;
@@ -340,22 +362,8 @@ void R1Block::Get_Block(int block_height)
   height_blcok[2] = (uint8_t)(block_height & 0xFF); // 低 8 位
   farcon.TransmitFarcon(height_blcok, 3);
 
-  switch (block_height)
-  {
-    case 200:
-      lift_target_pos = blockheight_2_liftmotortargetpos[0];
-      break;
-    case 400:
-      lift_target_pos = blockheight_2_liftmotortargetpos[1];
-      break;
-    case 600:
-      lift_target_pos = blockheight_2_liftmotortargetpos[2];
-      break;
-    default:
-      lift_target_pos = 0.0f; // 默认值或错误处理
-      break;
-  }
 
+lift_target_pos=trans_height(block_height);
   if (farcon.button_first_half[5] == 1)
   {
     suck_flag = 1;
@@ -395,9 +403,9 @@ void R1Block::Get_Block(int block_height)
     suckmotor[0].SetSpd(0);
     suckmotor[1].SetSpd(0);
     Loosen_block();
-    SmoothMoveTo(0, 0, lift_target_pos, lift_target_pos, 14, 100);
+    SmoothMoveTo(0, 0, trans_height(last_height), lift_target_pos, 7, 100);
     Aim_Block();
-    SmoothMoveTo(stretch_distance[1], stretch_distance[1], lift_target_pos, lift_target_pos, 5, 100);
+    SmoothMoveTo(0, stretch_distance[1], lift_target_pos, lift_target_pos, 4, 100);
     Seq::Wait(2);
     // 实际取块
     Clamp_block(); // 夹紧

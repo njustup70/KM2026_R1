@@ -414,7 +414,7 @@ void Logic_Init(void)
 
     // 注册图
     state_core.RegistGraph(total_flow);
-    current_area = Area::Area3; 
+    current_area = Area::Area1; 
 }
 
 // --- 4. 逻辑更新 ---

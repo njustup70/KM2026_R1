@@ -119,9 +119,9 @@ public:
   void Aim_Block();
   void SetTargetStretch(float stretch_pos_L, float stretch_pos_R);
   void SetTargetHeight(float lift_pos_L, float lift_pos_R);
-  void SmoothMoveTo(float start_stretch, float end_stretch, 
-                            float start_lift, float end_lift, 
-                            float duration_sec, int steps);
+  void SmoothMoveTo(float start_stretch, float end_stretch,
+                    float start_lift, float end_lift,
+                    float duration_sec, int steps);
   /**
    * @brief 设置三个电机的目标状态并立即下发
    * @param strech_pos   伸出电机目标位置（code，total_angle 语义）
@@ -148,7 +148,7 @@ public:
   void ReleaseBlock();
 
   void Action_LiftToHeight(float height); // TODO: 预留
-
+  int trans_height(int block_height);
   void GetTargetBlockInfo();
 };
 namespace APP
