@@ -30,7 +30,7 @@ float test_stretch_left = 0;
 float test_stretch_right = 0;
 float test_suck_speed = 0;
 float test_debug_height = 0;
-Vec2 Spd = {0, 0};
+
 #endif // DEBUG
 
 void R1Block::Start()
@@ -43,22 +43,24 @@ void R1Block::Start()
   bmy_pin = BSP::GPIO::Inst({'I', 0});
   // ---- 大疆抬升电机左（M3508，减速比19，CAN1 ID:5，位置串级模式）----
   liftmotor[0].Init(Hardware::hcan_main, 5, DJI_C620);
-  liftmotor[0].ConfigPID().AsPosC().Pos_Coeff(1.5f, 0.0f, 0.2f) // 位置环 kp/ki/kd（待整定）
-      .Pos_Limit(500.0f, 4000.0f)                               // 位置环积分限幅、输出速度限幅（rad/s）
-      .Spd_Coeff(0.08f, 0.05, 0.0f)                             // 速度环 kp/ki/kd（待整定）
-      .Spd_Limit(5.0f, 10.0f)                                   // 速度环积分限幅、电流输出限幅（code）
-      .CurLimit(10)
-      .Apply();
+  liftmotor[0].ConfigADRC().AsPosC().ADRC_Womega(42.0f, 9.6f)
+                        .ADRC_Physic(2.6e-4f, 0.30f, 0.005f)
+                        .ADRC_Limit(6.0f)
+                        .SpdLimit(6000.0f)
+                        .ADRC_MaxPlannedVel(6000.0f)
+                        .ADRC_SOTF(0.1f)
+                        .Apply();
   liftmotor[0].driver.Enable(); // 设负的向上，正的向下
 
   // ---- 大疆抬升电机右（M3508，减速比19，CAN1 ID:6，位置串级模式）----
   liftmotor[1].Init(Hardware::hcan_main, 6, DJI_C620);
-  liftmotor[1].ConfigPID().AsPosC().Pos_Coeff(1.5f, 0.0f, 0.2f) // 位置环 kp/ki/kd（待整定）
-      .Pos_Limit(500.0f, 4000.0f)                               // 位置环积分限幅、输出速度限幅（rad/s）
-      .Spd_Coeff(0.08f, 0.05, 0.0f)                             // 速度环 kp/ki/kd（待整定）
-      .Spd_Limit(5.0f, 10.0f)                                   // 速度环积分限幅、电流输出限幅（code）
-      .CurLimit(10)
-      .Apply();
+  liftmotor[1].ConfigADRC().AsPosC().ADRC_Womega(42.0f, 9.6f)
+                        .ADRC_Physic(2.6e-4f, 0.30f, 0.005f)
+                        .ADRC_Limit(6.0f)
+                        .SpdLimit(6000.0f)
+                        .ADRC_MaxPlannedVel(6000.0f)
+                        .ADRC_SOTF(0.1f)
+                        .Apply();
   liftmotor[1].driver.Enable(); // 设正的向上，负的向下
 
   // ---- 大疆吸吮电机左（M2006，减速比36，CAN2 ID:1，位置串级模式）----
@@ -405,6 +407,8 @@ int R1Block::trans_height(int block_height)
   }
 }
 
+
+
 void R1Block::Get_Block(int block_height)
 {
   appstate = STATE_GETBLOCK;
@@ -413,8 +417,8 @@ void R1Block::Get_Block(int block_height)
 
 #ifdef Test_device
   SetTargetState(test_stretch_left, test_stretch_right, 0.0f, 0.0f, test_debug_height, test_debug_height);
-  suckmotor[0].SetSpd(-test_suck_speed);
-  suckmotor[1].SetSpd(test_suck_speed);
+//suckmotor[0].SetSpd(-test_suck_speed);
+//suckmotor[1].SetSpd(test_suck_speed);
 #else
   height_blcok[0] = 0x02;
   height_blcok[1] = block_height >> 8;
