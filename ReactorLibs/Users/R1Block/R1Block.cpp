@@ -5,8 +5,7 @@
 #include "bsp_hardware.hpp"
 #include "StateCore.hpp"
 
-
- using APP::chassis;
+using APP::chassis;
 using MOD::farcon;
 R1Block &APP::r1block = R1Block::GetInstance();
 
@@ -19,6 +18,8 @@ int push_height_debug = 580000;
 int release_test_flag = 0;
 int calm_flag = 0;
 
+int last_spit_height = 0;
+extern bool is_prelay_finished;
 
 // #define Test_device 1
 #define R2_dead 1
@@ -131,8 +132,8 @@ void R1Block::Update()
 
   llift_reached = liftmotor[0].IsReached();
   rlift_reached = liftmotor[1].IsReached();
-  lstretch_reached=stretchmotor[0].IsReached();
-  rstretch_reached=stretchmotor[1].IsReached();
+  lstretch_reached = stretchmotor[0].IsReached();
+  rstretch_reached = stretchmotor[1].IsReached();
   if (aim_right == 0)
   {
     chassis.Move(Spd);
@@ -463,11 +464,11 @@ void R1Block::Get_Block(int block_height)
     if (last_height != block_height)
     {
       SmoothMoveLiftToTarget(trans_height(last_height), lift_target_pos, 2);
-        Seq::WaitUntil([&]()
-                   { return (llift_reached && rlift_reached); }); // 检测到没有块在上面的时候
+      Seq::WaitUntil([&]()
+                     { return (llift_reached && rlift_reached); }); // 检测到没有块在上面的时候
     }
 
-    Seq::Wait(1);     //安全保护         
+    Seq::Wait(1); // 安全保护
     Aim_Block();
     SmoothMoveStretchToTarget(0, stretch_distance[1], 2);
     Seq::Wait(2);
@@ -502,6 +503,27 @@ void R1Block::Get_Block(int block_height)
 #endif
 }
 
+void R1Block::PreLayBLock()
+{
+  if (farcon.button_first_half[6] == 1)
+  {
+    release_pre_flag = 1;
+  }
+    if (release_pre_flag == 1)
+    {
+      Loosen_block();
+      Seq::Wait(1);
+      // 从 0 平滑移动到目标位置，总耗时 4.0 秒，切分 100 步完成
+      SmoothMoveTo(0.0f, release_strectch_distance[1], 0.0f, realse_block_height, 4, 100);
+      Seq::Wait(1);
+      Clamp_block();
+      Seq::Wait(1);
+      release_pre_flag = 0;
+    is_prelay_finished=true; 
+    }
+
+}
+
 void R1Block::ReleaseBlock()
 {
   appstate = STATE_RELEASEBLOCK;
@@ -513,11 +535,7 @@ void R1Block::ReleaseBlock()
   //  等待 begin_spit_flag 触发吐块流程
   begin_spit_flag = 1;
 
-  if (farcon.button_first_half[6] == 1)
-  {
-    release_pre_flag = 1;
-    // Seq::Wait(1);
-  }
+
 
   if (farcon.button_first_half[4] == 1)
   {
@@ -554,16 +572,7 @@ void R1Block::ReleaseBlock()
   if (begin_spit_flag == 1)
   {
     // R2死了
-    if (release_pre_flag == 1)
-    {
-      // 从 0 平滑移动到目标位置，总耗时 4.0 秒，切分 100 步完成
-      SmoothMoveTo(0.0f, release_strectch_distance[1],
-                   0.0f, realse_block_height,
-                   4.0f, 100);
-      Clamp_block();
-      Seq::Wait(1);
-      release_pre_flag = 0;
-    }
+
 
 #ifdef R2_dead
     // if (release_test_flag == 1)

@@ -154,6 +154,7 @@ public:
   void Clamp_block();
   void Loosen_block();
   void Get_Block(int block_height);
+  void PreLayBLock();
   void ReleaseBlock();
 
   void Action_LiftToHeight(float height); // TODO: 预留
