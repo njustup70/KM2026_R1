@@ -14,3 +14,4 @@ PathChaserType& path_chaser = PathChaserType::GetInstance();
 TaskLogic& logic = TaskLogic::GetInstance();
 CommCenter& comm = CommCenter::GetInstance();
 StateCore& core = StateCore::GetInstance();
+Sick& sick = Sick::GetInstance();

@@ -45,6 +45,8 @@ bool is_at_area1 = true;
 bool is_at_area2 = false;
 bool is_at_area3 = false;
 
+bool is_prelay_finished=false;
+
 int target_height = 200; // 200高度
 int block_time = 1;
 
@@ -156,6 +158,14 @@ int GetBlockHeight(int index_id)
 //====================状态函数组织=======================================================================================
 void Action_ChooseArea(StateCore *core)
 {
+    
+}
+
+
+void Action_PreLay(StateCore *core)
+{
+
+r1block.PreLayBLock();
     
 }
 
@@ -293,7 +303,7 @@ void Action_NavToBlock(StateCore *state_core)
 
         if (is_kfs_point)
         {
-            target_height = GetBlockHeight(target_xid);
+             target_height = GetBlockHeight(target_xid);
             // 触发取块状态
             is_at_block_point = true;
             // 不推进index，取块完成后回来NavToBlock会继续推进
@@ -325,25 +335,6 @@ void Action_GetBlock(StateCore *state_core)
     btn_pick_start = false; 
     is_just_picked = true; 
     is_at_block_point = false; 
-    // switch (block_time)
-    // {
-    //     case 1:
-    //     target_height = 200;
-    //     break;
-    //     case 2:
-    //     target_height = 400;
-    //     break;
-    //     case 3:
-    //     target_height = 600;
-    //     break;
-    //     default:
-    //     break;
-    // }
-    // // 触发 GetBlock 任务执行
-    // xSemaphoreGive(g_getblock_start_sem);
-    
-    // // 等待取块完成（阻塞在这里，但只消耗StateCore极浅的栈帧）
-    // xSemaphoreTake(g_getblock_done_sem, portMAX_DELAY);
     r1block.Get_Block(target_height); // TODO: 根据遥控器输入的高度调用不同的函数，目前测试用固定值
 }
 
@@ -362,6 +353,9 @@ void Action_LayBlock(StateCore *state_core)
 // ================================初始化========================================================================
 void Logic_Init(void)
 {
+//    //单独跑三区的的状态（在跑点之前需要完成）
+//        StateBlock& s_lay_pre = total_flow.AddState("Pre LayBlock");
+
     //1.添加状态块
     StateBlock& s_choosearea = total_flow.AddState("Choose Area");
     StateBlock& s_chaser = total_flow.AddState("GetCmd");
@@ -373,10 +367,12 @@ void Logic_Init(void)
     StateBlock &s_move = total_flow.AddState("NavtoBlock");
     StateBlock &s_pick = total_flow.AddState("GetBlocking");
 
-    // 其实是三区的逻辑，还没想好状态图之间转移的逻辑，故先放在同一个状态图里
+    // // 其实是三区的逻辑，还没想好状态图之间转移的逻辑，故先放在同一个状态图里
     StateBlock &s_lay = total_flow.AddState("LayBlock");
 
     //2.绑定状态的动作函数
+//    s_lay_pre.StateAction=Action_PreLay;
+
     s_choosearea.StateAction = Action_ChooseArea;
     s_chaser.StateAction = Action_GetPathCmd;
     s_run.StateAction = Action_RunCmd;
@@ -390,6 +386,8 @@ void Logic_Init(void)
 
     //3.设置linkto
     //选择从哪一区开始
+//    s_lay_pre.LinkTo(&is_prelay_finished, s_choosearea);
+
     s_choosearea.LinkTo(&is_at_area1, s_chaser);
     s_choosearea.LinkTo(&is_at_area2, s_plan);
     s_choosearea.LinkTo(&is_at_area3, s_chaser);
@@ -414,7 +412,7 @@ void Logic_Init(void)
 
     // 注册图
     state_core.RegistGraph(total_flow);
-    current_area = Area::Area3; 
+    current_area = Area::Area1; 
 }
 
 // --- 4. 逻辑更新 ---
