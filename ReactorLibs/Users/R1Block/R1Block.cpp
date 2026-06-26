@@ -4,9 +4,10 @@
 #include "farcon.hpp"
 #include "bsp_hardware.hpp"
 #include "StateCore.hpp"
-
+#include "Sick.hpp"
 using APP::chassis;
 using MOD::farcon;
+using MOD::sick;
 R1Block &APP::r1block = R1Block::GetInstance();
 
 uint8_t height_blcok[3] = {0};
@@ -43,24 +44,12 @@ void R1Block::Start()
   bmy_pin = BSP::GPIO::Inst({'I', 0});
   // ---- 大疆抬升电机左（M3508，减速比19，CAN1 ID:5，位置串级模式）----
   liftmotor[0].Init(Hardware::hcan_main, 5, DJI_C620);
-  liftmotor[0].ConfigADRC().AsPosC().ADRC_Womega(42.0f, 9.6f)
-                        .ADRC_Physic(2.6e-4f, 0.30f, 0.005f)
-                        .ADRC_Limit(6.0f)
-                        .SpdLimit(6000.0f)
-                        .ADRC_MaxPlannedVel(6000.0f)
-                        .ADRC_SOTF(0.1f)
-                        .Apply();
+  liftmotor[0].ConfigADRC().AsPosC().ADRC_Womega(42.0f, 9.6f).ADRC_Physic(2.6e-4f, 0.30f, 0.005f).ADRC_Limit(6.0f).SpdLimit(6000.0f).ADRC_MaxPlannedVel(6000.0f).ADRC_SOTF(0.1f).Apply();
   liftmotor[0].driver.Enable(); // 设负的向上，正的向下
 
   // ---- 大疆抬升电机右（M3508，减速比19，CAN1 ID:6，位置串级模式）----
   liftmotor[1].Init(Hardware::hcan_main, 6, DJI_C620);
-  liftmotor[1].ConfigADRC().AsPosC().ADRC_Womega(42.0f, 9.6f)
-                        .ADRC_Physic(2.6e-4f, 0.30f, 0.005f)
-                        .ADRC_Limit(6.0f)
-                        .SpdLimit(6000.0f)
-                        .ADRC_MaxPlannedVel(6000.0f)
-                        .ADRC_SOTF(0.1f)
-                        .Apply();
+  liftmotor[1].ConfigADRC().AsPosC().ADRC_Womega(42.0f, 9.6f).ADRC_Physic(2.6e-4f, 0.30f, 0.005f).ADRC_Limit(6.0f).SpdLimit(6000.0f).ADRC_MaxPlannedVel(6000.0f).ADRC_SOTF(0.1f).Apply();
   liftmotor[1].driver.Enable(); // 设正的向上，负的向下
 
   // ---- 大疆吸吮电机左（M2006，减速比36，CAN2 ID:1，位置串级模式）----
@@ -136,10 +125,19 @@ void R1Block::Update()
   rlift_reached = liftmotor[1].IsReached();
   lstretch_reached = stretchmotor[0].IsReached();
   rstretch_reached = stretchmotor[1].IsReached();
+
+  Block_Sick_lf[0] = sick.GetSingleChannel(0);
+  Block_Sick_lf[1] = sick.GetSingleChannel(1);
+
   if (aim_right == 0)
   {
     chassis.Move(Spd);
   }
+  if (reach_target == 0)
+  {
+    chassis.Move(Spd);
+  }
+
   // ---- 状态机 ----
   if (appstate == STATE_INIT)
   {
@@ -407,8 +405,6 @@ int R1Block::trans_height(int block_height)
   }
 }
 
-
-
 void R1Block::Get_Block(int block_height)
 {
   appstate = STATE_GETBLOCK;
@@ -417,8 +413,8 @@ void R1Block::Get_Block(int block_height)
 
 #ifdef Test_device
   SetTargetState(test_stretch_left, test_stretch_right, 0.0f, 0.0f, test_debug_height, test_debug_height);
-//suckmotor[0].SetSpd(-test_suck_speed);
-//suckmotor[1].SetSpd(test_suck_speed);
+// suckmotor[0].SetSpd(-test_suck_speed);
+// suckmotor[1].SetSpd(test_suck_speed);
 #else
   height_blcok[0] = 0x02;
   height_blcok[1] = block_height >> 8;
@@ -513,22 +509,89 @@ void R1Block::PreLayBLock()
   {
     release_pre_flag = 1;
   }
-    if (release_pre_flag == 1)
-    {
-      Loosen_block();
-      Seq::Wait(1);
-      // 从 0 平滑移动到目标位置，总耗时 4.0 秒，切分 100 步完成
-      SmoothMoveTo(0.0f, release_strectch_distance[1], 0.0f, realse_block_height, 4, 100);
-      Seq::Wait(1);
-      Clamp_block();
-      Seq::Wait(1);
-      release_pre_flag = 0;
-    is_prelay_finished=true; 
-    }
-
+  if (release_pre_flag == 1)
+  {
+    Loosen_block();
+    Seq::Wait(1);
+    // 从 0 平滑移动到目标位置，总耗时 4.0 秒，切分 100 步完成
+    SmoothMoveTo(0.0f, release_strectch_distance[1], 0.0f, realse_block_height, 4, 100);
+    Seq::Wait(1);
+    Clamp_block();
+    Seq::Wait(1);
+    release_pre_flag = 0;
+    is_prelay_finished = true;
+  }
 }
 
-void R1Block::ReleaseBlock()
+
+
+Vec2 R1Block::Area3_return_spd(int current_distance, int target_distance, int flag_lf, float max_speed, int allow_range)
+{
+  Vec2 current_spd = {0, 0};
+  
+  // 1. 计算距离差与绝对值
+  int distance_diff = target_distance - current_distance;
+  int abs_diff = ABS(distance_diff);
+  
+  // 2. 判定是否到达容差范围 (如：allow_range = 50)
+  if (abs_diff < allow_range)
+  {
+    if (flag_lf == 0)
+    {
+      reach_l_flag = 1;
+    }
+    else
+    {
+      reach_f_flag = 1;
+    }
+    // 到达目标，速度保持为 0 并返回
+    return current_spd; 
+  }
+
+  // 3. 改进的平滑减速控制 (分段线性刹车)
+  float decel_zone = 200.0f;  // 刹车区距离：距离目标剩多远时开始减速 (需根据实车惯性调整)
+  // 因为 max_speed 一般在 0.3 左右，保底速度按比例缩放，设定在 0.05 左右（需确保它刚好能克服摩擦力移动）
+  float min_speed = 0.05f;    
+  float calc_speed = 0.0f;
+
+  if (abs_diff > decel_zone) 
+  {
+    // 距离 > 刹车区时，保持满速冲刺
+    calc_speed = max_speed;
+  } 
+  else 
+  {
+    // 距离 <= 刹车区时，速度随距离等比例线性衰减
+    float ratio = (float)abs_diff / decel_zone;
+    calc_speed = ratio * max_speed;
+    
+    // 关键：速度保底限制。只要还没进 allow_range (50)，就绝不让速度低于 min_speed
+    if (calc_speed < min_speed) 
+    {
+      calc_speed = min_speed;
+    }
+  }
+
+  // 4. 根据目标相对方位赋予速度正负号
+  if (distance_diff < 0) 
+  {
+    calc_speed = -calc_speed;
+  }
+  if(flag_lf==0)
+  {
+  current_spd.x = calc_speed;
+  current_spd.y = 0; // 假设沿着主轴一维运动
+  }else if(flag_lf==1)
+  {  current_spd.x = 0;
+  current_spd.y = calc_speed; // 假设沿着主轴一维运动
+  }
+
+
+  return current_spd;
+}
+
+
+void R1Block::ReleaseBlock(int auto_flag)
 {
   appstate = STATE_RELEASEBLOCK;
 
@@ -538,8 +601,6 @@ void R1Block::ReleaseBlock()
   // R1Block.air_pump_pin.Write(manble); // 1松，0紧
   //  等待 begin_spit_flag 触发吐块流程
   begin_spit_flag = 1;
-
-
 
   if (farcon.button_first_half[4] == 1)
   {
@@ -577,7 +638,6 @@ void R1Block::ReleaseBlock()
   {
     // R2死了
 
-
 #ifdef R2_dead
     // if (release_test_flag == 1)
     // {
@@ -593,6 +653,21 @@ void R1Block::ReleaseBlock()
     // }
 
     ///////////
+    if (auto_flag == 1&&reach_target==0)
+    {
+
+        chassis.Move(Area3_return_spd(Block_Sick_lf[0], Area3_distance_l[realse_order], 0));
+        Seq::WaitUntil([&]()
+                       { return reach_l_flag == 1; });
+        chassis.Move(Area3_return_spd(Block_Sick_lf[1], Area3_distance_f[realse_order], 1));
+
+        Seq::WaitUntil([&]()
+                       { return reach_f_flag == 1; });
+        
+        realase_Confirm=1;
+        reach_target=1;
+    }
+
     if (realse_order == 0 && realase_Confirm == 1)
     {
       Loosen_block(); // 松开
@@ -612,9 +687,14 @@ void R1Block::ReleaseBlock()
       Seq::Wait(1);
       SetTargetState(release_strectch_distance[0] - 400000, release_strectch_distance[0] - 400000, 0.0f, 0.0f, realse_block_height, realse_block_height);
 
-      // 回到最初位置准备吐
-      realse_order = 1;
+      // 只有最前面没有块
+      if (((block_exist[0] == 0) + (block_exist[1] == 1) + (block_exist[2] == 1)) == 2)
+      {
+        realse_order = 1;
+      }
+      
       realase_Confirm = 0;
+      reach_target=0;
     }
     else if (realse_order == 1 && realase_Confirm == 1)
     {
@@ -642,8 +722,12 @@ void R1Block::ReleaseBlock()
 
       Seq::Wait(2);
       // 回到最初位置准备吐
-      realse_order = 2;
+      if (((block_exist[1] == 1) + (block_exist[2] == 1)) == 1)
+      {
+        realse_order = 1;
+      }
       realase_Confirm = 0;
+      reach_target=0;
     }
     else if (realse_order == 2 && realase_Confirm == 1)
     {
@@ -664,11 +748,13 @@ void R1Block::ReleaseBlock()
       Loosen_block();                                  // 松
       suckmotor[0].SetSpd(0);
       suckmotor[1].SetSpd(0);
+
       Seq::WaitUntil([&]()
-                     { return farcon.button_first_half[7] == 1; }); // 检测到有块在上面的时候
+                     { return farcon.button_first_half[7] == 1; }); // 检测按钮按下表示复位
       // 回到最初位置准备吐
       SetTargetState(0.0f, 0.0f, 0.0f, 0.0f, 0, 0);
       realase_Confirm = 0;
+      reach_target=0;
     }
     else
     {
