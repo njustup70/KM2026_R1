@@ -353,8 +353,8 @@ void Action_LayBlock(StateCore *state_core)
 // ================================初始化========================================================================
 void Logic_Init(void)
 {
-    //单独跑三区的的状态（在跑点之前需要完成）
-        StateBlock& s_lay_pre = total_flow.AddState("Pre LayBlock");
+//    //单独跑三区的的状态（在跑点之前需要完成）
+//        StateBlock& s_lay_pre = total_flow.AddState("Pre LayBlock");
 
     //1.添加状态块
     StateBlock& s_choosearea = total_flow.AddState("Choose Area");
@@ -371,7 +371,7 @@ void Logic_Init(void)
     StateBlock &s_lay = total_flow.AddState("LayBlock");
 
     //2.绑定状态的动作函数
-    s_lay_pre.StateAction=Action_PreLay;
+//    s_lay_pre.StateAction=Action_PreLay;
 
     s_choosearea.StateAction = Action_ChooseArea;
     s_chaser.StateAction = Action_GetPathCmd;
@@ -386,7 +386,7 @@ void Logic_Init(void)
 
     //3.设置linkto
     //选择从哪一区开始
-    s_lay_pre.LinkTo(&is_prelay_finished, s_choosearea);
+//    s_lay_pre.LinkTo(&is_prelay_finished, s_choosearea);
 
     s_choosearea.LinkTo(&is_at_area1, s_chaser);
     s_choosearea.LinkTo(&is_at_area2, s_plan);
@@ -412,7 +412,7 @@ void Logic_Init(void)
 
     // 注册图
     state_core.RegistGraph(total_flow);
-    current_area = Area::Area3; 
+    current_area = Area::Area1; 
 }
 
 // --- 4. 逻辑更新 ---
