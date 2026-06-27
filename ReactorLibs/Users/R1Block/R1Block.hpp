@@ -87,6 +87,13 @@ public:
   volatile int block_detect[2] = {0}; // 左右两边块是否在范围内
   volatile int block_exist[3] = {0};  // 三个位置的块检测
   // ======================== 取块状态机控制 ========================
+//状态参数
+  uint8_t height_blcok[3] = {0};
+
+  int aim_right = 1;
+  Vec2 Spd = {0, 0};
+  uint32_t delta_time_ms = 0;
+
   // 取块机构总体参数
   volatile int manble = 0;   // 测试
   int suck_finish_times = 0; // 取了几个块了
@@ -116,7 +123,7 @@ public:
   int Area3_distance_l[3] = {110, 650, 1190}; // 第一个吐块的地方对应的Sick离左边墙的距离，第二个......(相隔应该是540mm）
 
   int Area3_distance_f[3]; // 离前边墙的距离，对应第一个块的特殊位置，第二个.....
-  int Area3_outhole_distance=1000;
+  int Area3_outhole_distance = 1000;
   int Area2_distance_f = 0;
 
   int reach_l_flag = 0;

@@ -10,16 +10,12 @@ using MOD::farcon;
 using MOD::sick;
 R1Block &APP::r1block = R1Block::GetInstance();
 
-uint8_t height_blcok[3] = {0};
-int aim_right = 1;
-Vec2 Spd = {0, 0};
-uint32_t delta_time_ms = 0;
-int stretch_debug = 2100000;
-int push_height_debug = 580000;
-int release_test_flag = 0;
-int calm_flag = 0;
 
-int last_spit_height = 0;
+// int stretch_debug = 2100000;
+// int push_height_debug = 580000;
+// int release_test_flag = 0;
+// int calm_flag = 0;
+
 extern bool is_prelay_finished;
 
 // #define Test_device 1
