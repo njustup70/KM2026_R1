@@ -128,6 +128,22 @@ void R1Block::Update()
 
   Block_Sick_lf[0] = sick.GetSingleChannel(0);
   Block_Sick_lf[1] = sick.GetSingleChannel(1);
+  if (appstate == STATE_GETBLOCK)
+    spd_area2 = Area3_return_spd(Block_Sick_lf[1], Area2_distance_f, 1);
+  else if (appstate == STATE_RELEASEBLOCK)
+  {
+    // 正在洞外
+    if (area3_inhole == 0)
+    {
+      spd_area3_num[0] = Area3_return_spd(Block_Sick_lf[0], Area3_distance_l[realse_order], 0);
+
+      spd_area3_num[1] = Area3_return_spd(Block_Sick_lf[1], Area3_distance_f[realse_order], 1);
+    }
+    else if (area3_inhole == 1)
+    {
+      spd_area_outhole = Area3_return_spd(Block_Sick_lf[1], Area3_outhole_distance, 1);
+    }
+  }
 
   if (aim_right == 0)
   {
@@ -368,7 +384,7 @@ void R1Block::Aim_Block()
 {
   if (block_detect[0] == 1)
   {
-    Spd = Vec2{0, 0.1};
+    Spd = Vec2{0, 0.05};
     aim_right = 0;
     Seq::WaitUntil([&]()
                    { return block_detect[0] == 0; }); // 检测到没有块在上面的时候
@@ -376,7 +392,7 @@ void R1Block::Aim_Block()
   }
   else if (block_detect[1] == 1)
   {
-    Spd = Vec2{0, -0.10};
+    Spd = Vec2{0, -0.05};
     aim_right = 0;
     Seq::WaitUntil([&]()
                    { return block_detect[1] == 0; }); // 检测到没有块在上面的时候
@@ -405,7 +421,7 @@ int R1Block::trans_height(int block_height)
   }
 }
 
-void R1Block::Get_Block(int block_height)
+void R1Block::Get_Block(int block_height, int auto_flag)
 {
   appstate = STATE_GETBLOCK;
   // // 这里是测试用的，实际使用时请注释
@@ -422,22 +438,20 @@ void R1Block::Get_Block(int block_height)
   farcon.TransmitFarcon(height_blcok, 3);
 
   lift_target_pos = trans_height(block_height);
+
   if (farcon.button_first_half[5] == 1)
   {
     suck_flag = 1;
-    // Seq::Wait(0.1);
   }
 
   if (farcon.button_first_half[6] == 1)
   {
     suck_flag = 2;
-    // Seq::Wait(0.1);
   }
 
   if (farcon.button_first_half[7] == 1)
   {
     suck_flag = 3; // 完成第三个取块
-    // Seq::Wait(0.5);
   }
 
   if (suck_flag == 3)
@@ -458,14 +472,21 @@ void R1Block::Get_Block(int block_height)
   }
   if (suck_flag == 1)
   {
-    suckmotor[0].SetSpd(0);
-    suckmotor[1].SetSpd(0);
     Loosen_block();
+
     if (last_height != block_height)
     {
       SmoothMoveLiftToTarget(trans_height(last_height), lift_target_pos, 2);
       Seq::WaitUntil([&]()
-                     { return (llift_reached && rlift_reached); }); // 检测到没有块在上面的时候
+                     { return (llift_reached && rlift_reached); }); // 检测到抬升到对应位置
+    }
+    if (auto_flag == 1)
+    {
+      chassis.Move(spd_area2);
+      Seq::WaitUntil([&]()
+                     { return reach_f_flag == 1; });
+      reach_f_flag = 0;
+      chassis.Move({0, 0});
     }
 
     Seq::Wait(1); // 安全保护
@@ -476,13 +497,56 @@ void R1Block::Get_Block(int block_height)
     Clamp_block(); // 夹紧
     suckmotor[0].SetSpd(-suck_speed);
     suckmotor[1].SetSpd(suck_speed);
-    Seq::Wait(4);
-    SmoothMoveStretchToTarget(stretch_distance[1], 0, 2);
-    Seq::Wait(2);
-    suckmotor[0].SetSpd(0);
-    suckmotor[1].SetSpd(0);
-    Clamp_block(); // 夹紧
-    Seq::Wait(1);
+    // 可优化自动取块
+    if (auto_flag == 0)
+    {
+      Seq::Wait(4);
+      SmoothMoveStretchToTarget(stretch_distance[1], 0, 2);
+      suckmotor[0].SetSpd(0);
+      suckmotor[1].SetSpd(0);
+      Clamp_block(); // 夹紧
+      Seq::Wait(1);
+    }
+    else if (auto_flag == 1)
+    {
+      if (block_exist[2] == 0) // 最里面的块还没取
+      {
+        Seq::WaitUntil([&]()
+                       { return (block_exist[0] == 1); }); // 检测到最外面块取到了
+        Seq::WaitUntil([&]()
+                       { return (block_exist[1] == 1); }); // 检测到中间块取到了
+        Seq::WaitUntil([&]()
+                       { return (block_exist[2] == 1); }); // 检测到最里面块取到了
+        suckmotor[0].SetSpd(0);
+        suckmotor[1].SetSpd(0);
+        SmoothMoveStretchToTarget(stretch_distance[1], 0, 2);
+        Clamp_block(); // 夹紧
+        Seq::Wait(1);
+      }
+      if (block_exist[2] == 1 && block_exist[1] == 0)
+      {
+        Seq::WaitUntil([&]()
+                       { return (block_exist[0] == 1); }); // 检测到最外面块取到了
+        Seq::WaitUntil([&]()
+                       { return (block_exist[1] == 1); }); // 检测到中间块取到了
+        suckmotor[0].SetSpd(0);
+        suckmotor[1].SetSpd(0);
+        SmoothMoveStretchToTarget(stretch_distance[1], 0, 2);
+        Clamp_block(); // 夹紧
+        Seq::Wait(1);
+      }
+      if (block_exist[2] == 1 && block_exist[1] == 1)
+      {
+        Seq::WaitUntil([&]()
+                       { return (block_exist[1] == 1); }); // 检测到中间块取到了
+        SmoothMoveStretchToTarget(stretch_distance[1], release_strectch_distance[1], 2);
+        Clamp_block(); // 夹紧
+        suckmotor[0].SetSpd(0);
+        suckmotor[1].SetSpd(0);
+        Seq::Wait(1);
+      }
+    }
+
     last_height = block_height;
     suck_flag = 100;
   }
@@ -523,16 +587,14 @@ void R1Block::PreLayBLock()
   }
 }
 
-
-
 Vec2 R1Block::Area3_return_spd(int current_distance, int target_distance, int flag_lf, float max_speed, int allow_range)
 {
   Vec2 current_spd = {0, 0};
-  
+
   // 1. 计算距离差与绝对值
   int distance_diff = target_distance - current_distance;
   int abs_diff = ABS(distance_diff);
-  
+
   // 2. 判定是否到达容差范围 (如：allow_range = 50)
   if (abs_diff < allow_range)
   {
@@ -544,52 +606,58 @@ Vec2 R1Block::Area3_return_spd(int current_distance, int target_distance, int fl
     {
       reach_f_flag = 1;
     }
+
+    if (area3_inhole == 1)
+    {
+      area3_inhole = 0;
+    }
+
     // 到达目标，速度保持为 0 并返回
-    return current_spd; 
+    return current_spd;
   }
 
   // 3. 改进的平滑减速控制 (分段线性刹车)
-  float decel_zone = 200.0f;  // 刹车区距离：距离目标剩多远时开始减速 (需根据实车惯性调整)
+  float decel_zone = 200.0f; // 刹车区距离：距离目标剩多远时开始减速 (需根据实车惯性调整)
   // 因为 max_speed 一般在 0.3 左右，保底速度按比例缩放，设定在 0.05 左右（需确保它刚好能克服摩擦力移动）
-  float min_speed = 0.05f;    
+  float min_speed = 0.05f;
   float calc_speed = 0.0f;
 
-  if (abs_diff > decel_zone) 
+  if (abs_diff > decel_zone)
   {
     // 距离 > 刹车区时，保持满速冲刺
     calc_speed = max_speed;
-  } 
-  else 
+  }
+  else
   {
     // 距离 <= 刹车区时，速度随距离等比例线性衰减
     float ratio = (float)abs_diff / decel_zone;
     calc_speed = ratio * max_speed;
-    
+
     // 关键：速度保底限制。只要还没进 allow_range (50)，就绝不让速度低于 min_speed
-    if (calc_speed < min_speed) 
+    if (calc_speed < min_speed)
     {
       calc_speed = min_speed;
     }
   }
 
   // 4. 根据目标相对方位赋予速度正负号
-  if (distance_diff < 0) 
+  if (distance_diff < 0)
   {
     calc_speed = -calc_speed;
   }
-  if(flag_lf==0)
+  if (flag_lf == 0)
   {
-  current_spd.x = calc_speed;
-  current_spd.y = 0; // 假设沿着主轴一维运动
-  }else if(flag_lf==1)
-  {  current_spd.x = 0;
-  current_spd.y = calc_speed; // 假设沿着主轴一维运动
+    current_spd.x = calc_speed;
+    current_spd.y = 0; // 假设沿着主轴一维运动
   }
-
+  else if (flag_lf == 1)
+  {
+    current_spd.x = 0;
+    current_spd.y = calc_speed; // 假设沿着主轴一维运动
+  }
 
   return current_spd;
 }
-
 
 void R1Block::ReleaseBlock(int auto_flag)
 {
@@ -652,24 +720,25 @@ void R1Block::ReleaseBlock(int auto_flag)
     //   }
     // }
 
-    ///////////
-    if (auto_flag == 1&&reach_target==0)
+    ///////////进洞自动操作
+    if (auto_flag == 1 && reach_target == 0)
     {
+      chassis.Move(spd_area3_num[0]);
+      Seq::WaitUntil([&]()
+                     { return reach_l_flag == 1; });
+      chassis.Move(spd_area3_num[1]);
 
-        chassis.Move(Area3_return_spd(Block_Sick_lf[0], Area3_distance_l[realse_order], 0));
-        Seq::WaitUntil([&]()
-                       { return reach_l_flag == 1; });
-        chassis.Move(Area3_return_spd(Block_Sick_lf[1], Area3_distance_f[realse_order], 1));
+      Seq::WaitUntil([&]()
+                     { return reach_f_flag == 1; });
 
-        Seq::WaitUntil([&]()
-                       { return reach_f_flag == 1; });
-        
-        realase_Confirm=1;
-        reach_target=1;
+      realase_Confirm = 1;
+      reach_target = 1;
+      area3_inhole = 1;
     }
 
     if (realse_order == 0 && realase_Confirm == 1)
     {
+      spit_finish_flag = 0;
       Loosen_block(); // 松开
       suckmotor[0].SetSpd(0);
       suckmotor[1].SetSpd(0);
@@ -692,9 +761,13 @@ void R1Block::ReleaseBlock(int auto_flag)
       {
         realse_order = 1;
       }
-      
+      // 退洞操作
+      chassis.Move(spd_area_outhole);
+      Seq::WaitUntil([&]()
+                     { return (area3_inhole == 0); }); // 检测到中间块取到了
+
       realase_Confirm = 0;
-      reach_target=0;
+      reach_target = 0;
     }
     else if (realse_order == 1 && realase_Confirm == 1)
     {
@@ -724,10 +797,10 @@ void R1Block::ReleaseBlock(int auto_flag)
       // 回到最初位置准备吐
       if (((block_exist[1] == 1) + (block_exist[2] == 1)) == 1)
       {
-        realse_order = 1;
+        realse_order = 2;
       }
       realase_Confirm = 0;
-      reach_target=0;
+      reach_target = 0;
     }
     else if (realse_order == 2 && realase_Confirm == 1)
     {
@@ -754,7 +827,7 @@ void R1Block::ReleaseBlock(int auto_flag)
       // 回到最初位置准备吐
       SetTargetState(0.0f, 0.0f, 0.0f, 0.0f, 0, 0);
       realase_Confirm = 0;
-      reach_target=0;
+      reach_target = 0;
     }
     else
     {

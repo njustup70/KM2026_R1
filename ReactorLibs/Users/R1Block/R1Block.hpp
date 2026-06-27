@@ -29,10 +29,6 @@ const BlockInfo RED_ALL_BLOCKS_DATA[12] =
         {1.8f + 0 * 1.2f, 3.8f + 0 * 1.2f, 400.0f} // 10-12
 };
 
-
-
-
-
 class R1Block : public Application
 {
   SINGLETON(R1Block) : Application("R1Block") {};
@@ -111,19 +107,26 @@ public:
 
   int llift_reached = 0;
   int rlift_reached = 0;
-  int lstretch_reached=0;
-  int rstretch_reached=0;
+  int lstretch_reached = 0;
+  int rstretch_reached = 0;
 
   // =========================全自动（定位）相关数据=======================////////////
-  int Block_Sick_lf[2]={0,0};//Sick数据，单位是mm，sick单位是m,所以 默认要乘以100 （车坐标系下车左边和车前面）***相对坐标系****
-  
-  int Area3_distance_l[3]={110,650,1190};//第一个吐块的地方对应的离左边墙的距离，第二个......(相隔应该是540mm）
+  int Block_Sick_lf[2] = {0, 0}; // Sick数据，单位是mm，sick单位是m,所以 默认要乘以100 （车坐标系下车左边和车前面）***相对坐标系****
 
-  int Area3_distance_f[3];//离前边墙的距离，对应第一个块的特殊位置，第二个.....
+  int Area3_distance_l[3] = {110, 650, 1190}; // 第一个吐块的地方对应的Sick离左边墙的距离，第二个......(相隔应该是540mm）
 
-  int reach_l_flag=0;
-  int reach_f_flag=0;
-  int reach_target=0;
+  int Area3_distance_f[3]; // 离前边墙的距离，对应第一个块的特殊位置，第二个.....
+  int Area3_outhole_distance=1000;
+  int Area2_distance_f = 0;
+
+  int reach_l_flag = 0;
+  int reach_f_flag = 0;
+  int reach_target = 0;
+
+  int area3_inhole = 0;
+  Vec2 spd_area2;
+  Vec2 spd_area3_num[2];
+  Vec2 spd_area_outhole;
   //**********取块状态停止***********//
 
   // 遥控器按键边沿检测
@@ -134,8 +137,7 @@ public:
   BlockInfo target_block_pos[3] = {{0}};
   uint8_t target_count = 0;
 
-
-  //函数区
+  // 函数区
   void Enable();
   void Stop();
   void Aim_Block();
@@ -169,11 +171,11 @@ public:
                    float lift_min_L, float lift_max_L, float lift_min_R, float lift_max_R);
   void Clamp_block();
   void Loosen_block();
-  void Get_Block(int block_height);
+  void Get_Block(int block_height, int auto_flag = 0);
   void PreLayBLock();
-  Vec2 Area3_return_spd(int  current_distance,int target_distance,int flag_lf,float max_speed=3.0f,int  allow_range=50);
+  Vec2 Area3_return_spd(int current_distance, int target_distance, int flag_lf, float max_speed = 3.0f, int allow_range = 50);
 
-  void ReleaseBlock(int auto_flag=0);
+  void ReleaseBlock(int auto_flag = 0);
 
   void Action_LiftToHeight(float height); // TODO: 预留
   int trans_height(int block_height);
