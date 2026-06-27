@@ -4,74 +4,132 @@ import numpy as np
 
 def assign_color_by_faces(mesh):
     """
-    终极染色算法：针对每一个“三角形面”进行独立染色。
-    完美解决 CAD 导出时被合并为单一零件导致全部变灰的问题。
+    基于三维高度与空间坐标的精准面级染色算法。
+    针对 ROBOCON 2026 场地专门调优。
     """
-    # 官方图纸标准 RGB 配色库
-    c_red_bg = [255, 196, 196, 255]      # 浅肉红 (左半场)
-    c_blue_bg = [141, 238, 238, 255]     # 浅天蓝 (右半场)
-    c_dark_green = [50, 102, 51, 255]    # 深绿
-    c_light_green = [166, 193, 118, 255] # 浅绿
-    c_ramp = [197, 197, 197, 255]        # 坡道灰
-    c_red_start = [230, 0, 18, 255]      # 起动区红
-    c_blue_start = [43, 0, 255, 255]     # 起动区蓝
-    c_jiugongge = [255, 255, 255, 255]   # 九宫格白
-    c_wood = [160, 107, 70, 255]         # 端头架棕色
-    c_rack_red = [255, 160, 160, 255]    # 长杆架红
-    c_rack_blue = [121, 205, 205, 255]   # 长杆架蓝
-
-    # 获取网格模型所有三角形面的中心点坐标
-    centroids = mesh.triangles_center
+    # ==========================================
+    # 1. 提取自你参考图的精准色卡 (RGBA)
+    # ==========================================
+    c_red_bg      = [238, 175, 175, 255]  # 浅肉红底色
+    c_blue_bg     = [165, 205, 235, 255]  # 浅天蓝底色
+    c_red_start   = [210, 20,  20,  255]  # 起动区/高亮红
+    c_blue_start  = [20,  50,  210, 255]  # 起动区/高亮蓝
     
-    # 创建一个与面数量相同的颜色数组
+    c_white       = [250, 250, 250, 255]  # 纯白 (桥顶/边界线/九宫格)
+    c_ramp_gray   = [150, 150, 150, 255]  # 坡道深灰
+    c_wood        = [190, 130, 80,  255]  # 木纹棕 (中心架)
+    
+    c_dark_green  = [50,  110, 50,  255]  # 深绿树
+    c_light_green = [140, 180, 100, 255]  # 浅绿树
+
+    centroids = mesh.triangles_center
     colors = np.zeros((len(mesh.faces), 4), dtype=np.uint8)
     
     for i in range(len(centroids)):
         cx, cy, cz = centroids[i]
         
-        # 1. 默认铺设基础底色：左边红，右边蓝
-        color = c_red_bg if cx < 0 else c_blue_bg
-        
-        # 2. 根据 Z轴(高度) 和 X/Y轴(位置) 像 3D 打印一样上色
-        
-        # 【三区：对抗区】下方 (cy < -3.0)
-        if cy < -2.8:
-            if abs(cx) > 4.5 and cz > 0.01:
-                color = c_ramp  # 两侧隆起的坡道
-            elif abs(cx) < 1.5 and cz > 0.01:
-                color = c_jiugongge  # 中间隆起的九宫格
-            elif cy < -4.8 and abs(cx) > 4.5 and cz <= 0.05:
-                color = c_red_start if cx < 0 else c_blue_start  # 底部角落重试区
+        # ==========================================
+        # 2. 基础地面渲染 (高度接近 0 的平面)
+        # ==========================================
+        if cz < 0.02: 
+            # 默认左右半场底色
+            color = c_red_bg if cx < 0 else c_blue_bg
+            
+            # 中心白线/中轴线区域
+            if abs(cx) < 0.05:
+                color = c_white
                 
-        # 【一区：武馆】上方 (cy > 3.0)
-        elif cy > 2.8:
-            if cz > 0.05:  # 有高度的架子
-                if abs(cx) < 1.0:
-                    color = c_wood      # 中心端头架
-                elif cx < -1.5:
-                    color = c_rack_red  # 红方长杆架
-                elif cx > 1.5:
-                    color = c_rack_blue # 蓝方长杆架
-            elif cz <= 0.05: # 地面贴纸区域
-                if cy > 4.8 and abs(cx) > 4.5:
-                    color = c_red_start if cx < 0 else c_blue_start # 顶部角落起动区
-                elif cy > 4.8 and abs(cx) < 1.0:
-                    color = c_red_start if cx < 0 else c_blue_start # 顶部中间起动区
-                    
-        # 【二区：梅林】中间 (-2.8 <= cy <= 2.8)
+            # 四个角落的起动区 (根据实际坐标可能需要微调 4.5 这个阈值)
+            if (cy < -4.5 or cy > 4.5) and abs(cx) > 4.5:
+                color = c_red_start if cx < 0 else c_blue_start
+                
+        # ==========================================
+        # 3. 凸起的三维机构渲染 (高度 > 0.02)
+        # ==========================================
         else:
-            if abs(cx) > 1.0 and cz > 0.02: # 避开中间通道，识别有高度的树林方块
-                # 把 X/Y 坐标像棋盘一样切分，通过奇偶性实现深浅绿交替
-                grid_x = int((cx + 10.0) / 1.0)
-                grid_y = int((cy + 10.0) / 1.0)
-                color = c_dark_green if (grid_x + grid_y) % 2 == 0 else c_light_green
+            # 【下半区：对抗区/桥梁/坡道】 (cy < -2.8)
+            if cy < -2.8:
+                if abs(cx) < 1.8: # 中心桥体结构
+                    if cz > 0.15: # 桥顶平台是平的、白色的
+                        color = c_white
+                    else:         # 桥两侧的斜坡是灰色的
+                        color = c_ramp_gray
+                elif abs(cx) > 4.5: # 两侧隆起的特定结构
+                    color = c_ramp_gray
+                else:
+                    color = c_white # 默认补色
+                    
+            # 【上半区：武馆/道具架】 (cy > 2.8)
+            elif cy > 2.8:
+                if abs(cx) < 0.8:
+                    color = c_wood       # 中间木制端头架
+                elif cx < 0:
+                    color = c_red_start  # 左侧红方长杆架 (用纯红色)
+                else:
+                    color = c_blue_start # 右侧蓝方长杆架 (用纯蓝色)
+                    
+            # 【中半区：梅林树木】 (-2.8 <= cy <= 2.8)
+            else:
+                if abs(cx) > 1.0: # 避开中间的空旷通道
+                    # 树木的棋盘格交替算法
+                    # 💡注：如果发现绿块大小和实际模型对不上，请修改这里的 0.6 (代表网格边长0.6米)
+                    grid_size = 0.6 
+                    grid_x = int((cx + 10.0) / grid_size)
+                    grid_y = int((cy + 10.0) / grid_size)
+                    color = c_dark_green if (grid_x + grid_y) % 2 == 0 else c_light_green
+                else:
+                    # 中间的通道障碍物或线条
+                    color = c_white 
 
-        # 记录该三角形的最终颜色
         colors[i] = color
         
-    # 将计算好的颜色数组覆盖到 3D 表面上
     mesh.visual = trimesh.visual.ColorVisuals(mesh=mesh)
     mesh.visual.face_colors = colors
+
+# ==========================================
+# 机器人与轨迹功能保持不变，方便你后续联调
+# ==========================================
+def add_robot_to_scene(scene, position=[0, 0, 0.2], orientation=[0, 0, 0], size=[0.45, 0.45, 0.4], robot_model_path=None):
+    if robot_model_path and os.path.exists(robot_model_path):
+        robot_geo = trimesh.load(robot_model_path)
+        if isinstance(robot_geo, trimesh.Scene):
+            robot_geo = robot_geo.to_mesh()
+        robot_geo.visual.face_colors = [255, 215, 0, 255] 
+    else:
+        robot_geo = trimesh.creation.box(extents=size)
+        robot_geo.visual.face_colors = [255, 140, 0, 255] 
+
+    translation_mat = trimesh.transformations.translation_matrix(position)
+    rotation_mat = trimesh.transformations.euler_matrix(*orientation)
+    transform_final = np.dot(translation_mat, rotation_mat)
+
+    scene.add_geometry(robot_geo, node_name="robot_instance", transform=transform_final)
+
+def add_trajectory_to_scene(scene, path_points, line_color=[255, 0, 100, 255], thickness=0.03):
+    if len(path_points) < 2:
+        return
+
+    points = np.array(path_points, dtype=np.float32)
+    for i in range(len(points) - 1):
+        p1 = points[i]
+        p2 = points[i+1]
+        vec = p2 - p1
+        length = np.linalg.norm(vec)
+        if length < 1e-4:
+            continue
+            
+        segment_mesh = trimesh.creation.cylinder(radius=thickness, height=length)
+        segment_mesh.visual.face_colors = line_color
+        
+        z_axis = [0, 0, 1]
+        direction = vec / length
+        rot_matrix = trimesh.geometry.align_vectors(z_axis, direction)
+        
+        mid_point = (p1 + p2) / 2.0
+        trans_matrix = trimesh.transformations.translation_matrix(mid_point)
+        
+        matrix_total = np.dot(trans_matrix, rot_matrix)
+        scene.add_geometry(segment_mesh, node_name=f"traj_seg_{i}", transform=matrix_total)
 
 
 def visualize_step_map(file_path):
@@ -84,31 +142,32 @@ def visualize_step_map(file_path):
     try:
         mesh_scene = trimesh.load(file_path)
         
-        # 提取真实几何体
         if isinstance(mesh_scene, trimesh.Scene):
             meshes = [m for m in mesh_scene.dump() if isinstance(m, trimesh.Trimesh)]
         else:
             meshes = [mesh_scene] if isinstance(mesh_scene, trimesh.Trimesh) else []
             
-        if not meshes:
-            print("\n❌ 未能提取出 3D 表面实体。")
-            return
-            
-        # 遍历所有被提取出来的网格
         for m in meshes:
-            m.unmerge_vertices()    # 拆解共用顶点，防黑屏
-            m.fix_normals()         # 修复反光法线
-            
-            # 【应用表面面级染色】
+            m.unmerge_vertices()    
+            m.fix_normals()         
             assign_color_by_faces(m)
             
         clean_scene = trimesh.Scene(meshes)
-        
         print("\n✅ 地图 3D 模型面级智能染色成功！")
-        
-        # 启动可视化
+
+        # 塞入测试轨迹与机器人实体
+        simulated_trajectory = [
+            [-5.0, -5.0, 0.05], 
+            [-3.0, -3.0, 0.05],
+            [-1.0, -1.0, 0.05],
+            [ 0.0,  0.0, 0.05], 
+            [ 1.0,  1.0, 0.05]
+        ]
+        add_trajectory_to_scene(clean_scene, simulated_trajectory, line_color=[255, 0, 0, 255], thickness=0.03)
+        add_robot_to_scene(clean_scene, position=[1.0, 1.0, 0.2], orientation=[0, 0, 0.785], size=[0.45, 0.45, 0.4])
+
         clean_scene.show(
-            title="ROBOCON 2026 场地 3D 视图 (智能着色版)",
+            title="ROBOCON 2026 场地 3D 视图 (高精校准版)",
             smooth=False,                        
             background=[240, 240, 240, 255]      
         )

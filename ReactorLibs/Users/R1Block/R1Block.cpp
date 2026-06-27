@@ -10,7 +10,6 @@ using MOD::farcon;
 using MOD::sick;
 R1Block &APP::r1block = R1Block::GetInstance();
 
-
 // int stretch_debug = 2100000;
 // int push_height_debug = 580000;
 // int release_test_flag = 0;
@@ -753,14 +752,18 @@ void R1Block::ReleaseBlock(int auto_flag)
       SetTargetState(release_strectch_distance[0] - 400000, release_strectch_distance[0] - 400000, 0.0f, 0.0f, realse_block_height, realse_block_height);
 
       // 只有最前面没有块
-      if (((block_exist[0] == 0) + (block_exist[1] == 1) + (block_exist[2] == 1)) == 2)
+      if (((block_exist[0] == 1) + (block_exist[1] == 1) + (block_exist[2] == 1)) == 2)
       {
         realse_order = 1;
       }
+
       // 退洞操作
-      chassis.Move(spd_area_outhole);
-      Seq::WaitUntil([&]()
-                     { return (area3_inhole == 0); }); // 检测到中间块取到了
+      if (auto_flag == 1)
+      {
+        Seq::WaitUntil([&]()
+                       { return (area3_inhole == 0); }); // 直到退出洞
+        chassis.Move(spd_area_outhole);
+      }
 
       realase_Confirm = 0;
       reach_target = 0;
@@ -795,6 +798,13 @@ void R1Block::ReleaseBlock(int auto_flag)
       {
         realse_order = 2;
       }
+
+      if (auto_flag == 1)
+      {
+        Seq::WaitUntil([&]()
+                       { return (area3_inhole == 0); }); // 直到退出洞
+        chassis.Move(spd_area_outhole);
+      }
       realase_Confirm = 0;
       reach_target = 0;
     }
@@ -817,11 +827,24 @@ void R1Block::ReleaseBlock(int auto_flag)
       Loosen_block();                                  // 松
       suckmotor[0].SetSpd(0);
       suckmotor[1].SetSpd(0);
+      if (auto_flag == 1)
+      {
+        Seq::WaitUntil([&]()
+                       { return (area3_inhole == 0); }); // 直到退出洞
+        chassis.Move(spd_area_outhole);
+        Seq::WaitUntil([&]()
+                       { return farcon.button_first_half[7] == 1; }); // 检测按钮按下表示复位
+        // 回到最初位置准备吐
+        SetTargetState(0.0f, 0.0f, 0.0f, 0.0f, 0, 0);
+      }
+      else
+      {
+        Seq::WaitUntil([&]()
+                       { return farcon.button_first_half[7] == 1; }); // 检测按钮按下表示复位
+        // 回到最初位置准备吐
+        SetTargetState(0.0f, 0.0f, 0.0f, 0.0f, 0, 0);
+      }
 
-      Seq::WaitUntil([&]()
-                     { return farcon.button_first_half[7] == 1; }); // 检测按钮按下表示复位
-      // 回到最初位置准备吐
-      SetTargetState(0.0f, 0.0f, 0.0f, 0.0f, 0, 0);
       realase_Confirm = 0;
       reach_target = 0;
     }
