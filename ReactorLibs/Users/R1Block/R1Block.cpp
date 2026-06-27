@@ -91,6 +91,13 @@ void R1Block::Start()
   Enable();
 }
 
+//
+void R1Block::Reset()
+{
+
+
+}
+
 void R1Block::Update()
 {
   GetTargetBlockInfo();
@@ -533,7 +540,7 @@ void R1Block::Get_Block(int block_height, int auto_flag)
       if (block_exist[2] == 1 && block_exist[1] == 1)
       {
         Seq::WaitUntil([&]()
-                       { return (block_exist[1] == 1); }); // 检测到中间块取到了
+                       { return (block_exist[0] == 1); }); // 检测到中间块取到了
         SmoothMoveStretchToTarget(stretch_distance[1], release_strectch_distance[1], 2);
         Clamp_block(); // 夹紧
         suckmotor[0].SetSpd(0);

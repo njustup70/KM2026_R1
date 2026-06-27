@@ -1,180 +1,176 @@
-import trimesh
-import os
 import numpy as np
-
-def assign_color_by_faces(mesh):
-    """
-    基于三维高度与空间坐标的精准面级染色算法。
-    针对 ROBOCON 2026 场地专门调优。
-    """
-    # ==========================================
-    # 1. 提取自你参考图的精准色卡 (RGBA)
-    # ==========================================
-    c_red_bg      = [238, 175, 175, 255]  # 浅肉红底色
-    c_blue_bg     = [165, 205, 235, 255]  # 浅天蓝底色
-    c_red_start   = [210, 20,  20,  255]  # 起动区/高亮红
-    c_blue_start  = [20,  50,  210, 255]  # 起动区/高亮蓝
-    
-    c_white       = [250, 250, 250, 255]  # 纯白 (桥顶/边界线/九宫格)
-    c_ramp_gray   = [150, 150, 150, 255]  # 坡道深灰
-    c_wood        = [190, 130, 80,  255]  # 木纹棕 (中心架)
-    
-    c_dark_green  = [50,  110, 50,  255]  # 深绿树
-    c_light_green = [140, 180, 100, 255]  # 浅绿树
-
-    centroids = mesh.triangles_center
-    colors = np.zeros((len(mesh.faces), 4), dtype=np.uint8)
-    
-    for i in range(len(centroids)):
-        cx, cy, cz = centroids[i]
-        
-        # ==========================================
-        # 2. 基础地面渲染 (高度接近 0 的平面)
-        # ==========================================
-        if cz < 0.02: 
-            # 默认左右半场底色
-            color = c_red_bg if cx < 0 else c_blue_bg
-            
-            # 中心白线/中轴线区域
-            if abs(cx) < 0.05:
-                color = c_white
-                
-            # 四个角落的起动区 (根据实际坐标可能需要微调 4.5 这个阈值)
-            if (cy < -4.5 or cy > 4.5) and abs(cx) > 4.5:
-                color = c_red_start if cx < 0 else c_blue_start
-                
-        # ==========================================
-        # 3. 凸起的三维机构渲染 (高度 > 0.02)
-        # ==========================================
-        else:
-            # 【下半区：对抗区/桥梁/坡道】 (cy < -2.8)
-            if cy < -2.8:
-                if abs(cx) < 1.8: # 中心桥体结构
-                    if cz > 0.15: # 桥顶平台是平的、白色的
-                        color = c_white
-                    else:         # 桥两侧的斜坡是灰色的
-                        color = c_ramp_gray
-                elif abs(cx) > 4.5: # 两侧隆起的特定结构
-                    color = c_ramp_gray
-                else:
-                    color = c_white # 默认补色
-                    
-            # 【上半区：武馆/道具架】 (cy > 2.8)
-            elif cy > 2.8:
-                if abs(cx) < 0.8:
-                    color = c_wood       # 中间木制端头架
-                elif cx < 0:
-                    color = c_red_start  # 左侧红方长杆架 (用纯红色)
-                else:
-                    color = c_blue_start # 右侧蓝方长杆架 (用纯蓝色)
-                    
-            # 【中半区：梅林树木】 (-2.8 <= cy <= 2.8)
-            else:
-                if abs(cx) > 1.0: # 避开中间的空旷通道
-                    # 树木的棋盘格交替算法
-                    # 💡注：如果发现绿块大小和实际模型对不上，请修改这里的 0.6 (代表网格边长0.6米)
-                    grid_size = 0.6 
-                    grid_x = int((cx + 10.0) / grid_size)
-                    grid_y = int((cy + 10.0) / grid_size)
-                    color = c_dark_green if (grid_x + grid_y) % 2 == 0 else c_light_green
-                else:
-                    # 中间的通道障碍物或线条
-                    color = c_white 
-
-        colors[i] = color
-        
-    mesh.visual = trimesh.visual.ColorVisuals(mesh=mesh)
-    mesh.visual.face_colors = colors
+import matplotlib.pyplot as plt
+import matplotlib.patches as patches
+import heapq
 
 # ==========================================
-# 机器人与轨迹功能保持不变，方便你后续联调
+# 1. 场地与机器人参数配置 (单位: mm)
 # ==========================================
-def add_robot_to_scene(scene, position=[0, 0, 0.2], orientation=[0, 0, 0], size=[0.45, 0.45, 0.4], robot_model_path=None):
-    if robot_model_path and os.path.exists(robot_model_path):
-        robot_geo = trimesh.load(robot_model_path)
-        if isinstance(robot_geo, trimesh.Scene):
-            robot_geo = robot_geo.to_mesh()
-        robot_geo.visual.face_colors = [255, 215, 0, 255] 
-    else:
-        robot_geo = trimesh.creation.box(extents=size)
-        robot_geo.visual.face_colors = [255, 140, 0, 255] 
+FIELD_WIDTH = 8000
+FIELD_HEIGHT = 8000
+ROBOT_SIZE = 450       # 机器人长宽 (假设为450x450的正方形)
+ROBOT_R = ROBOT_SIZE / 2 # 机器人碰撞半径/半宽 (225mm)
 
-    translation_mat = trimesh.transformations.translation_matrix(position)
-    rotation_mat = trimesh.transformations.euler_matrix(*orientation)
-    transform_final = np.dot(translation_mat, rotation_mat)
+OBS_W = 300            # 障碍物宽度 (X方向)
+OBS_H = 800            # 障碍物高度 (Y方向)
 
-    scene.add_geometry(robot_geo, node_name="robot_instance", transform=transform_final)
+START_POS = (-3000, 3000) # 机器人起始坐标 (左上方)
 
-def add_trajectory_to_scene(scene, path_points, line_color=[255, 0, 100, 255], thickness=0.03):
-    if len(path_points) < 2:
-        return
+# 计算目标坐标：障碍物正前方，极限贴住
+# 障碍物顶部 Y 坐标为 OBS_H/2 = 400
+# 机器人要极限贴住，其中心 Y 坐标需为 400 + 225 = 625
+TARGET_POS = (0, OBS_H/2 + ROBOT_R) 
 
-    points = np.array(path_points, dtype=np.float32)
-    for i in range(len(points) - 1):
-        p1 = points[i]
-        p2 = points[i+1]
-        vec = p2 - p1
-        length = np.linalg.norm(vec)
-        if length < 1e-4:
-            continue
+# ==========================================
+# 2. A* 路径规划算法
+# ==========================================
+class AStarPlanner:
+    def __init__(self, resolution=50):
+        self.res = resolution # 网格分辨率 50mm
+
+    def is_valid(self, x, y):
+        """碰撞与约束检测"""
+        # 约束1：机器人全部身体只能在上方一区 (Y >= 0)
+        # 即机器人中心的 Y 坐标必须 >= ROBOT_R
+        if y < ROBOT_R:
+            return False
             
-        segment_mesh = trimesh.creation.cylinder(radius=thickness, height=length)
-        segment_mesh.visual.face_colors = line_color
-        
-        z_axis = [0, 0, 1]
-        direction = vec / length
-        rot_matrix = trimesh.geometry.align_vectors(z_axis, direction)
-        
-        mid_point = (p1 + p2) / 2.0
-        trans_matrix = trimesh.transformations.translation_matrix(mid_point)
-        
-        matrix_total = np.dot(trans_matrix, rot_matrix)
-        scene.add_geometry(segment_mesh, node_name=f"traj_seg_{i}", transform=matrix_total)
-
-
-def visualize_step_map(file_path):
-    if not os.path.exists(file_path):
-        print(f"找不到文件: {file_path}")
-        return
-
-    print(f"正在读取并进行表面级染色计算：{file_path} ...")
-    
-    try:
-        mesh_scene = trimesh.load(file_path)
-        
-        if isinstance(mesh_scene, trimesh.Scene):
-            meshes = [m for m in mesh_scene.dump() if isinstance(m, trimesh.Trimesh)]
-        else:
-            meshes = [mesh_scene] if isinstance(mesh_scene, trimesh.Trimesh) else []
+        # 边界约束：不能超出场地
+        if x < -FIELD_WIDTH/2 + ROBOT_R or x > FIELD_WIDTH/2 - ROBOT_R:
+            return False
+        if y > FIELD_HEIGHT/2 - ROBOT_R:
+            return False
             
-        for m in meshes:
-            m.unmerge_vertices()    
-            m.fix_normals()         
-            assign_color_by_faces(m)
+        # 约束2：不能碰到中心障碍物 (AABB碰撞检测，需带上机器人自身的膨胀半径)
+        obs_left = -OBS_W/2 - ROBOT_R
+        obs_right = OBS_W/2 + ROBOT_R
+        obs_bottom = -OBS_H/2 - ROBOT_R
+        obs_top = OBS_H/2 + ROBOT_R
+        
+        if obs_left < x < obs_right and obs_bottom < y < obs_top:
+            return False
             
-        clean_scene = trimesh.Scene(meshes)
-        print("\n✅ 地图 3D 模型面级智能染色成功！")
+        return True
 
-        # 塞入测试轨迹与机器人实体
-        simulated_trajectory = [
-            [-5.0, -5.0, 0.05], 
-            [-3.0, -3.0, 0.05],
-            [-1.0, -1.0, 0.05],
-            [ 0.0,  0.0, 0.05], 
-            [ 1.0,  1.0, 0.05]
+    def heuristic(self, a, b):
+        return np.linalg.norm(np.array(a) - np.array(b))
+
+    def plan(self, start, goal):
+        print("正在计算最短路径...")
+        # 将坐标对齐到网格
+        sx, sy = round(start[0]/self.res)*self.res, round(start[1]/self.res)*self.res
+        gx, gy = round(goal[0]/self.res)*self.res, round(goal[1]/self.res)*self.res
+        
+        start_node = (sx, sy)
+        goal_node = (gx, gy)
+        
+        frontier = []
+        heapq.heappush(frontier, (0, start_node))
+        came_from = {start_node: None}
+        cost_so_far = {start_node: 0}
+        
+        # 8连通移动方向
+        motions = [
+            (self.res, 0), (-self.res, 0), (0, self.res), (0, -self.res),
+            (self.res, self.res), (self.res, -self.res), (-self.res, self.res), (-self.res, -self.res)
         ]
-        add_trajectory_to_scene(clean_scene, simulated_trajectory, line_color=[255, 0, 0, 255], thickness=0.03)
-        add_robot_to_scene(clean_scene, position=[1.0, 1.0, 0.2], orientation=[0, 0, 0.785], size=[0.45, 0.45, 0.4])
 
-        clean_scene.show(
-            title="ROBOCON 2026 场地 3D 视图 (高精校准版)",
-            smooth=False,                        
-            background=[240, 240, 240, 255]      
-        )
-        
-    except Exception as e:
-        print(f"\n❌ 加载失败: {e}")
+        while frontier:
+            _, current = heapq.heappop(frontier)
+            
+            # 到达目标附近
+            if self.heuristic(current, goal_node) <= self.res:
+                goal_node = current
+                break
+                
+            for dx, dy in motions:
+                next_node = (current[0] + dx, current[1] + dy)
+                
+                if not self.is_valid(next_node[0], next_node[1]):
+                    continue
+                    
+                # 对角线移动代价乘以 1.414
+                move_cost = np.sqrt(dx**2 + dy**2)
+                new_cost = cost_so_far[current] + move_cost
+                
+                if next_node not in cost_so_far or new_cost < cost_so_far[next_node]:
+                    cost_so_far[next_node] = new_cost
+                    priority = new_cost + self.heuristic(next_node, goal_node)
+                    heapq.heappush(frontier, (priority, next_node))
+                    came_from[next_node] = current
+
+        # 回溯路径
+        path = []
+        current = goal_node
+        while current is not None:
+            path.append(current)
+            current = came_from.get(current)
+        path.reverse()
+        return path
+
+# ==========================================
+# 3. 场地与结果可视化
+# ==========================================
+def draw_scene(path):
+    fig, ax = plt.subplots(figsize=(10, 10))
+    
+    # 绘制一区 (浅粉色)
+    ax.add_patch(patches.Rectangle((-FIELD_WIDTH/2, 0), FIELD_WIDTH, FIELD_HEIGHT/2, 
+                                   facecolor='#FFC0CB', alpha=0.5, label='一区 (允许)'))
+    # 绘制二区 (偏红色)
+    ax.add_patch(patches.Rectangle((-FIELD_WIDTH/2, -FIELD_HEIGHT/2), FIELD_WIDTH, FIELD_HEIGHT/2, 
+                                   facecolor='#FA8072', alpha=0.6, label='二区 (禁行)'))
+                                   
+    # 绘制障碍物 (中心 300x800)
+    ax.add_patch(patches.Rectangle((-OBS_W/2, -OBS_H/2), OBS_W, OBS_H, 
+                                   facecolor='#696969', label='障碍物'))
+                                   
+    # 绘制障碍物的碰撞膨胀区 (虚线)
+    ax.add_patch(patches.Rectangle((-OBS_W/2 - ROBOT_R, -OBS_H/2 - ROBOT_R), 
+                                   OBS_W + 2*ROBOT_R, OBS_H + 2*ROBOT_R, 
+                                   fill=False, linestyle='--', color='red', label='禁行膨胀区'))
+
+    # 绘制起点机器人
+    ax.add_patch(patches.Rectangle((START_POS[0]-ROBOT_R, START_POS[1]-ROBOT_R), 
+                                   ROBOT_SIZE, ROBOT_SIZE, color='blue', alpha=0.7))
+    ax.text(START_POS[0], START_POS[1]+300, 'Start', ha='center', fontsize=12, color='blue')
+
+    # 绘制终点机器人
+    ax.add_patch(patches.Rectangle((TARGET_POS[0]-ROBOT_R, TARGET_POS[1]-ROBOT_R), 
+                                   ROBOT_SIZE, ROBOT_SIZE, color='green', alpha=0.7))
+                                   
+    # 绘制最终的 Yaw 角度 (箭头表示机器人的“车头”朝向)
+    # 面对障碍物是朝下(向Y负方向)，差180度即为“背对障碍物”(朝上/向Y正方向)
+    ax.arrow(TARGET_POS[0], TARGET_POS[1], 0, 300, 
+             head_width=150, head_length=150, fc='yellow', ec='black', zorder=5)
+    ax.text(TARGET_POS[0], TARGET_POS[1]+500, 'End (Yaw+180)', ha='center', fontsize=12, color='green')
+
+    # 绘制最短路径
+    if path:
+        path_arr = np.array(path)
+        ax.plot(path_arr[:,0], path_arr[:,1], color='cyan', linewidth=3, label='最短路径')
+        ax.scatter(path_arr[:,0], path_arr[:,1], color='blue', s=10) # 路径点
+
+    # 设置图表属性
+    ax.set_xlim(-4000, 4000)
+    ax.set_ylim(-1000, 4000)
+    ax.set_aspect('equal')
+    ax.set_title("Robot Path Planning & Constraints Visualization", fontsize=16)
+    ax.legend(loc='upper right')
+    ax.grid(True, linestyle=':', alpha=0.6)
+    
+    # 解决中文字体显示问题
+    plt.rcParams['font.sans-serif'] = ['SimHei', 'Arial Unicode MS'] 
+    plt.rcParams['axes.unicode_minus'] = False
+    
+    plt.show()
 
 if __name__ == "__main__":
-    stp_file_path = "地图.stp" 
-    visualize_step_map(stp_file_path)
+    planner = AStarPlanner(resolution=50) # 50mm网格，保证计算速度与精度
+    shortest_path = planner.plan(START_POS, TARGET_POS)
+    
+    if shortest_path:
+        print(f"✅ 路径计算成功！共 {len(shortest_path)} 个航点。")
+        draw_scene(shortest_path)
+    else:
+        print("❌ 未能找到可行路径。")

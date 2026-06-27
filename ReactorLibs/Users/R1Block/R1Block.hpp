@@ -144,6 +144,7 @@ public:
   BlockInfo target_block_pos[3] = {{0}};
   uint8_t target_count = 0;
 
+  void Reset();
   // 函数区
   void Enable();
   void Stop();
