@@ -357,57 +357,57 @@ void Logic_Init(void)
 //        StateBlock& s_lay_pre = total_flow.AddState("Pre LayBlock");
 
     //1.添加状态块
-    StateBlock& s_choosearea = total_flow.AddState("Choose Area");
-    StateBlock& s_chaser = total_flow.AddState("GetCmd");
-    StateBlock& s_run = total_flow.AddState("RunCmd");    
-    StateBlock& s_rod = total_flow.AddState("GetRod");
-    StateBlock& s_dock = total_flow.AddState("Docking");
+    // StateBlock& s_choosearea = total_flow.AddState("Choose Area");
+    // StateBlock& s_chaser = total_flow.AddState("GetCmd");
+    // StateBlock& s_run = total_flow.AddState("RunCmd");    
+    // StateBlock& s_rod = total_flow.AddState("GetRod");
+    // StateBlock& s_dock = total_flow.AddState("Docking");
 
-    StateBlock &s_plan = total_flow.AddState("Planning");
-    StateBlock &s_move = total_flow.AddState("NavtoBlock");
+    // StateBlock &s_plan = total_flow.AddState("Planning");
+    // StateBlock &s_move = total_flow.AddState("NavtoBlock");
     StateBlock &s_pick = total_flow.AddState("GetBlocking");
 
     // // 其实是三区的逻辑，还没想好状态图之间转移的逻辑，故先放在同一个状态图里
-    StateBlock &s_lay = total_flow.AddState("LayBlock");
+    // StateBlock &s_lay = total_flow.AddState("LayBlock");
 
     //2.绑定状态的动作函数
 //    s_lay_pre.StateAction=Action_PreLay;
 
-    s_choosearea.StateAction = Action_ChooseArea;
-    s_chaser.StateAction = Action_GetPathCmd;
-    s_run.StateAction = Action_RunCmd;
-    s_rod.StateAction = Action_GetRod;
-    s_dock.StateAction = Action_Dock;
+    // s_choosearea.StateAction = Action_ChooseArea;
+    // s_chaser.StateAction = Action_GetPathCmd;
+    // s_run.StateAction = Action_RunCmd;
+    // s_rod.StateAction = Action_GetRod;
+    // s_dock.StateAction = Action_Dock;
 
-    s_plan.StateAction = Action_Planning;
-    s_move.StateAction = Action_NavToBlock;
+    // s_plan.StateAction = Action_Planning;
+    // s_move.StateAction = Action_NavToBlock;
     s_pick.StateAction = Action_GetBlock;
-    s_lay.StateAction = Action_LayBlock;
+    // s_lay.StateAction = Action_LayBlock;
 
     //3.设置linkto
     //选择从哪一区开始
 //    s_lay_pre.LinkTo(&is_prelay_finished, s_choosearea);
 
-    s_choosearea.LinkTo(&is_at_area1, s_chaser);
-    s_choosearea.LinkTo(&is_at_area2, s_plan);
-    s_choosearea.LinkTo(&is_at_area3, s_chaser);
+    // s_choosearea.LinkTo(&is_at_area1, s_chaser);
+    // s_choosearea.LinkTo(&is_at_area2, s_plan);
+    // s_choosearea.LinkTo(&is_at_area3, s_chaser);
 
-    s_chaser.LinkTo(&is_ready_to_run, s_run);
-    s_run.LinkTo(&is_ready_to_rod, s_rod);
-    s_run.LinkTo(&is_ready_to_lay, s_lay); 
+    // s_chaser.LinkTo(&is_ready_to_run, s_run);
+    // s_run.LinkTo(&is_ready_to_rod, s_rod);
+    // s_run.LinkTo(&is_ready_to_lay, s_lay); 
 
-    s_rod.LinkTo(&is_ready_to_dock, s_dock);
-    s_dock.LinkTo(&is_ready_to_plan, s_plan);
+    // s_rod.LinkTo(&is_ready_to_dock, s_dock);
+    // s_dock.LinkTo(&is_ready_to_plan, s_plan);
 
-    // Planning TO NavToBlock：路径已生成且底盘在API自动模式
-    s_plan.LinkTo(&is_ready_to_nav, s_move);
+    // // Planning TO NavToBlock：路径已生成且底盘在API自动模式
+    // s_plan.LinkTo(&is_ready_to_nav, s_move);
  
-    // NavToBlock TO GetBlock：当前目标点有块，需要取块
-    s_move.LinkTo(&is_ready_to_pick, s_pick);
-    s_move.LinkTo(&is_final_goal_reached, s_chaser);
+    // // NavToBlock TO GetBlock：当前目标点有块，需要取块
+    // s_move.LinkTo(&is_ready_to_pick, s_pick);
+    // s_move.LinkTo(&is_final_goal_reached, s_chaser);
 
-    // GetBlock TO NavToBlock：取块完成（按键确认），继续导航
-    s_pick.LinkTo(&is_pick_done, s_move);
+    // // GetBlock TO NavToBlock：取块完成（按键确认），继续导航
+    // s_pick.LinkTo(&is_pick_done, s_move);
     // TODO!加一个可以管理遥控器还是半自动的控制权的状态函数之间的转移
 
     // 注册图

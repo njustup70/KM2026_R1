@@ -78,7 +78,18 @@ public:
                            {0.0f, 0.0f},
                            {0.0f, 0.0f},
                            {0.0f, 0.0f}};
+  // 零位
+  int _lift_l_origin_code = 0;
+  int _lift_r_origin_code = 0;
+  int _lift_l_origined = 0;
+  int _lift_r_origined = 0;
+  int _lift_origined = 0;
 
+  int _stretch_l_origin_code = 0;
+  int _stretch_r_origin_code = 0;
+  int _stretch_l_origined=0;
+  int _stretch_r_origined=0;
+  int _stretch_origined = 0;
   // 取 200/400/600 块时抬升电机3508对应的 total_angle 目标值
   float blockheight_2_liftmotortargetpos[3] = {40000.0f, 430000.0f, 850000.0f};
   float stretch_distance[2] = {2100000, 4200000};
@@ -87,7 +98,7 @@ public:
   volatile int block_detect[2] = {0}; // 左右两边块是否在范围内
   volatile int block_exist[3] = {0};  // 三个位置的块检测
   // ======================== 取块状态机控制 ========================
-//状态参数
+  // 状态参数
   uint8_t height_blcok[3] = {0};
 
   int aim_right = 1;
@@ -95,8 +106,7 @@ public:
   uint32_t delta_time_ms = 0;
 
   // 取块机构总体参数
-  volatile int manble = 0;   // 测试
-  int suck_finish_times = 0; // 取了几个块了
+  volatile int manble = 0; // 测试
 
   float suck_speed = 13000;
   float lift_target_pos = 0.0f;
@@ -143,7 +153,8 @@ public:
   // 当前帧目标 KFS 信息
   BlockInfo target_block_pos[3] = {{0}};
   uint8_t target_count = 0;
-
+  void _GetLiftOrigin();
+  void _GetStretchOrigin();
   void Reset();
   // 函数区
   void Enable();
