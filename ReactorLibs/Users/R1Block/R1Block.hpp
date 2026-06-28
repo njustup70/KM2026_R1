@@ -6,6 +6,16 @@
 #include "servo.hpp"
 #include "Chassis.hpp"
 // 块中心在场地坐标系的位置，xy 单位为米，height 单位为毫米
+
+enum Match_Mode
+{
+
+  KungFu_Master,
+  Exploring_the__Charms=1,
+  Hidden_Treasures=2,
+  
+}
+
 struct BlockInfo
 {
   float x;
@@ -115,7 +125,7 @@ public:
   bool suck_finish = false;
   volatile int suck_flag = 0; // 取块触发
   // ======================== 吐块状态机控制 ========================
-  bool cond_finish = false;         // 吐块：Prepare → SpitStart
+  volatile int first_spit=0;
   volatile int begin_spit_flag = 0; // 吐块触发
   volatile int release_pre_flag = 0;
   volatile int realse_order = 0; // 吐块顺序

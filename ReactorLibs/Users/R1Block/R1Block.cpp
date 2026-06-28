@@ -9,6 +9,8 @@
 using APP::chassis;
 using MOD::farcon;
 using MOD::sick;
+Match_Mode COMPETITION_type = KungFu_Master;
+
 R1Block &APP::r1block = R1Block::GetInstance();
 
 // int stretch_debug = 2100000;
@@ -802,6 +804,11 @@ void R1Block::ReleaseBlock(int auto_flag)
     // Seq::Wait(1);
   }
 
+  if (farcon.button_first_half[6] == 1)
+  {
+    release_pre_flag = 1;
+  }
+
   if (farcon.button_first_half[7] == 1)
   {
     spit_finish_flag = 1;
@@ -840,6 +847,33 @@ void R1Block::ReleaseBlock(int auto_flag)
     ///////////进洞自动操作
     if (auto_flag == 1)
     {
+      if (first_spit == 0)
+      {
+        Loosen_block();
+        Seq::Wait(1);
+        // 从 0 平滑移动到目标位置，总耗时 4.0 秒，切分 100 步完成
+        SmoothMoveLiftToTarget(0, realse_block_height, 4, 100);
+        Seq::Wait(1);
+        Clamp_block();
+        Seq::Wait(1);
+        chassis.MoveRelative({0.3, 0});
+        Seq::WaitUntil([&]()
+                       { return (chassis._Walking() == 1); }); // 往后走一步，退洞
+        first_spit = 1;
+        realase_Confirm = 1;
+      }
+    }
+
+    if (release_pre_flag == 1)
+    {
+      Loosen_block();
+      Seq::Wait(1);
+      // 从 0 平滑移动到目标位置，总耗时 4.0 秒，切分 100 步完成
+      SmoothMoveLiftToTarget(0, realse_block_height, 4, 100);
+      Seq::Wait(1);
+      Clamp_block();
+      Seq::Wait(1);
+      release_pre_flag = 0;
     }
 
     if (realse_order == 0 && realase_Confirm == 1)
@@ -880,9 +914,10 @@ void R1Block::ReleaseBlock(int auto_flag)
         chassis.MoveRelative({0.2, 0});
         Seq::WaitUntil([&]()
                        { return (chassis._Walking() == 1); }); // 进洞
+        realase_Confirm = 1;
       }
-
-      realase_Confirm = 0;
+      else
+        realase_Confirm = 0;
     }
     else if (realse_order == 1 && realase_Confirm == 1)
     {
@@ -927,8 +962,10 @@ void R1Block::ReleaseBlock(int auto_flag)
         chassis.MoveRelative({0.2, 0});
         Seq::WaitUntil([&]()
                        { return (chassis._Walking() == 1); }); // 进洞
+        realase_Confirm = 1;
       }
-      realase_Confirm = 0;
+      else
+        realase_Confirm = 0;
     }
     else if (realse_order == 2 && realase_Confirm == 1)
     {
