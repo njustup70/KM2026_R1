@@ -136,14 +136,6 @@ public:
   int Area3_outhole_distance = 1000;
   int Area2_distance_f = 0;
 
-  int reach_l_flag = 0;
-  int reach_f_flag = 0;
-  int reach_target = 0;
-
-  int area3_inhole = 0;
-  Vec2 spd_area2;
-  Vec2 spd_area3_num[2];
-  Vec2 spd_area_outhole;
   //**********取块状态停止***********//
 
   // 遥控器按键边沿检测
@@ -192,7 +184,6 @@ public:
   void Loosen_block();
   void Get_Block(int block_height, int auto_flag = 0);
   void PreLayBLock();
-  Vec2 Area3_return_spd(int current_distance, int target_distance, int flag_lf, float max_speed = 3.0f, int allow_range = 50);
 
   void ReleaseBlock(int auto_flag = 0);
 

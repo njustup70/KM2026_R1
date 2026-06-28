@@ -19,7 +19,7 @@ R1Block &APP::r1block = R1Block::GetInstance();
 extern bool is_prelay_finished;
 int debug_origin = 0;
 
-#define Test_device 1
+// #define Test_device 1
 #define R2_dead 1
 // 伸缩电机最远4300000
 #ifdef Test_device
@@ -198,7 +198,6 @@ void R1Block::_GetLiftOrigin()
 }
 void R1Block::_GetStretchOrigin()
 {
-
   // 2. 统一使用一个时间轴计数器即可
   static uint32_t runed_tick = 0;
   runed_tick++;
@@ -225,15 +224,15 @@ void R1Block::_GetStretchOrigin()
       {
         _stretch_l_origined = true;
         _stretch_l_origin_code = stretchmotor[0].driver.measure.total_angle;
-        
+
         // 【可选安全措施】回零后，让它锁定在当前真实位置，防止乱飘
-        // stretchmotor[0].SetPos(_stretch_l_origin_code); 
+        // stretchmotor[0].SetPos(_stretch_l_origin_code);
       }
     }
     else
     {
       stretch_l_probe_cnt = 0; // 没撞到或扰动降低，计数器清零
-      
+
       // 每周期（5ms）加 500 Code，每秒加 100000 Code (注意原来注释写的200，代码是500)
       if (runed_tick > 60)
         stretch_l_probe_code += 500;
@@ -260,15 +259,15 @@ void R1Block::_GetStretchOrigin()
       {
         _stretch_r_origined = true;
         _stretch_r_origin_code = stretchmotor[1].driver.measure.total_angle;
-        
+
         // 【可选安全措施】
-        // stretchmotor[1].SetPos(_stretch_r_origin_code); 
+        // stretchmotor[1].SetPos(_stretch_r_origin_code);
       }
     }
     else
     {
       stretch_r_probe_cnt = 0;
-      
+
       if (runed_tick > 60)
         stretch_r_probe_code += 300;
       else if (runed_tick > 30)
@@ -333,22 +332,6 @@ void R1Block::Update()
 
   Block_Sick_lf[0] = sick.GetSingleChannel(0);
   Block_Sick_lf[1] = sick.GetSingleChannel(1);
-  if (appstate == STATE_GETBLOCK)
-    spd_area2 = Area3_return_spd(Block_Sick_lf[1], Area2_distance_f, 1);
-  else if (appstate == STATE_RELEASEBLOCK)
-  {
-    // 正在洞外
-    if (area3_inhole == 0)
-    {
-      spd_area3_num[0] = Area3_return_spd(Block_Sick_lf[0], Area3_distance_l[realse_order], 0);
-
-      spd_area3_num[1] = Area3_return_spd(Block_Sick_lf[1], Area3_distance_f[realse_order], 1);
-    }
-    else if (area3_inhole == 1)
-    {
-      spd_area_outhole = Area3_return_spd(Block_Sick_lf[1], Area3_outhole_distance, 1);
-    }
-  }
 
   if (aim_right == 0)
   {
@@ -631,7 +614,7 @@ void R1Block::Get_Block(int block_height, int auto_flag)
   appstate = STATE_GETBLOCK;
   // // 这里是测试用的，实际使用时请注释
   //
-  if (_lift_origined&&_stretch_origined)
+  if (_lift_origined)
   {
 #ifdef Test_device
     // SetTargetHeight(test_debug_height, test_debug_height);
@@ -689,11 +672,9 @@ void R1Block::Get_Block(int block_height, int auto_flag)
       }
       if (auto_flag == 1)
       {
-        chassis.Move(spd_area2);
+        chassis.MoveRelative({0.1, 0});
         Seq::WaitUntil([&]()
-                       { return reach_f_flag == 1; });
-        reach_f_flag = 0;
-        chassis.Move({0, 0});
+                       { return (chassis._Walking() == 1); }); // 检测到最外面块取到了
       }
 
       Seq::Wait(1); // 安全保护
@@ -795,78 +776,6 @@ void R1Block::PreLayBLock()
   }
 }
 
-Vec2 R1Block::Area3_return_spd(int current_distance, int target_distance, int flag_lf, float max_speed, int allow_range)
-{
-  Vec2 current_spd = {0, 0};
-
-  // 1. 计算距离差与绝对值
-  int distance_diff = target_distance - current_distance;
-  int abs_diff = ABS(distance_diff);
-
-  // 2. 判定是否到达容差范围 (如：allow_range = 50)
-  if (abs_diff < allow_range)
-  {
-    if (flag_lf == 0)
-    {
-      reach_l_flag = 1;
-    }
-    else
-    {
-      reach_f_flag = 1;
-    }
-
-    if (area3_inhole == 1)
-    {
-      area3_inhole = 0;
-    }
-
-    // 到达目标，速度保持为 0 并返回
-    return current_spd;
-  }
-
-  // 3. 改进的平滑减速控制 (分段线性刹车)
-  float decel_zone = 200.0f; // 刹车区距离：距离目标剩多远时开始减速 (需根据实车惯性调整)
-  // 因为 max_speed 一般在 0.3 左右，保底速度按比例缩放，设定在 0.05 左右（需确保它刚好能克服摩擦力移动）
-  float min_speed = 0.05f;
-  float calc_speed = 0.0f;
-
-  if (abs_diff > decel_zone)
-  {
-    // 距离 > 刹车区时，保持满速冲刺
-    calc_speed = max_speed;
-  }
-  else
-  {
-    // 距离 <= 刹车区时，速度随距离等比例线性衰减
-    float ratio = (float)abs_diff / decel_zone;
-    calc_speed = ratio * max_speed;
-
-    // 关键：速度保底限制。只要还没进 allow_range (50)，就绝不让速度低于 min_speed
-    if (calc_speed < min_speed)
-    {
-      calc_speed = min_speed;
-    }
-  }
-
-  // 4. 根据目标相对方位赋予速度正负号
-  if (distance_diff < 0)
-  {
-    calc_speed = -calc_speed;
-  }
-  if (flag_lf == 0)
-  {
-    current_spd.x = calc_speed;
-    current_spd.y = 0; // 假设沿着主轴一维运动
-  }
-  else if (flag_lf == 1)
-  {
-    current_spd.x = 0;
-    current_spd.y = calc_speed; // 假设沿着主轴一维运动
-  }
-
-  return current_spd;
-}
-
 void R1Block::ReleaseBlock(int auto_flag)
 {
   appstate = STATE_RELEASEBLOCK;
@@ -929,19 +838,8 @@ void R1Block::ReleaseBlock(int auto_flag)
     // }
 
     ///////////进洞自动操作
-    if (auto_flag == 1 && reach_target == 0)
+    if (auto_flag == 1)
     {
-      chassis.Move(spd_area3_num[0]);
-      Seq::WaitUntil([&]()
-                     { return reach_l_flag == 1; });
-      chassis.Move(spd_area3_num[1]);
-
-      Seq::WaitUntil([&]()
-                     { return reach_f_flag == 1; });
-
-      realase_Confirm = 1;
-      reach_target = 1;
-      area3_inhole = 1;
     }
 
     if (realse_order == 0 && realase_Confirm == 1)
@@ -973,13 +871,18 @@ void R1Block::ReleaseBlock(int auto_flag)
       // 退洞操作
       if (auto_flag == 1)
       {
+        chassis.MoveRelative({-0.2, 0});
         Seq::WaitUntil([&]()
-                       { return (area3_inhole == 0); }); // 直到退出洞
-        chassis.Move(spd_area_outhole);
+                       { return (chassis._Walking() == 1); }); // 往后走一步，退洞
+        chassis.MoveRelative({0, -0.54});
+        Seq::WaitUntil([&]()
+                       { return (chassis._Walking() == 1); }); // 走到第二个块
+        chassis.MoveRelative({0.2, 0});
+        Seq::WaitUntil([&]()
+                       { return (chassis._Walking() == 1); }); // 进洞
       }
 
       realase_Confirm = 0;
-      reach_target = 0;
     }
     else if (realse_order == 1 && realase_Confirm == 1)
     {
@@ -1012,14 +915,20 @@ void R1Block::ReleaseBlock(int auto_flag)
         realse_order = 2;
       }
 
+      // 退洞操作
       if (auto_flag == 1)
       {
+        chassis.MoveRelative({-0.2, 0});
         Seq::WaitUntil([&]()
-                       { return (area3_inhole == 0); }); // 直到退出洞
-        chassis.Move(spd_area_outhole);
+                       { return (chassis._Walking() == 1); }); // 往后走一步，退洞
+        chassis.MoveRelative({0, -0.54});
+        Seq::WaitUntil([&]()
+                       { return (chassis._Walking() == 1); }); // 走到第二个块
+        chassis.MoveRelative({0.2, 0});
+        Seq::WaitUntil([&]()
+                       { return (chassis._Walking() == 1); }); // 进洞
       }
       realase_Confirm = 0;
-      reach_target = 0;
     }
     else if (realse_order == 2 && realase_Confirm == 1)
     {
@@ -1040,14 +949,12 @@ void R1Block::ReleaseBlock(int auto_flag)
       Loosen_block();                                  // 松
       suckmotor[0].SetSpd(0);
       suckmotor[1].SetSpd(0);
+      // 退洞操作
       if (auto_flag == 1)
       {
+        chassis.MoveRelative({-0.2, 0});
         Seq::WaitUntil([&]()
-                       { return (area3_inhole == 0); }); // 直到退出洞
-        chassis.Move(spd_area_outhole);
-        Seq::WaitUntil([&]()
-                       { return farcon.button_first_half[7] == 1; }); // 检测按钮按下表示复位
-        // 回到最初位置准备吐
+                       { return (chassis._Walking() == 1); }); // 往后走一步，退洞
         SetTargetState(0.0f, 0.0f, 0.0f, 0.0f, 0, 0);
       }
       else
@@ -1059,7 +966,6 @@ void R1Block::ReleaseBlock(int auto_flag)
       }
 
       realase_Confirm = 0;
-      reach_target = 0;
     }
     else
     {
