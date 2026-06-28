@@ -6,6 +6,16 @@
 #include "servo.hpp"
 #include "Chassis.hpp"
 // 块中心在场地坐标系的位置，xy 单位为米，height 单位为毫米
+
+enum Match_Mode
+{
+
+  KungFu_Master,
+  Exploring_the__Charms=1,
+  Hidden_Treasures=2,
+  
+};
+
 struct BlockInfo
 {
   float x;
@@ -78,7 +88,18 @@ public:
                            {0.0f, 0.0f},
                            {0.0f, 0.0f},
                            {0.0f, 0.0f}};
+  // 零位
+  int _lift_l_origin_code = 0;
+  int _lift_r_origin_code = 0;
+  int _lift_l_origined = 0;
+  int _lift_r_origined = 0;
+  int _lift_origined = 0;
 
+  int _stretch_l_origin_code = 0;
+  int _stretch_r_origin_code = 0;
+  int _stretch_l_origined=0;
+  int _stretch_r_origined=0;
+  int _stretch_origined = 0;
   // 取 200/400/600 块时抬升电机3508对应的 total_angle 目标值
   float blockheight_2_liftmotortargetpos[3] = {40000.0f, 430000.0f, 850000.0f};
   float stretch_distance[2] = {2100000, 4200000};
@@ -87,9 +108,15 @@ public:
   volatile int block_detect[2] = {0}; // 左右两边块是否在范围内
   volatile int block_exist[3] = {0};  // 三个位置的块检测
   // ======================== 取块状态机控制 ========================
+  // 状态参数
+  uint8_t height_blcok[3] = {0};
+
+  int aim_right = 1;
+  Vec2 Spd = {0, 0};
+  uint32_t delta_time_ms = 0;
+
   // 取块机构总体参数
-  volatile int manble = 0;   // 测试
-  int suck_finish_times = 0; // 取了几个块了
+  volatile int manble = 0; // 测试
 
   float suck_speed = 13000;
   float lift_target_pos = 0.0f;
@@ -98,7 +125,7 @@ public:
   bool suck_finish = false;
   volatile int suck_flag = 0; // 取块触发
   // ======================== 吐块状态机控制 ========================
-  bool cond_finish = false;         // 吐块：Prepare → SpitStart
+  volatile int first_spit=0;
   volatile int begin_spit_flag = 0; // 吐块触发
   volatile int release_pre_flag = 0;
   volatile int realse_order = 0; // 吐块顺序
@@ -107,9 +134,18 @@ public:
 
   int llift_reached = 0;
   int rlift_reached = 0;
-  int lstretch_reached=0;
-  int rstretch_reached=0;
-  //   volatile int realse_start=0;//确认吐块
+  int lstretch_reached = 0;
+  int rstretch_reached = 0;
+
+  // =========================全自动（定位）相关数据=======================////////////
+  int Block_Sick_lf[2] = {0, 0}; // Sick数据，单位是mm，sick单位是m,所以 默认要乘以100 （车坐标系下车左边和车前面）***相对坐标系****
+
+  int Area3_distance_l[3] = {110, 650, 1190}; // 第一个吐块的地方对应的Sick离左边墙的距离，第二个......(相隔应该是540mm）
+
+  int Area3_distance_f[3]; // 离前边墙的距离，对应第一个块的特殊位置，第二个.....
+  int Area3_outhole_distance = 1000;
+  int Area2_distance_f = 0;
+
   //**********取块状态停止***********//
 
   // 遥控器按键边沿检测
@@ -119,7 +155,10 @@ public:
   // 当前帧目标 KFS 信息
   BlockInfo target_block_pos[3] = {{0}};
   uint8_t target_count = 0;
-
+  void _GetLiftOrigin();
+  void _GetStretchOrigin();
+  void Reset();
+  // 函数区
   void Enable();
   void Stop();
   void Aim_Block();
@@ -153,9 +192,10 @@ public:
                    float lift_min_L, float lift_max_L, float lift_min_R, float lift_max_R);
   void Clamp_block();
   void Loosen_block();
-  void Get_Block(int block_height);
+  void Get_Block(int block_height, int auto_flag = 0);
   void PreLayBLock();
-  void ReleaseBlock();
+
+  void ReleaseBlock(int auto_flag = 0);
 
   void Action_LiftToHeight(float height); // TODO: 预留
   int trans_height(int block_height);

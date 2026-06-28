@@ -4,22 +4,22 @@
 #include "farcon.hpp"
 #include "bsp_hardware.hpp"
 #include "StateCore.hpp"
-
+#include "Sick.hpp"
+#include "bsp_log.hpp"
 using APP::chassis;
 using MOD::farcon;
+using MOD::sick;
+Match_Mode COMPETITION_type = KungFu_Master;
+
 R1Block &APP::r1block = R1Block::GetInstance();
 
-uint8_t height_blcok[3] = {0};
-int aim_right = 1;
-Vec2 Spd = {0, 0};
-uint32_t delta_time_ms = 0;
-int stretch_debug = 2100000;
-int push_height_debug = 580000;
-int release_test_flag = 0;
-int calm_flag = 0;
+// int stretch_debug = 2100000;
+// int push_height_debug = 580000;
+// int release_test_flag = 0;
+// int calm_flag = 0;
 
-int last_spit_height = 0;
 extern bool is_prelay_finished;
+int debug_origin = 0;
 
 // #define Test_device 1
 #define R2_dead 1
@@ -43,24 +43,12 @@ void R1Block::Start()
   bmy_pin = BSP::GPIO::Inst({'I', 0});
   // ---- 大疆抬升电机左（M3508，减速比19，CAN1 ID:5，位置串级模式）----
   liftmotor[0].Init(Hardware::hcan_main, 5, DJI_C620);
-  liftmotor[0].ConfigADRC().AsPosC().ADRC_Womega(42.0f, 9.6f)
-                        .ADRC_Physic(2.6e-4f, 0.30f, 0.005f)
-                        .ADRC_Limit(6.0f)
-                        .SpdLimit(6000.0f)
-                        .ADRC_MaxPlannedVel(6000.0f)
-                        .ADRC_SOTF(0.1f)
-                        .Apply();
+  liftmotor[0].ConfigADRC().AsPosC().ADRC_Womega(42.0f, 9.6f).ADRC_Physic(2.6e-4f, 0.30f, 0.005f).ADRC_Limit(6.0f).SpdLimit(6000.0f).ADRC_MaxPlannedVel(6000.0f).ADRC_SOTF(0.1f).Apply();
   liftmotor[0].driver.Enable(); // 设负的向上，正的向下
 
   // ---- 大疆抬升电机右（M3508，减速比19，CAN1 ID:6，位置串级模式）----
   liftmotor[1].Init(Hardware::hcan_main, 6, DJI_C620);
-  liftmotor[1].ConfigADRC().AsPosC().ADRC_Womega(42.0f, 9.6f)
-                        .ADRC_Physic(2.6e-4f, 0.30f, 0.005f)
-                        .ADRC_Limit(6.0f)
-                        .SpdLimit(6000.0f)
-                        .ADRC_MaxPlannedVel(6000.0f)
-                        .ADRC_SOTF(0.1f)
-                        .Apply();
+  liftmotor[1].ConfigADRC().AsPosC().ADRC_Womega(42.0f, 9.6f).ADRC_Physic(2.6e-4f, 0.30f, 0.005f).ADRC_Limit(6.0f).SpdLimit(6000.0f).ADRC_MaxPlannedVel(6000.0f).ADRC_SOTF(0.1f).Apply();
   liftmotor[1].driver.Enable(); // 设正的向上，负的向下
 
   // ---- 大疆吸吮电机左（M2006，减速比36，CAN2 ID:1，位置串级模式）----
@@ -83,28 +71,221 @@ void R1Block::Start()
 
   //   // ---- 大疆伸缩电机左（M2006，减速比36，CAN2 ID:4，位置串级模式）----
   stretchmotor[0].Init(Hardware::hcan_sub, 4, DJI_C610);
-  stretchmotor[0].ConfigPID().AsPosC().Pos_Coeff(12.0f, 0.0f, 1.0f) // 位置环 kp/ki/kd（待整定）
-      .Pos_Limit(300.0f, 4000.0f)                                   // 位置环积分限幅、输出速度限幅（rad/s）
-      .Spd_Coeff(0.01f, 0.00005f, 0.0f)                             // 速度环 kp/ki/kd（待整定）
-      .Spd_Limit(2.0f, 3.0f)                                        // 速度环积分限幅、电流输出限幅（code）
-      .CurLimit(5)
-      .Apply();
+  stretchmotor[0].ConfigADRC().AsPosC().ADRC_Womega(42.0f, 9.6f).ADRC_Physic(3e-5f, 0.30f, 0.005f).ADRC_Limit(3.0f).SpdLimit(6000.0f).ADRC_MaxPlannedVel(6000.0f).ADRC_SOTF(0.2).Apply();
   stretchmotor[0].driver.Enable(); // 左边target_pos是1000000左右合适，且+的往前
 
   // ---- 大疆伸缩电机右（M2006，减速比36，CAN2 ID:3，位置串级模式）----
   stretchmotor[1].Init(Hardware::hcan_sub, 3, DJI_C610);
-  stretchmotor[1].ConfigPID().AsPosC().Pos_Coeff(12.0f, 0.0f, 1.0f) // 位置环 kp/ki/kd（待整定）
-      .Pos_Limit(300.0f, 4000.0f)                                   // 位置环积分限幅、输出速度限幅（rad/s）
-      .Spd_Coeff(0.01f, 0.00005f, 0.0f)                             // 速度环 kp/ki/kd（待整定）
-      .Spd_Limit(2.0f, 3.0f)                                        // 速度环积分限幅、电流输出限幅（code）
-      .CurLimit(5)
-      .Apply();
+  stretchmotor[1].ConfigADRC().AsPosC().ADRC_Womega(42.0f, 9.6f).ADRC_Physic(3e-5f, 0.30f, 0.005f).ADRC_Limit(3.0f).SpdLimit(6000.0f).ADRC_MaxPlannedVel(6000.0f).ADRC_SOTF(0.2f).Apply();
   stretchmotor[1].driver.Enable(); // 右边target_pos是1000000左右合适，且-的往前
 
   SetTargetState(0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
 
   appstate = STATE_INIT;
   Enable();
+}
+
+//
+void R1Block::Reset()
+{
+}
+
+void R1Block::_GetLiftOrigin()
+{
+  static uint32_t runed_tick = 0;
+  static uint32_t shared_probe_code = 20; // 虚拟的公共下探基准
+
+  // 分别记录发给左右电机的绝对指令值
+  static int32_t cmd_pos_l = 0;
+  static int32_t cmd_pos_r = 0;
+
+  static uint8_t lift_l_probe_cnt = 0;
+  static uint8_t lift_r_probe_cnt = 0;
+
+  // 【核心参数：机械容忍度】
+  // 允许左右两边在寻零时出现的最大差值 (Code数)。
+  // 需要根据你的机械结构刚度来实测设定。如果设置过大，依然会扭坏结构。
+  const int32_t MAX_ALLOWABLE_DIFF = 10000;
+
+  // 如果已经全部回零，直接退出
+  if (_lift_origined)
+    return;
+
+  runed_tick++;
+
+  // 只要还有任意一边没碰到物理限位，公共基准就继续前进
+  if (!_lift_l_origined || !_lift_r_origined)
+  {
+    if (runed_tick > 60)
+      shared_probe_code += 200;
+    else if (runed_tick > 30)
+      shared_probe_code += 65;
+    else
+      shared_probe_code += 20;
+  }
+
+  // ==========================================
+  // 左电机逻辑
+  // ==========================================
+  if (!_lift_l_origined)
+  {
+    cmd_pos_l = -shared_probe_code; // 注意左电机是负方向
+
+    // 【机械保护拦截】如果右边已经停了，且当前左右指令差值超过了机械容忍上限
+    if (_lift_r_origined && (abs(abs(cmd_pos_l) - abs(cmd_pos_r)) > MAX_ALLOWABLE_DIFF))
+    {
+      // 强行判定左边也到位了，以保护机械结构不被扭曲
+      _lift_l_origined = true;
+      _lift_l_origin_code = liftmotor[0].driver.measure.total_angle;
+    }
+    // 正常的 ESO 扰动碰撞检测
+    else if ((fabs(liftmotor[0].motor_adrc.eso.z3) > 500) && runed_tick > 60)
+    {
+      lift_l_probe_cnt++;
+      if (lift_l_probe_cnt >= 10)
+      {
+        _lift_l_origined = true;
+        _lift_l_origin_code = liftmotor[0].driver.measure.total_angle;
+        // 到位后，cmd_pos_l 将不再更新，电机锁定在当前位置
+      }
+    }
+    else
+    {
+      lift_l_probe_cnt = 0; // z3 恢复正常，防抖清零
+    }
+  }
+  // 执行左电机位置
+  liftmotor[0].SetPos(cmd_pos_l);
+
+  // ==========================================
+  // 右电机逻辑
+  // ==========================================
+  if (!_lift_r_origined)
+  {
+    cmd_pos_r = shared_probe_code; // 右电机是正方向
+
+    // 【机械保护拦截】如果左边已经停了，且当前左右指令差值超过了机械容忍上限
+    if (_lift_l_origined && (abs(abs(cmd_pos_r) - abs(cmd_pos_l)) > MAX_ALLOWABLE_DIFF))
+    {
+      // 强行判定右边也到位了，以保护机械结构不被扭曲
+      _lift_r_origined = true;
+      _lift_r_origin_code = liftmotor[1].driver.measure.total_angle;
+    }
+    // 正常的 ESO 扰动碰撞检测
+    else if ((fabs(liftmotor[1].motor_adrc.eso.z3) > 1300) && runed_tick > 60)
+    {
+      lift_r_probe_cnt++;
+      if (lift_r_probe_cnt >= 10)
+      {
+        _lift_r_origined = true;
+        _lift_r_origin_code = liftmotor[1].driver.measure.total_angle;
+        // 到位后，cmd_pos_r 将不再更新，电机锁定在当前位置
+      }
+    }
+    else
+    {
+      lift_r_probe_cnt = 0; // z3 恢复正常，防抖清零
+    }
+  }
+  // 执行右电机位置
+  liftmotor[1].SetPos(cmd_pos_r);
+
+  // ==========================================
+  // 最终状态检查
+  // ==========================================
+  if (_lift_l_origined && _lift_r_origined)
+  {
+    _lift_origined = true;
+  }
+}
+void R1Block::_GetStretchOrigin()
+{
+  // 2. 统一使用一个时间轴计数器即可
+  static uint32_t runed_tick = 0;
+  runed_tick++;
+
+  static uint32_t stretch_l_probe_code = 20;
+  static uint32_t stretch_r_probe_code = 20;
+
+  static uint8_t stretch_l_probe_cnt = 0;
+  static uint8_t stretch_r_probe_cnt = 0;
+
+  // ==========================================
+  // 左伸缩电机独立寻零
+  // ==========================================
+  // 关键修正：只有在没找到零点时，才执行下探逻辑
+  if (!_stretch_l_origined)
+  {
+    stretchmotor[0].SetPos(-stretch_l_probe_code);
+
+    // 如果撞到限位了（用eso的扰动观测来确定），连续10个Tick，就停止
+    if (fabs(stretchmotor[0].motor_adrc.eso.z3) > 700 && runed_tick > 60)
+    {
+      stretch_l_probe_cnt++;
+      if (stretch_l_probe_cnt >= 10)
+      {
+        _stretch_l_origined = true;
+        _stretch_l_origin_code = stretchmotor[0].driver.measure.total_angle;
+
+        // 【可选安全措施】回零后，让它锁定在当前真实位置，防止乱飘
+        // stretchmotor[0].SetPos(_stretch_l_origin_code);
+      }
+    }
+    else
+    {
+      stretch_l_probe_cnt = 0; // 没撞到或扰动降低，计数器清零
+
+      // 每周期（5ms）加 500 Code，每秒加 100000 Code (注意原来注释写的200，代码是500)
+      if (runed_tick > 60)
+        stretch_l_probe_code += 500;
+      // 最开始缓慢前进，破除静态库伦摩擦力
+      else if (runed_tick > 30)
+        stretch_l_probe_code += 105;
+      else
+        stretch_l_probe_code += 20;
+    }
+  }
+
+  // ==========================================
+  // 右伸缩电机独立寻零
+  // ==========================================
+  // 关键修正：状态隔离
+  if (!_stretch_r_origined)
+  {
+    stretchmotor[1].SetPos(-stretch_r_probe_code);
+
+    if (fabs(stretchmotor[1].motor_adrc.eso.z3) > 700 && runed_tick > 60)
+    {
+      stretch_r_probe_cnt++;
+      if (stretch_r_probe_cnt >= 10)
+      {
+        _stretch_r_origined = true;
+        _stretch_r_origin_code = stretchmotor[1].driver.measure.total_angle;
+
+        // 【可选安全措施】
+        // stretchmotor[1].SetPos(_stretch_r_origin_code);
+      }
+    }
+    else
+    {
+      stretch_r_probe_cnt = 0;
+
+      if (runed_tick > 60)
+        stretch_r_probe_code += 300;
+      else if (runed_tick > 30)
+        stretch_r_probe_code += 105;
+      else
+        stretch_r_probe_code += 20;
+    }
+  }
+
+  // ==========================================
+  // 最终状态判断
+  // ==========================================
+  if (_stretch_l_origined && _stretch_r_origined)
+  {
+    _stretch_origined = true;
+  }
 }
 
 void R1Block::Update()
@@ -114,6 +295,20 @@ void R1Block::Update()
   {
     Stop();
   }
+  BspLog_LogInfo("%f,%f", stretchmotor[0].motor_adrc.eso.z3, stretchmotor[1].motor_adrc.eso.z3);
+
+  if (!_lift_origined)
+  {
+    _GetLiftOrigin();
+  }
+
+  // if (debug_origin == 1)
+  // {
+  //   if (!_stretch_origined)
+  //   {
+  //     _GetStretchOrigin();
+  //   }
+  // }
 
   static uint32_t last_time = 0;
 
@@ -136,10 +331,15 @@ void R1Block::Update()
   rlift_reached = liftmotor[1].IsReached();
   lstretch_reached = stretchmotor[0].IsReached();
   rstretch_reached = stretchmotor[1].IsReached();
+
+  Block_Sick_lf[0] = sick.GetSingleChannel(0);
+  Block_Sick_lf[1] = sick.GetSingleChannel(1);
+
   if (aim_right == 0)
   {
     chassis.Move(Spd);
   }
+
   // ---- 状态机 ----
   if (appstate == STATE_INIT)
   {
@@ -177,8 +377,8 @@ void R1Block::Stop()
 void R1Block::SetTargetStretch(float stretch_pos_L, float stretch_pos_R)
 {
   // 3->左伸缩, 4->右伸缩
-  target_state_pos[3] = stretch_pos_L;
-  target_state_pos[4] = -stretch_pos_R;
+  target_state_pos[3] = stretch_pos_L + _stretch_l_origin_code;
+  target_state_pos[4] = -stretch_pos_R + _stretch_r_origin_code;
 
   // 软限位约束 (仅针对抬升电机 1 和 2)
   for (int i = 1; i <= 2; i++)
@@ -193,8 +393,8 @@ void R1Block::SetTargetStretch(float stretch_pos_L, float stretch_pos_R)
 void R1Block::SetTargetHeight(float lift_pos_L, float lift_pos_R)
 {
   // 1->左抬升, 2->右抬升
-  target_state_pos[1] = lift_pos_L;
-  target_state_pos[2] = -lift_pos_R;
+  target_state_pos[1] = lift_pos_L + _lift_l_origin_code;
+  target_state_pos[2] = -lift_pos_R + _lift_r_origin_code;
 
   // 软限位约束 (仅针对抬升电机 1 和 2)
   for (int i = 1; i <= 2; i++)
@@ -214,14 +414,14 @@ void R1Block::SetTargetState(float stretch_pos_L, float stretch_pos_R,
                              float lift_speed_L, float lift_speed_R)
 {
   // 1->左抬升, 2->右抬升
-  target_state_pos[1] = lift_pos_L;
-  target_state_pos[2] = -lift_pos_R;
+  target_state_pos[1] = lift_pos_L + _lift_l_origin_code;
+  target_state_pos[2] = -lift_pos_R + _lift_r_origin_code;
   target_state_speed[1] = lift_speed_L;
   target_state_speed[2] = lift_speed_R;
 
   // 3->左伸缩, 4->右伸缩
-  target_state_pos[3] = stretch_pos_L;
-  target_state_pos[4] = -stretch_pos_R;
+  target_state_pos[3] = stretch_pos_L + _stretch_l_origin_code;
+  target_state_pos[4] = -stretch_pos_R + _stretch_r_origin_code;
   target_state_speed[3] = stretch_speed_L;
   target_state_speed[4] = stretch_speed_R;
 
@@ -370,7 +570,7 @@ void R1Block::Aim_Block()
 {
   if (block_detect[0] == 1)
   {
-    Spd = Vec2{0, 0.1};
+    Spd = Vec2{0, 0.05};
     aim_right = 0;
     Seq::WaitUntil([&]()
                    { return block_detect[0] == 0; }); // 检测到没有块在上面的时候
@@ -378,7 +578,7 @@ void R1Block::Aim_Block()
   }
   else if (block_detect[1] == 1)
   {
-    Spd = Vec2{0, -0.10};
+    Spd = Vec2{0, -0.05};
     aim_right = 0;
     Seq::WaitUntil([&]()
                    { return block_detect[1] == 0; }); // 检测到没有块在上面的时候
@@ -407,104 +607,151 @@ int R1Block::trans_height(int block_height)
   }
 }
 
-
-
-void R1Block::Get_Block(int block_height)
+void R1Block::Get_Block(int block_height, int auto_flag)
 {
   appstate = STATE_GETBLOCK;
   // // 这里是测试用的，实际使用时请注释
   //
-
+  if (_lift_origined)
+  {
 #ifdef Test_device
-  SetTargetState(test_stretch_left, test_stretch_right, 0.0f, 0.0f, test_debug_height, test_debug_height);
-//suckmotor[0].SetSpd(-test_suck_speed);
-//suckmotor[1].SetSpd(test_suck_speed);
+    // SetTargetHeight(test_debug_height, test_debug_height);
+    // SetTargetStretch(test_stretch_left, test_stretch_right);
+// suckmotor[0].SetSpd(-test_suck_speed);
+// suckmotor[1].SetSpd(test_suck_speed);
 #else
-  height_blcok[0] = 0x02;
-  height_blcok[1] = block_height >> 8;
-  height_blcok[2] = (uint8_t)(block_height & 0xFF); // 低 8 位
-  farcon.TransmitFarcon(height_blcok, 3);
+    height_blcok[0] = 0x02;
+    height_blcok[1] = block_height >> 8;
+    height_blcok[2] = (uint8_t)(block_height & 0xFF); // 低 8 位
+    farcon.TransmitFarcon(height_blcok, 3);
 
-  lift_target_pos = trans_height(block_height);
-  if (farcon.button_first_half[5] == 1)
-  {
-    suck_flag = 1;
-    // Seq::Wait(0.1);
-  }
+    lift_target_pos = trans_height(block_height);
 
-  if (farcon.button_first_half[6] == 1)
-  {
-    suck_flag = 2;
-    // Seq::Wait(0.1);
-  }
-
-  if (farcon.button_first_half[7] == 1)
-  {
-    suck_flag = 3; // 完成第三个取块
-    // Seq::Wait(0.5);
-  }
-
-  if (suck_flag == 3)
-  {
-    Loosen_block();
-    suckmotor[0].SetSpd(0);
-    suckmotor[1].SetSpd(0);
-    Seq::Wait(2);
-    SetTargetStretch(release_strectch_distance[1], release_strectch_distance[1]);
-    suckmotor[0].SetSpd(-suck_speed * 0.7);
-    suckmotor[1].SetSpd(suck_speed * 0.7);
-    Seq::Wait(4);
-    Clamp_block(); // 夹紧
-    Seq::Wait(1);
-    suckmotor[0].SetSpd(0);
-    suckmotor[1].SetSpd(0);
-    suck_flag = 100;
-  }
-  if (suck_flag == 1)
-  {
-    suckmotor[0].SetSpd(0);
-    suckmotor[1].SetSpd(0);
-    Loosen_block();
-    if (last_height != block_height)
+    if (farcon.button_first_half[5] == 1)
     {
-      SmoothMoveLiftToTarget(trans_height(last_height), lift_target_pos, 2);
-      Seq::WaitUntil([&]()
-                     { return (llift_reached && rlift_reached); }); // 检测到没有块在上面的时候
+      suck_flag = 1;
     }
 
-    Seq::Wait(1); // 安全保护
-    Aim_Block();
-    SmoothMoveStretchToTarget(0, stretch_distance[1], 2);
-    Seq::Wait(2);
-    // 实际取块
-    Clamp_block(); // 夹紧
-    suckmotor[0].SetSpd(-suck_speed);
-    suckmotor[1].SetSpd(suck_speed);
-    Seq::Wait(4);
-    SmoothMoveStretchToTarget(stretch_distance[1], 0, 2);
-    Seq::Wait(2);
-    suckmotor[0].SetSpd(0);
-    suckmotor[1].SetSpd(0);
-    Clamp_block(); // 夹紧
-    Seq::Wait(1);
-    last_height = block_height;
-    suck_flag = 100;
-  }
+    if (farcon.button_first_half[6] == 1)
+    {
+      suck_flag = 2;
+    }
 
-  if (suck_flag == 2)
-  {
-    SmoothMoveLiftToTarget(trans_height(last_height), lift_target_pos, 2);
-    last_height = block_height;
-    suck_flag = 100;
-  }
+    if (farcon.button_first_half[7] == 1)
+    {
+      suck_flag = 3; // 完成第三个取块
+    }
 
-  if (suck_flag == 100)
-  {
-    Seq::Wait(0.1);
-  }
-  // 记录上次高度
+    if (suck_flag == 3)
+    {
+      Loosen_block();
+      suckmotor[0].SetSpd(0);
+      suckmotor[1].SetSpd(0);
+      Seq::Wait(2);
+      SetTargetStretch(release_strectch_distance[1], release_strectch_distance[1]);
+      suckmotor[0].SetSpd(-suck_speed * 0.7);
+      suckmotor[1].SetSpd(suck_speed * 0.7);
+      Seq::Wait(4);
+      Clamp_block(); // 夹紧
+      Seq::Wait(1);
+      suckmotor[0].SetSpd(0);
+      suckmotor[1].SetSpd(0);
+      suck_flag = 100;
+    }
+    if (suck_flag == 1)
+    {
+      Loosen_block();
+
+      if (last_height != block_height)
+      {
+        SmoothMoveLiftToTarget(trans_height(last_height), lift_target_pos, 2);
+        Seq::WaitUntil([&]()
+                       { return (llift_reached && rlift_reached); }); // 检测到抬升到对应位置
+      }
+      if (auto_flag == 1)
+      {
+        chassis.MoveRelative({0.1, 0});
+        Seq::WaitUntil([&]()
+                       { return (chassis._Walking() == 1); }); // 检测到最外面块取到了
+      }
+
+      Seq::Wait(1); // 安全保护
+      Aim_Block();
+      SmoothMoveStretchToTarget(0, stretch_distance[1], 2);
+      Seq::Wait(2);
+      // 实际取块
+      Clamp_block(); // 夹紧
+      suckmotor[0].SetSpd(-suck_speed);
+      suckmotor[1].SetSpd(suck_speed);
+      // 可优化自动取块
+      if (auto_flag == 0)
+      {
+        Seq::Wait(4);
+        SmoothMoveStretchToTarget(stretch_distance[1], 0, 2);
+        suckmotor[0].SetSpd(0);
+        suckmotor[1].SetSpd(0);
+        Clamp_block(); // 夹紧
+        Seq::Wait(1);
+      }
+      else if (auto_flag == 1)
+      {
+        if (block_exist[2] == 0) // 最里面的块还没取
+        {
+          Seq::WaitUntil([&]()
+                         { return (block_exist[0] == 1); }); // 检测到最外面块取到了
+          Seq::WaitUntil([&]()
+                         { return (block_exist[1] == 1); }); // 检测到中间块取到了
+          Seq::WaitUntil([&]()
+                         { return (block_exist[2] == 1); }); // 检测到最里面块取到了
+          suckmotor[0].SetSpd(0);
+          suckmotor[1].SetSpd(0);
+          SmoothMoveStretchToTarget(stretch_distance[1], 0, 2);
+          Clamp_block(); // 夹紧
+          Seq::Wait(1);
+        }
+        if (block_exist[2] == 1 && block_exist[1] == 0)
+        {
+          Seq::WaitUntil([&]()
+                         { return (block_exist[0] == 1); }); // 检测到最外面块取到了
+          Seq::WaitUntil([&]()
+                         { return (block_exist[1] == 1); }); // 检测到中间块取到了
+          suckmotor[0].SetSpd(0);
+          suckmotor[1].SetSpd(0);
+          SmoothMoveStretchToTarget(stretch_distance[1], 0, 2);
+          Clamp_block(); // 夹紧
+          Seq::Wait(1);
+        }
+        if (block_exist[2] == 1 && block_exist[1] == 1)
+        {
+          Seq::WaitUntil([&]()
+                         { return (block_exist[0] == 1); }); // 检测到中间块取到了
+          SmoothMoveStretchToTarget(stretch_distance[1], release_strectch_distance[1], 2);
+          Clamp_block(); // 夹紧
+          suckmotor[0].SetSpd(0);
+          suckmotor[1].SetSpd(0);
+          Seq::Wait(1);
+        }
+      }
+
+      last_height = block_height;
+      suck_flag = 100;
+    }
+
+    if (suck_flag == 2)
+    {
+      SmoothMoveLiftToTarget(trans_height(last_height), lift_target_pos, 2);
+      last_height = block_height;
+      suck_flag = 100;
+    }
+
+    if (suck_flag == 100)
+    {
+      Seq::Wait(0.1);
+    }
+    // 记录上次高度
 
 #endif
+  }
 }
 
 void R1Block::PreLayBLock()
@@ -513,22 +760,21 @@ void R1Block::PreLayBLock()
   {
     release_pre_flag = 1;
   }
-    if (release_pre_flag == 1)
-    {
-      Loosen_block();
-      Seq::Wait(1);
-      // 从 0 平滑移动到目标位置，总耗时 4.0 秒，切分 100 步完成
-      SmoothMoveTo(0.0f, release_strectch_distance[1], 0.0f, realse_block_height, 4, 100);
-      Seq::Wait(1);
-      Clamp_block();
-      Seq::Wait(1);
-      release_pre_flag = 0;
-    is_prelay_finished=true; 
-    }
-
+  if (release_pre_flag == 1)
+  {
+    Loosen_block();
+    Seq::Wait(1);
+    // 从 0 平滑移动到目标位置，总耗时 4.0 秒，切分 100 步完成
+    SmoothMoveTo(0.0f, release_strectch_distance[1], 0.0f, realse_block_height, 4, 100);
+    Seq::Wait(1);
+    Clamp_block();
+    Seq::Wait(1);
+    release_pre_flag = 0;
+    is_prelay_finished = true;
+  }
 }
 
-void R1Block::ReleaseBlock()
+void R1Block::ReleaseBlock(int auto_flag)
 {
   appstate = STATE_RELEASEBLOCK;
 
@@ -538,8 +784,6 @@ void R1Block::ReleaseBlock()
   // R1Block.air_pump_pin.Write(manble); // 1松，0紧
   //  等待 begin_spit_flag 触发吐块流程
   begin_spit_flag = 1;
-
-
 
   if (farcon.button_first_half[4] == 1)
   {
@@ -554,6 +798,11 @@ void R1Block::ReleaseBlock()
   {
     realase_Confirm = 1;
     // Seq::Wait(1);
+  }
+
+  if (farcon.button_first_half[6] == 1)
+  {
+    release_pre_flag = 1;
   }
 
   if (farcon.button_first_half[7] == 1)
@@ -577,7 +826,6 @@ void R1Block::ReleaseBlock()
   {
     // R2死了
 
-
 #ifdef R2_dead
     // if (release_test_flag == 1)
     // {
@@ -592,9 +840,41 @@ void R1Block::ReleaseBlock()
     //   }
     // }
 
-    ///////////
+    ///////////进洞自动操作
+    if (auto_flag == 1)
+    {
+      if (first_spit == 0)
+      {
+        Loosen_block();
+        Seq::Wait(1);
+        // 从 0 平滑移动到目标位置，总耗时 4.0 秒，切分 100 步完成
+        SmoothMoveLiftToTarget(0, realse_block_height, 4, 100);
+        Seq::Wait(1);
+        Clamp_block();
+        Seq::Wait(1);
+        chassis.MoveRelative({0.3, 0});
+        Seq::WaitUntil([&]()
+                       { return (chassis._Walking() == 1); }); // 往后走一步，退洞
+        first_spit = 1;
+        realase_Confirm = 1;
+      }
+    }
+
+    if (release_pre_flag == 1)
+    {
+      Loosen_block();
+      Seq::Wait(1);
+      // 从 0 平滑移动到目标位置，总耗时 4.0 秒，切分 100 步完成
+      SmoothMoveLiftToTarget(0, realse_block_height, 4, 100);
+      Seq::Wait(1);
+      Clamp_block();
+      Seq::Wait(1);
+      release_pre_flag = 0;
+    }
+
     if (realse_order == 0 && realase_Confirm == 1)
     {
+      spit_finish_flag = 0;
       Loosen_block(); // 松开
       suckmotor[0].SetSpd(0);
       suckmotor[1].SetSpd(0);
@@ -612,9 +892,28 @@ void R1Block::ReleaseBlock()
       Seq::Wait(1);
       SetTargetState(release_strectch_distance[0] - 400000, release_strectch_distance[0] - 400000, 0.0f, 0.0f, realse_block_height, realse_block_height);
 
-      // 回到最初位置准备吐
-      realse_order = 1;
-      realase_Confirm = 0;
+      // 只有最前面没有块
+      if (((block_exist[0] == 1) + (block_exist[1] == 1) + (block_exist[2] == 1)) == 2)
+      {
+        realse_order = 1;
+      }
+
+      // 退洞操作
+      if (auto_flag == 1)
+      {
+        chassis.MoveRelative({-0.2, 0});
+        Seq::WaitUntil([&]()
+                       { return (chassis._Walking() == 1); }); // 往后走一步，退洞
+        chassis.MoveRelative({0, -0.54});
+        Seq::WaitUntil([&]()
+                       { return (chassis._Walking() == 1); }); // 走到第二个块
+        chassis.MoveRelative({0.2, 0});
+        Seq::WaitUntil([&]()
+                       { return (chassis._Walking() == 1); }); // 进洞
+        realase_Confirm = 1;
+      }
+      else
+        realase_Confirm = 0;
     }
     else if (realse_order == 1 && realase_Confirm == 1)
     {
@@ -642,8 +941,27 @@ void R1Block::ReleaseBlock()
 
       Seq::Wait(2);
       // 回到最初位置准备吐
-      realse_order = 2;
-      realase_Confirm = 0;
+      if (((block_exist[1] == 1) + (block_exist[2] == 1)) == 1)
+      {
+        realse_order = 2;
+      }
+
+      // 退洞操作
+      if (auto_flag == 1)
+      {
+        chassis.MoveRelative({-0.2, 0});
+        Seq::WaitUntil([&]()
+                       { return (chassis._Walking() == 1); }); // 往后走一步，退洞
+        chassis.MoveRelative({0, -0.54});
+        Seq::WaitUntil([&]()
+                       { return (chassis._Walking() == 1); }); // 走到第二个块
+        chassis.MoveRelative({0.2, 0});
+        Seq::WaitUntil([&]()
+                       { return (chassis._Walking() == 1); }); // 进洞
+        realase_Confirm = 1;
+      }
+      else
+        realase_Confirm = 0;
     }
     else if (realse_order == 2 && realase_Confirm == 1)
     {
@@ -664,10 +982,22 @@ void R1Block::ReleaseBlock()
       Loosen_block();                                  // 松
       suckmotor[0].SetSpd(0);
       suckmotor[1].SetSpd(0);
-      Seq::WaitUntil([&]()
-                     { return farcon.button_first_half[7] == 1; }); // 检测到有块在上面的时候
-      // 回到最初位置准备吐
-      SetTargetState(0.0f, 0.0f, 0.0f, 0.0f, 0, 0);
+      // 退洞操作
+      if (auto_flag == 1)
+      {
+        chassis.MoveRelative({-0.2, 0});
+        Seq::WaitUntil([&]()
+                       { return (chassis._Walking() == 1); }); // 往后走一步，退洞
+        SetTargetState(0.0f, 0.0f, 0.0f, 0.0f, 0, 0);
+      }
+      else
+      {
+        Seq::WaitUntil([&]()
+                       { return farcon.button_first_half[7] == 1; }); // 检测按钮按下表示复位
+        // 回到最初位置准备吐
+        SetTargetState(0.0f, 0.0f, 0.0f, 0.0f, 0, 0);
+      }
+
       realase_Confirm = 0;
     }
     else
