@@ -339,10 +339,6 @@ void R1Block::Update()
   {
     chassis.Move(Spd);
   }
-  if (reach_target == 0)
-  {
-    chassis.Move(Spd);
-  }
 
   // ---- 状态机 ----
   if (appstate == STATE_INIT)

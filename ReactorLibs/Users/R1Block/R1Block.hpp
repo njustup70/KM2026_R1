@@ -14,7 +14,7 @@ enum Match_Mode
   Exploring_the__Charms=1,
   Hidden_Treasures=2,
   
-}
+};
 
 struct BlockInfo
 {

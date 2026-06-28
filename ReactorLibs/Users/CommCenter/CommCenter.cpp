@@ -21,7 +21,7 @@ void CommCenter::Start()
 
 
     /**---- Sick ----**/ 
-    MOD::sick.Init(Hardware::huart_sick,0x01);
+    MOD::sick.Init(Hardware::huart_sick,0x03);
 
     /**---- 板间通讯 ----**/ 
     board_can.Init(Hardware::hcan_main, 0x220, false);
