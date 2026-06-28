@@ -72,50 +72,47 @@ class PathChaserType : public Application
 
     private:
 
+    struct PathRef
+    {
+        Vec2 pos;             // 时间参考位置
+        float yaw = 0.0f;     // 时间参考朝向
+        Vec2 vel;             // 时间参考世界系速度
+        float omega = 0.0f;   // 时间参考角速度
+        float t = 0.0f;       // 相对路径起点时间
+    };
+
     // 当前跟踪的路径 的 路点数组指针 还有数量
     const PathWaypoint* _waypoints = nullptr;
     uint16_t _waypoint_count = 0;
     
-    float _kp_pos = 2.6f;              // 位置误差增益
-    float _kp_yaw = 4.5f;              // 姿态误差增益
-    float _k_sync_time = 1.0f;         // 与时间参考同步增益
-    float _k_sync_meas = 0.45f;        // 与实测进度同步增益
-    float _max_vel = 1.0f;             // 合速度上限，单位m/s
-    float _max_omega = 3.14f;           // 角速度上限，单位rad/s
-    float _max_pos_fb = 0.30f;         // 位置反馈速度上限，单位m/s
-    float _max_yaw_fb = 1.00f;         // 姿态反馈角速度上限，单位rad/s
-    float _max_s_dot = 1.20f;          // 目标进度速度上限，单位m/s
-    float _min_s_dot = -0.15f;         // 目标进度速度下限，单位m/s
-    float _pos_tol = 0.03f;            // 终点位置阈值，单位m
-    float _yaw_tol = 0.04f;            // 终点姿态阈值，单位rad
-    float _finish_time_margin = 0.05f; // 完成时间容差，单位s
-    uint16_t _finish_hold_ticks = 24;  // 完成保持周期，24*5ms=120ms
+    float _kp_pos = 1.8f;              // 位置误差反馈增益
+    float _kp_yaw = 1.8f;              // 姿态误差反馈增益
+    float _ff_gain = 1.1f;             // 前馈增强系数，可在实车上小幅调到1.05~1.20
+    float _max_vel = 999.0f;             // 合速度上限，单位m/s
+    float _max_omega = 999.0f;           // 角速度上限，单位rad/s
+    float _max_pos_fb = 0.25f;         // 位置反馈速度上限，单位m/s
+    float _max_yaw_fb = 0.50f;          // 姿态反馈角速度上限，单位rad/s
+    float _ff_slow_start_err = 0.08f;  // 位置误差超过该值后开始压低前馈
+    float _ff_slow_stop_err = 0.35f;   // 位置误差达到该值后前馈降到最小比例
+    float _min_ff_scale = 0.20f;       // 误差较大时保留的最小前馈比例
+    float _pos_tol = 0.005f;            // 终点位置阈值，单位m
+    float _yaw_tol = 0.02f;            // 终点姿态阈值，单位rad
+    uint16_t _finish_hold_ticks = 10;  // 完成保持周期，200Hz下约50ms
 
-    uint16_t _near_seg_idx = 0;        // 上一次最近段索引
     float _path_total_len = 0.0f;      // 路径总长度（SetPath时预计算）
-    float _path_total_time = 0.0f;     // 路径总时间（SetPath时预计算）
+    float _path_total_time = 0.0f;     // 路径总时间
     bool _path_valid = false;          // 路径是否合法
     float _start_runtime_sec = 0.0f;   // 启动追踪时刻
-    float _last_runtime_sec = 0.0f;    // 上次Update时刻
     float _elapsed_sec = 0.0f;         // 已运行时间
-    float _s_cmd = 0.0f;               // 控制目标进度
-    float _s_ref = 0.0f;               // 时间参考进度
-    float _s_meas = 0.0f;              // 位置实测进度
-    float _s_dot_cmd = 0.0f;           // 控制目标进度速度
     uint16_t _finish_tick_cnt = 0;
     bool _finished = false;
 
     CtrlCmd _cmd;
 
-    Vec2 _sample_pos(float dist) const;
-    Vec2 _sample_vel(float dist) const;
-    float _sample_yaw(float dist) const;
-    float _sample_omega(float dist) const;
+    PathRef _sample_ref_by_time(float t_sec) const;
     float _path_length() const;
     float _path_time() const;
     bool _validate_path() const;
-    float _sample_s_by_time(float t_sec) const;
-    float _solve_progress(const Vec2& now_pos);
     void _update_cmd(const Vec3& now_pose);
     static float _wrap_pi(float rad);
     static Vec2 _limit_vec2(Vec2 vec, float max_len);

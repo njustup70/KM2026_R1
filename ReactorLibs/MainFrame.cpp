@@ -18,6 +18,11 @@ using namespace MOD;
  */
 void MainFrameCpp()
 {
+  //Ksmonit.Perflize();
+  monit.Track(chassis.motors[0].targ_spd);
+  monit.Track(chassis.motors[0].targ_spd_rad);
+  monit.Track(chassis.motors[0].driver.measure.speed_rpm);
+
   //System.SetPositionSource(System.odometer.transform);
   System.SetPositionSource(APP::comm.slam_pos);
 

@@ -144,17 +144,18 @@ class ChassisType : public Application
 
         /*<     底盘速度与加速度限制    >*/
         /// @param 最大加速度，单位m/s^2
-        float _max_accel =3.5f;       
+        float _max_accel =4.0f;       
         /// @param 最大线速度，单位m/s
         float _max_velo = 2.0f;
         /// @param 最大角速度，单位rad/s
-        float _max_omega = 2.0f;
+        float _max_omega = 5.0f;
         /// @param 最大角加速度，单位rad/s^2
-        float _max_beta = 4.0f;
+        float _max_beta = 8.0f;
 
         /*<     底盘系数设置    >*/
         /// @param FARCON模式速度削减系数，为了提高手动的控制精度（手动不求很大的速度），且保持自动挡较高的速度
-        float _farcon_decspeed = 0.7f;
+        float _farcon_decspeed = 0.5f;
+        float _farcon_decyawspeed = 0.5f;
 
         /*<     死区参数    >*/
         /// @param 线速度死区，单位m/s（小于此值设为0）

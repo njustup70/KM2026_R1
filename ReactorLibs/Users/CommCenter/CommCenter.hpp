@@ -11,6 +11,10 @@ enum class ActionType : uint8_t
     BOW = 1,                //对应C板的rod库方法
     CLAMP = 2,
     PICK = 3,
+    CLAMP_2_ON = 4,
+    CLAMP_2_OFF = 5,
+    AWAYFROMDOCK = 6,
+
 };
 
 void R1CBoardCallback(uint8_t task_id, const uint8_t *payload, uint8_t payload_len, void *user_ctx);
@@ -63,6 +67,7 @@ public:
 public:
     // app层业务逻辑相关的变量
     Vec3 slam_pos;
+    bool rodmotor_OK = false;
 
 // public:
 //     uint8_t KFS_values[12];

@@ -12,7 +12,7 @@
 #include "farcon.hpp"
 #include "CommCenter.hpp"
 #include "PathChaser.hpp"
-#include "R1_area1_rod2.hpp"
+#include "R1_area1_rod3.hpp"
 #include "R1_area3.hpp"
 
 
@@ -197,32 +197,71 @@ void Action_RunCmd(StateCore *core)
 
 void Action_GetRod(StateCore *state_core)
 {
-    Seq::WaitUntil([]() -> bool 
-    {
-        return farcon.button_first_half[1 - 1] == 1;  //发送按键1，此时会触发bow动作,在c板处理动作接口
-    });
-    Seq::WaitUntil([]() -> bool 
-    {
-        return farcon.button_first_half[2 - 1] == 1;  //发送按键2，此时会触发夹紧动作
-    });
-    Seq::WaitUntil([]() -> bool 
-    {
-        return farcon.button_first_half[3 - 1] == 1;  //发送按键3，此时会触发转杆动作
-    });
-    Seq::WaitUntil([]() -> bool 
-    {
-        return farcon.button_first_half[4 - 1] == 1;  //发送按键4，此时夹紧
-    }); 
-    chassis.MoveAt(Vec2(0.9,3.3));
-    Seq::WaitUntil([]() -> bool
-                            { return (chassis._Walking() == 1); });
-    chassis.RotateAt(-1.57f);
-    is_ready_to_dock = true; 
+    //手动模式
+    // if (farcon.toggle[2 - 1] == 1)
+    // {
+        Seq::WaitUntil([]() -> bool 
+        {
+            return farcon.button_first_half[1 - 1] == 1;  //发送按键1，此时会触发bow动作,在c板处理动作接口
+        });
+        Seq::WaitUntil([]() -> bool 
+        {
+            return farcon.button_first_half[2 - 1] == 1;  //发送按键2，此时会触发夹紧动作
+        });
+        Seq::WaitUntil([]() -> bool 
+        {
+            return farcon.button_first_half[3 - 1] == 1;  //发送按键3，此时会触发转杆动作
+        });
+        chassis.MoveAt(Vec2(1.3,3.5));
+        Seq::WaitUntil([]() -> bool
+                                { return (chassis._Walking() == 1); });
+        chassis.RotateAt(-1.57f);
+        //Seq::Wait(1);
+        comm.SendActionCommand(ActionType::CLAMP_2_ON);
+        is_ready_to_dock = true; 
+
+   // }
+    // if (farcon.toggle[2 - 1] == 0)
+    // {
+    //     comm.SendActionCommand(ActionType::BOW);
+    //     Seq::WaitUntil([]() -> bool 
+    //     {
+    //         return comm.rodmotor_OK;  
+    //     });
+    //     comm.SendActionCommand(ActionType::CLAMP);
+    //     Seq::WaitUntil([]() -> bool 
+    //     {
+    //         return comm.rodmotor_OK;  
+    //     });
+    //     chassis.MoveAt(Vec2(0.9,3.3));
+    //     // Seq::WaitUntil([]() -> bool
+    //     //                         { return (chassis._Walking() == 1); });
+    //     chassis.RotateAt(-1.57f);
+
+    //     comm.SendActionCommand(ActionType::PICK);
+    //     Seq::Wait(1);
+    //     comm.SendActionCommand(ActionType::CLAMP_2_ON);
+
+    //     is_ready_to_dock = true; 
+    // }
 }
 
 void Action_Dock(StateCore *state_core)
 {
-    //对接动作
+    
+    // //对接动作 
+    Seq::WaitUntil([]() -> bool 
+    {
+        return farcon.button_first_half[16 - 1] == 1;  
+    }); 
+
+    // comm.SendActionCommand(ActionType::CLAMP_2_OFF);
+    // Seq::Wait(1);
+    // comm.SendActionCommand(ActionType::AWAYFROMDOCK);
+    // Seq::Wait(1);
+    // comm.SendActionCommand(ActionType::PICK);
+    // Seq::Wait(1);
+    // comm.SendActionCommand(ActionType::CLAMP_2_ON);
 
 }
 void Action_Planning(StateCore *state_core)
@@ -303,7 +342,7 @@ void Action_NavToBlock(StateCore *state_core)
 
         if (is_kfs_point)
         {
-             target_height = GetBlockHeight(target_xid);
+            target_height = GetBlockHeight(target_xid);
             // 触发取块状态
             is_at_block_point = true;
             // 不推进index，取块完成后回来NavToBlock会继续推进

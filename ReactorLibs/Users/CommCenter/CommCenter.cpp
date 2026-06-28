@@ -2,7 +2,7 @@
 #include "Chassis.hpp"
 #include "farcon.hpp"
 
-using APP::chassis;
+using namespace APP;
 using MOD::board_can;
 using MOD::farcon;
 
@@ -50,6 +50,11 @@ void CommCenter::Update()
         _use_slam_data = false; 
         System.SetPositionSource(System.odometer.transform);
     }
+
+    // APP::monit.Track(slam_pos.x);
+    // APP::monit.Track(slam_pos.y);
+    // APP::monit.Track(slam_pos.z);
+
 }
 
 /** -------------------  工控机的接收回调函数   ------------------------- **/
@@ -144,69 +149,16 @@ void CommCenter::SendActionCommand(ActionType action_id)
 /** -------------------  板间通讯：接收Cboard数据 的回调函数   ------------------------- **/
 void R1CBoardCallback(uint8_t task_id, const uint8_t *payload, uint8_t payload_len, void *user_ctx)
 {
-    auto* self = static_cast<CommCenter*>(user_ctx);
-    if (!self || payload_len < 2) return;
+    // auto* self = static_cast<CommCenter*>(user_ctx);
+    // if (!self || payload_len < 2) return;
 
     //所有任务都挂载在task_id 1上
-    if (task_id == 1) 
-    {
-        uint8_t proto_type = payload[0];
-        uint8_t action_id  = payload[1];
-        
-        if (proto_type == 0x03) // 动作指令
+        if(payload[0] == 1)
         {
-            // 如果上层（比如状态机逻辑）注册了监听器，直接通知上层，CommCenter 本身不处理业务
-            if (self->_action_handler) 
-            {
-                self->_action_handler(action_id, self->_action_ctx);
-            }
+            comm.rodmotor_OK = true;
         }
-    }
+        else 
+        {
+            comm.rodmotor_OK = false;
+        }
 }
-
-/** -------------------  光通讯发送函数   ------------------------- **/
-// void CommCenter::PackAndSendKFS()
-// {
-//     uint8_t tx_buf[3] = {0}; // 用来存放打包后的 3 个字节
-
-//     // 对应你之前解包逆向逻辑：
-//     // tx_buf[0] 存前 4 个数据 (row 0)
-//     // tx_buf[1] 存中 4 个数据 (row 1)
-//     // tx_buf[2] 存后 4 个数据 (row 2, 3 的一部分)
-    
-//     // 为了不搞晕，我们直接用一维的思路把它压进去：
-//     for (int i = 0; i < 12; i++)
-//     {
-//         // 1. 把一维索引 i 还原成你的二维数组下标
-//         int row = i / 3;
-//         int col = i % 3;
-        
-//         // 2. 计算这个数据应该落在 tx_buf 的第几个字节 (0, 1, 2)
-//         int buf_idx = i / 4; 
-        
-//         // 3. 计算在这个字节内的位移量 (0, 2, 4, 6 bits)
-//         int bit_shift = 2 * (i % 4);
-        
-//         // 4. 将枚举值（强转为 uint8_t）左移并拼接到缓冲区中
-//         tx_buf[buf_idx] |= (static_cast<uint8_t>(farcon.KFS_values[row][col]) & 0x03) << bit_shift;
-//     }
-
-//     // 5. 调用你之前的发送函数，长度固定为 3 字节
-//     optcomm.SendData(tx_buf, 3);
-// }
-
-// void CommCenter::SimplePackAndSendKFS()
-// {
-//     uint8_t tx_buf[12] = {0}; // 12个元素，每个元素占1字节
-//     int index = 0;
-
-//     for (int row = 0; row < 4; row++)
-//     {
-//         for (int col = 0; col < 3; col++)
-//         {
-//             tx_buf[index++] = static_cast<uint8_t>(farcon.KFS_values[row][col]);
-//         }
-//     }
-//     // 调用发送函数，长度为 12 字节
-//     optcomm.SendData(tx_buf, sizeof(tx_buf));
-// }
