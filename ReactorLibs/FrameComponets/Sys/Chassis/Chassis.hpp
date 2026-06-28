@@ -201,6 +201,8 @@ class ChassisType : public Application
         Vec3 targ_ges = Vec3(0, 0, 0);      // 期望姿态，车体右手系，x向前，y向左，z从上向下看逆时针，单位m，rad
         Vec3 targ_speed;                    // 期望速度，车体右手系，x向前，y向左，z左转，单位m/s，rad/s
 
+        Vec2 _rel_target_w; // 换算到世界坐标系下的绝对目标点
+
         typedef struct
         {
             Vec3 pos;
@@ -266,10 +268,19 @@ class ChassisType : public Application
         /// @brief 直接设置底盘速度（一个通用的开环行为）
         void Move(Vec3 Spd);
         void Move(Vec2 Spd);
+        void Move(Vec3 Spd, float duration);
+        void Move(Vec2 Spd, float duration);
+        
         void Rotate(float omega);
 
         void MoveAt(Vec2 Pos);
         void RotateAt(float yaw);
+
+        /**
+        * @brief 控制车体相对车体当前姿态进行X, Y方向的定量位移
+        * @param rel_xy 相对车身坐标系的位移增量（x向前为正，y向左为正），单位：m
+        */
+        void MoveRelative(Vec2 rel_xy);
 
         void LockPosition();
         void UnlockPosition();
