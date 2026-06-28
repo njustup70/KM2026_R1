@@ -560,6 +560,48 @@ void ChassisType::Move(Vec2 Spd)   //Spd单位m/s
     targ_speed.y = Spd.y;
 }
 
+void ChassisType::Move(Vec2 Spd, float duration)
+{
+    if (!enabled)
+        return;
+
+    // 秒转为毫秒
+    _safe_lock_tick = duration * 1000;
+
+    targ_speed.x = Spd.x;
+    targ_speed.y = Spd.y;
+}
+
+void ChassisType::Move(Vec3 Spd, float duration)
+{
+    if (!enabled)
+        return;
+
+    // 秒转为毫秒
+    _safe_lock_tick = duration * 1000;
+
+    targ_speed = Spd;
+}
+
+void ChassisType::MoveRelative(Vec2 rel_xy)
+{
+    if (!enabled) return;
+
+    // 1. 获取当前时刻全场的绝对姿态作为基准
+    float now_yaw = System.position.z;
+
+    // 2. 将相对车身坐标系的位移（右手系：X向前, Y向左）转换到世界坐标系
+    // 旋转矩阵：
+    // W_x = C_x * cos(yaw) - C_y * sin(yaw)
+    // W_y = C_x * sin(yaw) + C_y * cos(yaw)
+    _rel_target_w.x = System.position.x + (rel_xy.x * cosf(now_yaw) - rel_xy.y * sinf(now_yaw));
+    _rel_target_w.y = System.position.y + (rel_xy.x * sinf(now_yaw) + rel_xy.y * cosf(now_yaw));
+
+    MoveAt(_rel_target_w);
+    // _is_pos_locked = true; 
+}
+
+
 void ChassisType::Rotate(float omega)
 {
     if (!enabled)  return;
