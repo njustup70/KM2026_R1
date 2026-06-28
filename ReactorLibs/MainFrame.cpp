@@ -7,10 +7,16 @@
 #include "CommCenter.hpp"
 #include "PathChaser.hpp"
 #include "farcon.hpp"
-#include "LogicGragh.hpp"
-
+#include "ManuGragh.hpp"
+#include "Autogragh.hpp"
+#include "R1_area1_rod3.hpp"
+ 
 using namespace APP;
 using namespace MOD;
+using namespace MOVE;
+
+StateGraph test{"DegeTest"};
+void ActionDege(StateCore *core);
 
 /**
  * @brief 程序主入口
@@ -31,13 +37,24 @@ void MainFrameCpp()
   System.RegistApp(APP::r1block);
   System.RegistApp(APP::comm);
   System.RegistApp(APP::path_chaser);
-  Logic_Init();
 
-  APP::state_core.Enable(0); // 启动状态机核心，指定初始状态图为0号图
+  //test.Degenerate(ActionDege);
+  //state_core.RegistGraph(test);
+
+  ManuGragh_Init();
+  // AutoGragh_Init();
+
+  APP::state_core.Enable(0); // 启动状态机核心，指定初始状态图为0号图 3  
 }
 
 static uint8_t enter_flag = 0;
 void ActionDege(StateCore *core)
 {
+  Seq::WaitUntil([]() -> bool 
+  {
+      return MOD::farcon.button_second_half[9 - 8 - 1] == 1;
+  });
+  MOVE::MoveToTargPos(Area1RodPath);
 
+  core->GetCurState()->Complete = true;
 }

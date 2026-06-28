@@ -4,7 +4,7 @@
  * @brief RC26赛季武林探秘的电控状态机逻辑实现
  * @note 检验一下之前是不是因为用APP组织的逻辑导致爆栈了
  */
-#include "LogicGragh.hpp"
+#include "ManuGragh.hpp"
 #include "PathPlaner.hpp"
 #include "System.hpp"
 #include "Chassis.hpp"
@@ -14,7 +14,7 @@
 #include "PathChaser.hpp"
 #include "R1_area1_rod3.hpp"
 #include "R1_area3.hpp"
-
+#include "Autogragh.hpp"
 
 using namespace APP;
 using namespace MOD;
@@ -51,7 +51,7 @@ int target_height = 200; // 200高度
 int block_time = 1;
 
 // 全局状态图对象
-StateGraph total_flow{"HalfAutoGragh"};
+StateGraph manu_flow{"ManuGragh"};
 
 //-------------辅助函数----------------
 /**
@@ -165,11 +165,11 @@ void Action_ChooseArea(StateCore *core)
 void Action_PreLay(StateCore *core)
 {
 
-r1block.PreLayBLock();
+    r1block.PreLayBLock();
     
 }
 
-void Action_GetPathCmd(StateCore *core)
+void Action_GetandRunPathCmd(StateCore *core)
 {
     Seq::WaitUntil([]() -> bool 
     {
@@ -177,11 +177,13 @@ void Action_GetPathCmd(StateCore *core)
     });
     if(current_area == Area1)
     {
-        APP::path_chaser.ChasePath(Area1RodPath);
+        MOVE::MoveToTargPos(Area1RodPath);
+        // APP::path_chaser.ChasePath(Area1RodPath);
     }
     else if(current_area == Area3)
     {
-        APP::path_chaser.ChasePath(Area3Path);
+        MOVE::MoveToTargPos(Area3Path);
+        // APP::path_chaser.ChasePath(Area3Path);
     }
     else
     {
@@ -189,11 +191,13 @@ void Action_GetPathCmd(StateCore *core)
     }
 }
 
-void Action_RunCmd(StateCore *core)
-{
-    Vec3 cmd_body = APP::path_chaser.GetCmdBody();
-    APP::chassis.Move(cmd_body);
-}
+// void Action_RunCmd(StateCore *core)
+// {
+//     // Vec3 cmd_body = APP::path_chaser.GetCmdBody();
+//     // APP::chassis.Move(cmd_body);
+//     MOVE::MoveToTargPos(Area1RodPath);
+
+// }
 
 void Action_GetRod(StateCore *state_core)
 {
@@ -213,11 +217,12 @@ void Action_GetRod(StateCore *state_core)
             return farcon.button_first_half[3 - 1] == 1;  //发送按键3，此时会触发转杆动作
         });
         chassis.MoveAt(Vec2(1.3,3.5));
-        Seq::WaitUntil([]() -> bool
-                                { return (chassis._Walking() == 1); });
-        chassis.RotateAt(-1.57f);
-        //Seq::Wait(1);
         comm.SendActionCommand(ActionType::CLAMP_2_ON);
+        // Seq::WaitUntil([]() -> bool
+        //                         { return (chassis._Walking() == 1); });
+        chassis.RotateAt(-1.57f);
+        Seq::Wait(1);
+        
         is_ready_to_dock = true; 
 
    // }
@@ -390,33 +395,33 @@ void Action_LayBlock(StateCore *state_core)
 }
 
 // ================================初始化========================================================================
-void Logic_Init(void)
+void ManuGragh_Init(void)
 {
 //    //单独跑三区的的状态（在跑点之前需要完成）
-//        StateBlock& s_lay_pre = total_flow.AddState("Pre LayBlock");
+//        StateBlock& s_lay_pre = manu_flow.AddState("Pre LayBlock");
 
     //1.添加状态块
-    // StateBlock& s_choosearea = total_flow.AddState("Choose Area");
-    // StateBlock& s_chaser = total_flow.AddState("GetCmd");
-    // StateBlock& s_run = total_flow.AddState("RunCmd");    
-    // StateBlock& s_rod = total_flow.AddState("GetRod");
-    // StateBlock& s_dock = total_flow.AddState("Docking");
+    StateBlock& s_choosearea = manu_flow.AddState("Choose Area");
+    StateBlock& s_chaser = manu_flow.AddState("GetCmd");
+    // StateBlock& s_run = manu_flow.AddState("RunCmd");    
+    StateBlock& s_rod = manu_flow.AddState("GetRod");
+    StateBlock& s_dock = manu_flow.AddState("Docking");
 
-    // StateBlock &s_plan = total_flow.AddState("Planning");
-    // StateBlock &s_move = total_flow.AddState("NavtoBlock");
-    StateBlock &s_pick = total_flow.AddState("GetBlocking");
+    StateBlock &s_plan = manu_flow.AddState("Planning");
+    StateBlock &s_move = manu_flow.AddState("NavtoBlock");
+    StateBlock &s_pick = manu_flow.AddState("GetBlocking");
 
     // // 其实是三区的逻辑，还没想好状态图之间转移的逻辑，故先放在同一个状态图里
-    // StateBlock &s_lay = total_flow.AddState("LayBlock");
+    StateBlock &s_lay = manu_flow.AddState("LayBlock");
 
     //2.绑定状态的动作函数
 //    s_lay_pre.StateAction=Action_PreLay;
 
-    // s_choosearea.StateAction = Action_ChooseArea;
-    // s_chaser.StateAction = Action_GetPathCmd;
+    s_choosearea.StateAction = Action_ChooseArea;
+    s_chaser.StateAction = Action_GetandRunPathCmd;
     // s_run.StateAction = Action_RunCmd;
-    // s_rod.StateAction = Action_GetRod;
-    // s_dock.StateAction = Action_Dock;
+    s_rod.StateAction = Action_GetRod;
+    s_dock.StateAction = Action_Dock;
 
     // s_plan.StateAction = Action_Planning;
     // s_move.StateAction = Action_NavToBlock;
@@ -431,7 +436,8 @@ void Logic_Init(void)
     // s_choosearea.LinkTo(&is_at_area2, s_plan);
     // s_choosearea.LinkTo(&is_at_area3, s_chaser);
 
-    // s_chaser.LinkTo(&is_ready_to_run, s_run);
+    s_chaser.LinkTo(&is_ready_to_rod, s_rod);
+    s_chaser.LinkTo(&is_ready_to_lay,s_lay);
     // s_run.LinkTo(&is_ready_to_rod, s_rod);
     // s_run.LinkTo(&is_ready_to_lay, s_lay); 
 
@@ -448,14 +454,15 @@ void Logic_Init(void)
     // // GetBlock TO NavToBlock：取块完成（按键确认），继续导航
     // s_pick.LinkTo(&is_pick_done, s_move);
     // TODO!加一个可以管理遥控器还是半自动的控制权的状态函数之间的转移
+    state_core.RegistGraph(manu_flow);
 
     // 注册图
-    state_core.RegistGraph(total_flow);
-    current_area = Area::Area1; 
+    current_area = Area::Area1;
+
 }
 
 // --- 4. 逻辑更新 ---
-void Logic_Update(void)
+void ManuGragh_Update(void)
 {
     // 逻辑判定...
 }

@@ -42,10 +42,10 @@ void ChassisType::Start()
             motors[i].ConfigADRC()
                         .AsSpeedC()
                         .ADRC_Womega(42.0f, 9.6f)
-                        .ADRC_Physic(2.5e-4f, 0.30f, 0.005f)
+                        .ADRC_Physic(2.3e-4f, 0.30f, 0.005f)
                         .ADRC_Limit(15.0f)
-                        .SpdLimit(10000.0f)
-                        .ADRC_MaxPlannedVel(10000.0f)
+                        .SpdLimit(7000.0f)
+                        .ADRC_MaxPlannedVel(7000.0f)
                         .ADRC_SOTF(0.5f)
                         .Apply();
             motors[i].driver.SetReduRatio(MotorDJIReduConst::redu_M3508_G); 
