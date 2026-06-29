@@ -15,6 +15,15 @@
 #include "Monitor.hpp"
 #include "bsp_hardware.hpp"
 
+///加上这个打包对齐指令，防止编译器在结构体中插入空白填充字节
+#pragma pack(1)
+struct FloatDataPacket {
+    float data1;
+    float data2;
+    float data3;
+};
+#pragma pack() 
+
 namespace Systems
 {
     // 区分红方蓝方
@@ -179,7 +188,11 @@ class SystemType
 public:
     Odometer_Ops9           odometer;             // 物理里程计
     Positioner              posner;
-    Vec2 pos_offset;           
+    Vec2 pos_offset;    
+public:
+    //发给遥控器显示的数据包
+    FloatDataPacket pos_packet;
+    uint8_t pos_data[9];
 
     bool is_retrying = false;                               // 是否处于重试状态（从RetryZone出发）
     Application* app_list[24];                              // 系统中的应用实例列表

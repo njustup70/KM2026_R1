@@ -25,6 +25,11 @@ void TaskLogic::Start()
  */
 void TaskLogic::Update()
 {
+    uint8_t state_data[17];
+    state_data[0] = 0x05;
+    memcpy(state_data + 1, APP::state_core.GetCurState()->name, sizeof(APP::state_core.GetCurState()->name));
+    MOD::farcon.TransmitFarcon(state_data, sizeof(state_data));
+    
     if (current_area == Area::Area1)
     {
         is_at_area1 = true;

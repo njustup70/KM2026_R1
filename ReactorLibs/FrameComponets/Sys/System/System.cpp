@@ -64,6 +64,12 @@ void SystemType::Run()
         //加入原点的偏差，相当于对坐标系进行一个平移
         // position.x += pos_offset.x;
         // position.y += pos_offset.y;
+        pos_packet.data1 = position.x;
+        pos_packet.data2 = position.y;
+        // pos_packet.data3 = position.z;
+        pos_data[0] = 0x06;
+        memcpy(pos_data + 1, &pos_packet, 8);
+        MOD::farcon.TransmitFarcon(pos_data,sizeof(pos_data));
     }
 
   // 更新全局时间
