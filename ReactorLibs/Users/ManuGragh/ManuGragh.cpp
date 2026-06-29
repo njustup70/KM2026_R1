@@ -171,6 +171,7 @@ void Action_PreLay(StateCore *core)
 
 void Action_GetandRunPathCmd(StateCore *core)
 {
+    monit.LogSpec("GetCMD...");
     Seq::WaitUntil([]() -> bool 
     {
         return MOD::farcon.button_second_half[9 - 8 - 1] == 1;
@@ -189,6 +190,7 @@ void Action_GetandRunPathCmd(StateCore *core)
     {
         return;
     }
+    state_core.GetCurState()->Complete = true;
 }
 
 // void Action_RunCmd(StateCore *core)
@@ -216,12 +218,13 @@ void Action_GetRod(StateCore *state_core)
         {
             return farcon.button_first_half[3 - 1] == 1;  //发送按键3，此时会触发转杆动作
         });
+
         chassis.MoveAt(Vec2(1.3,3.5));
         comm.SendActionCommand(ActionType::CLAMP_2_ON);
         // Seq::WaitUntil([]() -> bool
         //                         { return (chassis._Walking() == 1); });
         chassis.RotateAt(-1.57f);
-        Seq::Wait(1);
+        //Seq::Wait(1);
         
         is_ready_to_dock = true; 
 
@@ -402,7 +405,7 @@ void ManuGragh_Init(void)
 
     //1.添加状态块
     StateBlock& s_choosearea = manu_flow.AddState("Choose Area");
-    StateBlock& s_chaser = manu_flow.AddState("GetCmd");
+    StateBlock& s_chaser = manu_flow.AddState("GetCmdandRun");
     // StateBlock& s_run = manu_flow.AddState("RunCmd");    
     StateBlock& s_rod = manu_flow.AddState("GetRod");
     StateBlock& s_dock = manu_flow.AddState("Docking");
@@ -423,36 +426,36 @@ void ManuGragh_Init(void)
     s_rod.StateAction = Action_GetRod;
     s_dock.StateAction = Action_Dock;
 
-    // s_plan.StateAction = Action_Planning;
-    // s_move.StateAction = Action_NavToBlock;
+    s_plan.StateAction = Action_Planning;
+    s_move.StateAction = Action_NavToBlock;
     s_pick.StateAction = Action_GetBlock;
-    // s_lay.StateAction = Action_LayBlock;
+    s_lay.StateAction = Action_LayBlock;
 
     //3.设置linkto
     //选择从哪一区开始
 //    s_lay_pre.LinkTo(&is_prelay_finished, s_choosearea);
 
-    // s_choosearea.LinkTo(&is_at_area1, s_chaser);
-    // s_choosearea.LinkTo(&is_at_area2, s_plan);
-    // s_choosearea.LinkTo(&is_at_area3, s_chaser);
+    s_choosearea.LinkTo(&is_at_area1, s_chaser);
+    s_choosearea.LinkTo(&is_at_area2, s_plan);
+    s_choosearea.LinkTo(&is_at_area3, s_chaser);
 
-    s_chaser.LinkTo(&is_ready_to_rod, s_rod);
-    s_chaser.LinkTo(&is_ready_to_lay,s_lay);
+    s_chaser.LinkTo(&s_chaser.Complete, s_rod);
+    s_chaser.LinkTo(&s_chaser.Complete,s_lay);
     // s_run.LinkTo(&is_ready_to_rod, s_rod);
     // s_run.LinkTo(&is_ready_to_lay, s_lay); 
 
-    // s_rod.LinkTo(&is_ready_to_dock, s_dock);
-    // s_dock.LinkTo(&is_ready_to_plan, s_plan);
+    s_rod.LinkTo(&is_ready_to_dock, s_dock);
+    s_dock.LinkTo(&is_ready_to_plan, s_plan);
 
-    // // Planning TO NavToBlock：路径已生成且底盘在API自动模式
-    // s_plan.LinkTo(&is_ready_to_nav, s_move);
+    // Planning TO NavToBlock：路径已生成且底盘在API自动模式
+    s_plan.LinkTo(&is_ready_to_nav, s_move);
  
-    // // NavToBlock TO GetBlock：当前目标点有块，需要取块
-    // s_move.LinkTo(&is_ready_to_pick, s_pick);
-    // s_move.LinkTo(&is_final_goal_reached, s_chaser);
+    // NavToBlock TO GetBlock：当前目标点有块，需要取块
+    s_move.LinkTo(&is_ready_to_pick, s_pick);
+    s_move.LinkTo(&is_final_goal_reached, s_chaser);
 
     // // GetBlock TO NavToBlock：取块完成（按键确认），继续导航
-    // s_pick.LinkTo(&is_pick_done, s_move);
+    s_pick.LinkTo(&is_pick_done, s_move);
     // TODO!加一个可以管理遥控器还是半自动的控制权的状态函数之间的转移
     state_core.RegistGraph(manu_flow);
 

@@ -51,10 +51,8 @@ void TaskLogic::Update()
     }
 
     is_ready_to_run = (APP::chassis.enabled && (!APP::path_chaser.IsFinished()));
-    is_ready_to_rod = ((APP::path_chaser.IsFinished()) && (current_area == Area::Area1));
-    is_ready_to_lay = ((APP::path_chaser.IsFinished()) && (current_area == Area::Area3));
-    // is_ready_to_rod = ((MOVE::MoveToTargPos(Area1RodPath)) && (current_area == Area::Area1));
-    // is_ready_to_lay = ((MOVE::MoveToTargPos(Area3Path)) && (current_area == Area::Area3));
+    // is_ready_to_rod = ((APP::path_chaser.IsFinished()) && (current_area == Area::Area1));
+    // is_ready_to_lay = ((APP::path_chaser.IsFinished()) && (current_area == Area::Area3));
 
     // 底盘模式
     is_APIauto_mode = (chassis.control_mode == chassis._ChasConMode::API);
