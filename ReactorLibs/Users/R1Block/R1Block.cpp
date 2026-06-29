@@ -71,12 +71,12 @@ void R1Block::Start()
 
   //   // ---- 大疆伸缩电机左（M2006，减速比36，CAN2 ID:4，位置串级模式）----
   stretchmotor[0].Init(Hardware::hcan_sub, 4, DJI_C610);
-  stretchmotor[0].ConfigADRC().AsPosC().ADRC_Womega(42.0f, 9.6f).ADRC_Physic(3e-5f, 0.30f, 0.005f).ADRC_Limit(3.0f).SpdLimit(6000.0f).ADRC_MaxPlannedVel(6000.0f).ADRC_SOTF(0.2).Apply();
+  stretchmotor[0].ConfigADRC().AsPosC().ADRC_Womega(42.0f, 9.6f).ADRC_Physic(3e-5f, 0.30f, 0.005f).ADRC_Limit(3.0f).SpdLimit(10000.0f).ADRC_MaxPlannedVel(10000.0f).ADRC_SOTF(0.2).Apply();
   stretchmotor[0].driver.Enable(); // 左边target_pos是1000000左右合适，且+的往前
 
   // ---- 大疆伸缩电机右（M2006，减速比36，CAN2 ID:3，位置串级模式）----
   stretchmotor[1].Init(Hardware::hcan_sub, 3, DJI_C610);
-  stretchmotor[1].ConfigADRC().AsPosC().ADRC_Womega(42.0f, 9.6f).ADRC_Physic(3e-5f, 0.30f, 0.005f).ADRC_Limit(3.0f).SpdLimit(6000.0f).ADRC_MaxPlannedVel(6000.0f).ADRC_SOTF(0.2f).Apply();
+  stretchmotor[1].ConfigADRC().AsPosC().ADRC_Womega(42.0f, 9.6f).ADRC_Physic(3e-5f, 0.30f, 0.005f).ADRC_Limit(3.0f).SpdLimit(10000.0f).ADRC_MaxPlannedVel(10000.0f).ADRC_SOTF(0.2f).Apply();
   stretchmotor[1].driver.Enable(); // 右边target_pos是1000000左右合适，且-的往前
 
   SetTargetState(0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
@@ -658,7 +658,7 @@ void R1Block::Get_Block(int block_height, int auto_flag)
       suckmotor[1].SetSpd(0);
       suck_flag = 100;
     }
-    if (auto_flag == 1&&finish_pre_suck==0)
+    if (auto_flag == 1 && finish_pre_suck == 0)
     {
       if (last_height != block_height)
       {
@@ -671,7 +671,7 @@ void R1Block::Get_Block(int block_height, int auto_flag)
                      { return (chassis._Walking() == 1); }); // 检测到到位置了
       last_height = block_height;
       suck_flag = 1;
-      finish_pre_suck=1;
+      finish_pre_suck = 1;
     }
 
     if (suck_flag == 1)
@@ -679,7 +679,7 @@ void R1Block::Get_Block(int block_height, int auto_flag)
       Loosen_block();
 
       if (last_height != block_height)
-      { 
+      {
         SmoothMoveLiftToTarget(trans_height(last_height), lift_target_pos, 2);
         Seq::WaitUntil([&]()
                        { return (llift_reached && rlift_reached); }); // 检测到抬升到对应位置
@@ -688,7 +688,8 @@ void R1Block::Get_Block(int block_height, int auto_flag)
       Seq::Wait(1); // 安全保护
       Aim_Block();
       SetTargetStretch(stretch_distance[1], stretch_distance[1]);
-      Seq::Wait(2);
+      Seq::WaitUntil([&]()
+                     { return ((stretchmotor[0].IsReached() == 1) && (stretchmotor[1].IsReached() == 1)); }); // 检测到最外面到了
       // 实际取块
       Clamp_block(); // 夹紧
       suckmotor[0].SetSpd(-suck_speed);
