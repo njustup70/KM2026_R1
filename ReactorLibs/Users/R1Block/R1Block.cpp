@@ -10,6 +10,7 @@ using APP::chassis;
 using MOD::farcon;
 using MOD::sick;
 Match_Mode COMPETITION_type = KungFu_Master;
+extern bool is_pick_done;
 
 R1Block &APP::r1block = R1Block::GetInstance();
 
@@ -71,15 +72,13 @@ void R1Block::Start()
 
   //   // ---- 大疆伸缩电机左（M2006，减速比36，CAN2 ID:4，位置串级模式）----
   stretchmotor[0].Init(Hardware::hcan_sub, 4, DJI_C610);
-  stretchmotor[0].ConfigADRC().AsPosC().ADRC_Womega(42.0f, 9.6f).ADRC_Physic(3e-5f, 0.30f, 0.005f).ADRC_Limit(3.0f).SpdLimit(10000.0f).ADRC_MaxPlannedVel(10000.0f).ADRC_SOTF(0.2).Apply();
+  stretchmotor[0].ConfigADRC().AsPosC().ADRC_Womega(42.0f, 9.6f).ADRC_Physic(3e-5f, 0.30f, 0.005f).ADRC_Limit(3.0f).SpdLimit(13000.0f).ADRC_MaxPlannedVel(13000.0f).ADRC_SOTF(0.4).Apply();
   stretchmotor[0].driver.Enable(); // 左边target_pos是1000000左右合适，且+的往前
 
   // ---- 大疆伸缩电机右（M2006，减速比36，CAN2 ID:3，位置串级模式）----
   stretchmotor[1].Init(Hardware::hcan_sub, 3, DJI_C610);
-  stretchmotor[1].ConfigADRC().AsPosC().ADRC_Womega(42.0f, 9.6f).ADRC_Physic(3e-5f, 0.30f, 0.005f).ADRC_Limit(3.0f).SpdLimit(10000.0f).ADRC_MaxPlannedVel(10000.0f).ADRC_SOTF(0.2f).Apply();
+  stretchmotor[1].ConfigADRC().AsPosC().ADRC_Womega(42.0f, 9.6f).ADRC_Physic(3e-5f, 0.30f, 0.005f).ADRC_Limit(3.0f).SpdLimit(13000.0f).ADRC_MaxPlannedVel(13000.0f).ADRC_SOTF(0.4f).Apply();
   stretchmotor[1].driver.Enable(); // 右边target_pos是1000000左右合适，且-的往前
-
-  SetTargetState(0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
 
   appstate = STATE_INIT;
   Enable();
@@ -607,12 +606,13 @@ int R1Block::trans_height(int block_height)
   }
 }
 
-void R1Block::Get_Block(int block_height, int auto_flag)
+void R1Block::
+    Get_Block(int block_height, int auto_flag)
 {
   appstate = STATE_GETBLOCK;
   // // 这里是测试用的，实际使用时请注释
   //
-  if (_lift_origined)
+  if (1)
   {
 #ifdef Test_device
     // SetTargetHeight(test_debug_height, test_debug_height);
@@ -625,39 +625,18 @@ void R1Block::Get_Block(int block_height, int auto_flag)
     height_blcok[2] = (uint8_t)(block_height & 0xFF); // 低 8 位
     farcon.TransmitFarcon(height_blcok, 3);
 
-    lift_target_pos = trans_height(block_height);
-
-    if (farcon.button_first_half[5] == 1)
+    if (auto_flag == 0)
     {
+      lift_target_pos = trans_height(block_height);
+      Seq::WaitUntil([&]()
+                     { return (farcon.button_first_half[6] == 1); }); // 检测到到位置了
+      SmoothMoveLiftToTarget(trans_height(last_height), lift_target_pos, 2);
+      last_height = block_height;
+      Seq::WaitUntil([&]()
+                     { return (farcon.button_first_half[5] == 1); }); // 检测到到位置了
       suck_flag = 1;
     }
 
-    if (farcon.button_first_half[6] == 1)
-    {
-      suck_flag = 2;
-    }
-
-    if (farcon.button_first_half[7] == 1)
-    {
-      suck_flag = 3; // 完成第三个取块
-    }
-
-    if (suck_flag == 3)
-    {
-      Loosen_block();
-      suckmotor[0].SetSpd(0);
-      suckmotor[1].SetSpd(0);
-      Seq::Wait(2);
-      SetTargetStretch(release_strectch_distance[1], release_strectch_distance[1]);
-      suckmotor[0].SetSpd(-suck_speed * 0.7);
-      suckmotor[1].SetSpd(suck_speed * 0.7);
-      Seq::Wait(4);
-      Clamp_block(); // 夹紧
-      Seq::Wait(1);
-      suckmotor[0].SetSpd(0);
-      suckmotor[1].SetSpd(0);
-      suck_flag = 100;
-    }
     if (auto_flag == 1 && finish_pre_suck == 0)
     {
       if (last_height != block_height)
@@ -680,7 +659,7 @@ void R1Block::Get_Block(int block_height, int auto_flag)
 
       if (last_height != block_height)
       {
-        SmoothMoveLiftToTarget(trans_height(last_height), lift_target_pos, 2);
+        SmoothMoveLiftToTarget(trans_height(last_height), lift_target_pos, 1.2);
         Seq::WaitUntil([&]()
                        { return (llift_reached && rlift_reached); }); // 检测到抬升到对应位置
       }
@@ -690,6 +669,7 @@ void R1Block::Get_Block(int block_height, int auto_flag)
       SetTargetStretch(stretch_distance[1], stretch_distance[1]);
       Seq::WaitUntil([&]()
                      { return ((stretchmotor[0].IsReached() == 1) && (stretchmotor[1].IsReached() == 1)); }); // 检测到最外面到了
+      Seq::Wait(1);
       // 实际取块
       Clamp_block(); // 夹紧
       suckmotor[0].SetSpd(-suck_speed);
@@ -709,9 +689,18 @@ void R1Block::Get_Block(int block_height, int auto_flag)
                        { return (block_exist[2] == 1); }); // 检测到最里面到了
         suckmotor[0].SetSpd(0);
         suckmotor[1].SetSpd(0);
+
+        Clamp_block(); // 夹紧
+        Seq::Wait(1);
+        last_height = block_height;
+        // if (block_exist[2] == 1)
+        // {
+        //   is_pick_done = true;
+        // }
+        suck_flag = 100;
       }
       // 取第二个块
-      if (block_exist[2] == 1 && block_exist[1] == 0 && block_exist[0] == 0)
+      if (block_exist[2] == 1 && block_exist[1] == 0 && block_exist[0] == 0 && suck_flag == 1)
       {
         Seq::WaitUntil([&]()
                        { return (block_exist[0] == 1); }); // 检测到最外面到了
@@ -720,18 +709,34 @@ void R1Block::Get_Block(int block_height, int auto_flag)
                        { return (block_exist[1] == 1); }); // 检测到中间到了
         suckmotor[0].SetSpd(0);
         suckmotor[1].SetSpd(0);
+        Clamp_block(); // 夹紧
+        Seq::Wait(1);
+        last_height = block_height;
+        // if (block_exist[1] == 1 && block_exist[2] == 1)
+        // {
+        //   is_pick_done = true;
+        // }
+        suck_flag = 100;
       }
-      if (block_exist[2] == 1 && block_exist[1] == 1 && block_exist[0] == 0)
+      if (block_exist[2] == 1 && block_exist[1] == 1 && block_exist[0] == 0 && suck_flag == 1)
       {
         Seq::WaitUntil([&]()
                        { return (block_exist[0] == 1); }); // 检测到最外面到了
         SetTargetStretch(release_strectch_distance[1], release_strectch_distance[1]);
         suckmotor[0].SetSpd(0);
         suckmotor[1].SetSpd(0);
+        Clamp_block(); // 夹紧
+        Seq::Wait(1);
+
+        if (block_exist[1] == 1 && block_exist[2] == 1 && block_exist[0] == 1)
+        {
+          SmoothMoveLiftToTarget(trans_height(last_height), trans_height(600), 2);
+        }
+        Seq::Wait(1);
+        suck_flag = 100;
+        last_height = block_height;
       }
-      Clamp_block(); // 夹紧
-      Seq::Wait(1);
-      last_height = block_height;
+
       suck_flag = 100;
     }
 
@@ -740,11 +745,6 @@ void R1Block::Get_Block(int block_height, int auto_flag)
       SmoothMoveLiftToTarget(trans_height(last_height), lift_target_pos, 2);
       last_height = block_height;
       suck_flag = 100;
-    }
-
-    if (suck_flag == 100)
-    {
-      Seq::Wait(0.1);
     }
     // 记录上次高度
 

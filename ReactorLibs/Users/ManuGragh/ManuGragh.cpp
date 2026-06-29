@@ -377,13 +377,15 @@ void Action_NavToBlock(StateCore *state_core)
 // 状态：取块
 void Action_GetBlock(StateCore *state_core)
 {
+
     // // 引入一个静态的运行状态标志位（锁）
     // static bool is_has_blocked = false;
 
     btn_pick_start = false; 
     is_just_picked = true; 
     is_at_block_point = false; 
-    r1block.Get_Block(target_height); // TODO: 根据遥控器输入的高度调用不同的函数，目前测试用固定值
+    r1block.Get_Block(target_height,1); // TODO: 根据遥控器输入的高度调用不同的函数，目前测试用固定值
+    state_core ->GetCurState()->Complete = true;
 }
 
 void Action_LayBlock(StateCore *state_core)
@@ -456,12 +458,12 @@ void ManuGragh_Init(void)
     s_move.LinkTo(&is_final_goal_reached, s_chaser);
 
     // // GetBlock TO NavToBlock：取块完成（按键确认），继续导航
-    s_pick.LinkTo(&is_pick_done, s_move);
+    s_pick.LinkTo(&s_pick.Complete, s_move);
     // TODO!加一个可以管理遥控器还是半自动的控制权的状态函数之间的转移
     state_core.RegistGraph(manu_flow);
 
     // 注册图
-    current_area = Area::Area1;
+    current_area = Area::Area2;
 
 }
 
