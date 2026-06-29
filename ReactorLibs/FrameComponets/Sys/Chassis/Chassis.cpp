@@ -136,7 +136,7 @@ void ChassisType::Update()
     // 遥控器控制逻辑
     if(farcon.toggle[1] == 1 && farcon.toggle[2] == 0 && farcon.toggle[3] == 0)
     {
-        control_mode = FARCON;
+        control_mode = FIELD_FARCON;
     }
     else if(farcon.toggle[1] == 0 && farcon.toggle[2] == 0 && farcon.toggle[3] == 0)
     {
@@ -172,9 +172,34 @@ void ChassisType::Update()
         _rotating = false;   
         targ_speed.x = -farcon.jys_value[3]*1.0f / 100.f * _max_velo * _farcon_decspeed;   // 前后
         targ_speed.y = -farcon.jys_value[2]*1.0f / 100.f * _max_velo * _farcon_decspeed;   // 左右
-        targ_speed.z = -farcon.jys_value[0]*1.0f / 100.f * _max_omega * _farcon_decspeed;  // 旋转
+        targ_speed.z = -farcon.jys_value[0]*1.0f / 100.f * _max_omega * _farcon_decyawspeed;  // 旋转
         Move(targ_speed);
     }
+
+    if(control_mode == FIELD_FARCON)
+    {
+        _walking = false;
+        _rotating = false;
+
+        // 1. 采集摇杆在世界坐标系（场地系）下的期望速度目标
+        // 摇杆向前对应场地 X 正，摇杆向左对应场地 Y 正
+        float v_world_x = -farcon.jys_value[3]*1.0f / 100.f * _max_velo * _farcon_decspeed; 
+        float v_world_y = -farcon.jys_value[2]*1.0f / 100.f * _max_velo * _farcon_decspeed;
+
+        // 2. 获取当前机器人的全场绝对角度
+        float current_yaw = System.position.z; 
+
+        // 3. 运用二维旋转矩阵，将世界系期望映射到当前车体系
+        targ_speed.x =  v_world_x * cosf(current_yaw) + v_world_y * sinf(current_yaw);
+        targ_speed.y = -v_world_x * sinf(current_yaw) + v_world_y * cosf(current_yaw);
+
+        // 4. 自转角速度依然属于车体局部控制，直接赋值
+        targ_speed.z = -farcon.jys_value[0]*1.0f / 100.f * _max_omega * _farcon_decyawspeed;
+
+        // 5. 刷新安全锁并下发
+        Move(targ_speed);
+    }
+
     //当前锁yaw模式用于对接，所以yaw是固定值
     if(control_mode == LOCKYAW)
     {
@@ -600,7 +625,6 @@ void ChassisType::MoveRelative(Vec2 rel_xy)
     MoveAt(_rel_target_w);
     // _is_pos_locked = true; 
 }
-
 
 void ChassisType::Rotate(float omega)
 {
