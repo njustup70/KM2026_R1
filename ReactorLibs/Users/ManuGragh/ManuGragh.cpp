@@ -297,6 +297,7 @@ void Action_Planning(StateCore *state_core)
  */
 void Action_NavToBlock(StateCore *state_core)
 {
+    r1block.finish_pre_suck=0;
     // 如果刚从取块状态回来，推进index继续导航，
     if (is_just_picked)
     {

@@ -658,81 +658,78 @@ void R1Block::Get_Block(int block_height, int auto_flag)
       suckmotor[1].SetSpd(0);
       suck_flag = 100;
     }
-    if (suck_flag == 1)
+    if (auto_flag == 1&&finish_pre_suck==0)
     {
-      Loosen_block();
-
       if (last_height != block_height)
       {
         SmoothMoveLiftToTarget(trans_height(last_height), lift_target_pos, 2);
         Seq::WaitUntil([&]()
                        { return (llift_reached && rlift_reached); }); // 检测到抬升到对应位置
       }
-      if (auto_flag == 1)
-      {
-        chassis.MoveRelative({0.1, 0});
+      chassis.MoveRelative({0.1, 0});
+      Seq::WaitUntil([&]()
+                     { return (chassis._Walking() == 1); }); // 检测到到位置了
+      last_height = block_height;
+      suck_flag = 1;
+      finish_pre_suck=1;
+    }
+
+    if (suck_flag == 1)
+    {
+      Loosen_block();
+
+      if (last_height != block_height)
+      { 
+        SmoothMoveLiftToTarget(trans_height(last_height), lift_target_pos, 2);
         Seq::WaitUntil([&]()
-                       { return (chassis._Walking() == 1); }); // 检测到最外面块取到了
+                       { return (llift_reached && rlift_reached); }); // 检测到抬升到对应位置
       }
 
       Seq::Wait(1); // 安全保护
       Aim_Block();
-      SmoothMoveStretchToTarget(0, stretch_distance[1], 2);
+      SetTargetStretch(stretch_distance[1], stretch_distance[1]);
       Seq::Wait(2);
       // 实际取块
       Clamp_block(); // 夹紧
       suckmotor[0].SetSpd(-suck_speed);
       suckmotor[1].SetSpd(suck_speed);
       // 可优化自动取块
-      if (auto_flag == 0)
+
+      // 取第一个块
+      if (block_exist[2] == 0 && block_exist[1] == 0 && block_exist[0] == 0)
       {
-        Seq::Wait(4);
-        SmoothMoveStretchToTarget(stretch_distance[1], 0, 2);
+        Seq::WaitUntil([&]()
+                       { return (block_exist[0] == 1); }); // 检测到最外面到了
+        SetTargetStretch(stretch_distance[0], stretch_distance[0]);
+        Seq::WaitUntil([&]()
+                       { return (block_exist[1] == 1); }); // 检测到中间到了
+        SetTargetStretch(0, 0);
+        Seq::WaitUntil([&]()
+                       { return (block_exist[2] == 1); }); // 检测到最里面到了
         suckmotor[0].SetSpd(0);
         suckmotor[1].SetSpd(0);
-        Clamp_block(); // 夹紧
-        Seq::Wait(1);
       }
-      else if (auto_flag == 1)
+      // 取第二个块
+      if (block_exist[2] == 1 && block_exist[1] == 0 && block_exist[0] == 0)
       {
-        if (block_exist[2] == 0) // 最里面的块还没取
-        {
-          Seq::WaitUntil([&]()
-                         { return (block_exist[0] == 1); }); // 检测到最外面块取到了
-          Seq::WaitUntil([&]()
-                         { return (block_exist[1] == 1); }); // 检测到中间块取到了
-          Seq::WaitUntil([&]()
-                         { return (block_exist[2] == 1); }); // 检测到最里面块取到了
-          suckmotor[0].SetSpd(0);
-          suckmotor[1].SetSpd(0);
-          SmoothMoveStretchToTarget(stretch_distance[1], 0, 2);
-          Clamp_block(); // 夹紧
-          Seq::Wait(1);
-        }
-        if (block_exist[2] == 1 && block_exist[1] == 0)
-        {
-          Seq::WaitUntil([&]()
-                         { return (block_exist[0] == 1); }); // 检测到最外面块取到了
-          Seq::WaitUntil([&]()
-                         { return (block_exist[1] == 1); }); // 检测到中间块取到了
-          suckmotor[0].SetSpd(0);
-          suckmotor[1].SetSpd(0);
-          SmoothMoveStretchToTarget(stretch_distance[1], 0, 2);
-          Clamp_block(); // 夹紧
-          Seq::Wait(1);
-        }
-        if (block_exist[2] == 1 && block_exist[1] == 1)
-        {
-          Seq::WaitUntil([&]()
-                         { return (block_exist[0] == 1); }); // 检测到中间块取到了
-          SmoothMoveStretchToTarget(stretch_distance[1], release_strectch_distance[1], 2);
-          Clamp_block(); // 夹紧
-          suckmotor[0].SetSpd(0);
-          suckmotor[1].SetSpd(0);
-          Seq::Wait(1);
-        }
+        Seq::WaitUntil([&]()
+                       { return (block_exist[0] == 1); }); // 检测到最外面到了
+        SetTargetStretch(stretch_distance[0], stretch_distance[0]);
+        Seq::WaitUntil([&]()
+                       { return (block_exist[1] == 1); }); // 检测到中间到了
+        suckmotor[0].SetSpd(0);
+        suckmotor[1].SetSpd(0);
       }
-
+      if (block_exist[2] == 1 && block_exist[1] == 1 && block_exist[0] == 0)
+      {
+        Seq::WaitUntil([&]()
+                       { return (block_exist[0] == 1); }); // 检测到最外面到了
+        SetTargetStretch(release_strectch_distance[1], release_strectch_distance[1]);
+        suckmotor[0].SetSpd(0);
+        suckmotor[1].SetSpd(0);
+      }
+      Clamp_block(); // 夹紧
+      Seq::Wait(1);
       last_height = block_height;
       suck_flag = 100;
     }
