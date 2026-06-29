@@ -115,6 +115,13 @@ void ChassisType::_ApplyPidTuner()
     pid_tuner.applied_count++;          // 计数+1，用于确认是否生效
 }
 
+static inline float NormalizeAngle(float angle)
+{
+    while (angle > PI) angle -= 2 * PI;
+    while (angle <= -PI) angle += 2 * PI;
+    return angle;
+}
+
 void ChassisType::Update()
 {
     // 安全退debug
@@ -181,22 +188,16 @@ void ChassisType::Update()
         _walking = false;
         _rotating = false;
 
-        // 1. 采集摇杆在世界坐标系（场地系）下的期望速度目标
-        // 摇杆向前对应场地 X 正，摇杆向左对应场地 Y 正
-        float v_world_x = -farcon.jys_value[3]*1.0f / 100.f * _max_velo * _farcon_decspeed; 
-        float v_world_y = -farcon.jys_value[2]*1.0f / 100.f * _max_velo * _farcon_decspeed;
+        Vec2 v_world;
+        v_world.x = -farcon.jys_value[3] * 1.0f / 100.f * _max_velo * _farcon_decspeed; // 摇杆向前 -> 场地X正
+        v_world.y = -farcon.jys_value[2] * 1.0f / 100.f * _max_velo * _farcon_decspeed; // 摇杆向左 -> 场地Y正
 
-        // 2. 获取当前机器人的全场绝对角度
-        float current_yaw = System.position.z; 
+        Vec2 v_body = v_world.Rotate(-System.position.z);
 
-        // 3. 运用二维旋转矩阵，将世界系期望映射到当前车体系
-        targ_speed.x =  v_world_x * cosf(current_yaw) + v_world_y * sinf(current_yaw);
-        targ_speed.y = -v_world_x * sinf(current_yaw) + v_world_y * cosf(current_yaw);
+        targ_speed.x = v_body.x;
+        targ_speed.y = v_body.y;
+        targ_speed.z = -farcon.jys_value[0] * 1.0f / 100.f * _max_omega * _farcon_decyawspeed; // 自转属于局部坐标
 
-        // 4. 自转角速度依然属于车体局部控制，直接赋值
-        targ_speed.z = -farcon.jys_value[0]*1.0f / 100.f * _max_omega * _farcon_decyawspeed;
-
-        // 5. 刷新安全锁并下发
         Move(targ_speed);
     }
 
@@ -539,13 +540,6 @@ void ChassisType::MoveAt(Vec2 Pos)
 {
     targ_ges = Vec3(Pos.x, Pos.y, System.position.z);
     _walking = true;
-}
-
-static inline float NormalizeAngle(float angle)
-{
-    while (angle > PI) angle -= 2 * PI;
-    while (angle <= -PI) angle += 2 * PI;
-    return angle;
 }
 
 void ChassisType::RotateAt(float yaw)
