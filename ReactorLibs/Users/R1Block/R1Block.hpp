@@ -11,7 +11,7 @@ enum Match_Mode
 {
 
   KungFu_Master,
-  Exploring_the__Charms=1,
+  Exploring_the_Charms=1,
   Hidden_Treasures=2,
   
 };

@@ -860,18 +860,28 @@ void R1Block::ReleaseBlock(int auto_flag)
     {
       if (first_spit == 0)
       {
+        Vec2 Spd = {0, -0.05};
         Loosen_block();
         Seq::Wait(1);
         // 从 0 平滑移动到目标位置，总耗时 4.0 秒，切分 100 步完成
-        SmoothMoveLiftToTarget(0, realse_block_height, 4, 100);
+        SmoothMoveLiftToTarget(0, realse_block_height, 4, 40);
         Seq::Wait(1);
         Clamp_block();
         Seq::Wait(1);
-        chassis.MoveRelative({0.3, 0});
+        // 左右移动
+        chassis.Move(Spd);
+        Seq::WaitUntil([&]()
+                       { return (block_detect[1] == 1); }); // 往右走
+        chassis.Move({0, 0});
+        chassis.MoveRelative({0, 0.2});
         Seq::WaitUntil([&]()
                        { return (chassis._Walking() == 1); }); // 往后走一步，退洞
+        // 前后移动
+        // chassis.MoveRelative({0.3, 0});
+        // Seq::WaitUntil([&]()
+        //                { return (chassis._Walking() == 1); }); // 往后走一步，退洞
         first_spit = 1;
-        realase_Confirm = 1;
+        // realase_Confirm = 1;
       }
     }
 
@@ -1000,7 +1010,7 @@ void R1Block::ReleaseBlock(int auto_flag)
       // 退洞操作
       if (auto_flag == 1)
       {
-        chassis.MoveRelative({-0.2, 0});
+        chassis.MoveRelative({-0.3, 0});
         Seq::WaitUntil([&]()
                        { return (chassis._Walking() == 1); }); // 往后走一步，退洞
         SetTargetState(0.0f, 0.0f, 0.0f, 0.0f, 0, 0);

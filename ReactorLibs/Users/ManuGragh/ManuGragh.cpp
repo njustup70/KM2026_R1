@@ -463,7 +463,7 @@ void ManuGragh_Init(void)
     state_core.RegistGraph(manu_flow);
 
     // 注册图
-    current_area = Area::Area2;
+    current_area = Area::Area3;
 
 }
 
