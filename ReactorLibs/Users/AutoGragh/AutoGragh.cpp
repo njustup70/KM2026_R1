@@ -23,8 +23,13 @@ using namespace MOVE;
 
 // 全局状态图对象
 StateGraph auto_flow{"AutoGragh"};
-#define Run_competition 4
-#define Run_Zone 2
+
+#define Zone1 1
+#define Zone2 2
+#define Zone3 3
+#define competition 4
+
+#define Run_Zone Zone3
 int target_height=200;
 bool is_final_goal_reached = false;
 
@@ -270,7 +275,7 @@ void AutoGragh_Init(void)
   //  StateBlock& s_choosearea = auto_flow.AddState("Choose Area");
   // 假设你之前定义了它的值，例如：#define Run_graph 1
 
-#if Run_Zone == 1
+#if Run_Zone == Zone1
 
   // 只有一区
   StateBlock &s_rod = auto_flow.AddState("GetRod");
@@ -280,7 +285,7 @@ void AutoGragh_Init(void)
   s_rod.LinkTo(&s_rod.Complete, s_dock);
   //跑到2区
 
-#elif Run_Zone == 2
+#elif Run_Zone == Zone2
   // 只跑二区
   StateBlock &s_plan = auto_flow.AddState("Planning");
   StateBlock &s_move = auto_flow.AddState("NavtoBlock");
@@ -295,7 +300,7 @@ void AutoGragh_Init(void)
   s_move.LinkTo(&s_move.Complete, s_pick);
   s_pick.LinkTo(&s_pick.Complete, s_move);
 
-#elif Run_Zone == 3 
+#elif Run_Zone == Zone3
 
   // 只跑三区
   StateBlock &s_lay_pre = auto_flow.AddState("Pre LayBlock");
@@ -304,7 +309,7 @@ void AutoGragh_Init(void)
   s_lay.StateAction = Action_LayBlock;
   s_lay_pre.LinkTo(&s_lay_pre.Complete, s_lay);
   
-#elif Run_Zone == Run_competition
+#elif Run_Zone == competition
   // 全跑
   StateBlock &s_rod = auto_flow.AddState("GetRod");
   StateBlock &s_dock = auto_flow.AddState("Docking");
