@@ -11,7 +11,6 @@ using MOD::farcon;
 using MOD::sick;
 Match_Mode COMPETITION_type = KungFu_Master;
 extern bool is_pick_done;
-
 R1Block &APP::r1block = R1Block::GetInstance();
 
 // int stretch_debug = 2100000;
@@ -773,23 +772,18 @@ void R1Block::PreLayBLock()
 {
   if (_lift_origined == 1)
   {
-    if (farcon.button_first_half[6] == 1)
-    {
-      release_pre_flag = 1;
-    }
-    if (release_pre_flag == 1)
-    {
-      Loosen_block();
-      Seq::Wait(1);
-      // 从 0 平滑移动到目标位置，总耗时 4.0 秒，切分 100 步完成
-      SmoothMoveTo(0.0f, release_strectch_distance[1], 0.0f, realse_block_height, 4, 100);
-      Seq::Wait(1);
+    Seq::WaitUntil([&]()
+                   { return (farcon.button_first_half[6] == 1); }); // 往后走一步，退洞
 
-      Clamp_block();
-      release_pre_flag = 0;
-      is_prelay_finished = true;
-      Seq::Wait(1);
-    }
+    Loosen_block();
+    Seq::Wait(1);
+    // 从 0 平滑移动到目标位置，总耗时 4.0 秒，切分 100 步完成
+    SmoothMoveTo(0.0f, release_strectch_distance[1], 0.0f, realse_block_height, 4, 100);
+    Seq::Wait(1);
+
+    Clamp_block();
+    release_pre_flag = 0;
+    is_prelay_finished = true;
   }
 }
 
