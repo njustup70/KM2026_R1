@@ -752,8 +752,7 @@ void R1Block::PreLayBLock()
     Seq::Wait(1);
 
     Clamp_block();
-    release_pre_flag = 0;
-    is_prelay_finished = true;
+
 
 }
 

@@ -24,7 +24,53 @@ using namespace MOVE;
 // 全局状态图对象
 StateGraph auto_flow{"AutoGragh"};
 #define Run_competition 4
-#define Run_Zone 3
+#define Run_Zone 2
+int target_height=200;
+bool is_final_goal_reached = false;
+
+
+
+//-------------辅助函数----------------
+/**
+ * @brief 辅助函数：判断 X[xid] 在矩形的哪条边
+ * @return 0=下边, 1=左边, 2=上边, 3=右边, 4=下边(X[16,17])
+ *   下边: X[0,1]  拐角: X[2]  左边: X[3..6]  拐角: X[7]
+ *   上边: X[8..10] 拐角: X[11] 右边: X[12..15] 拐角: X[16] 回程: X[17]
+ */
+int GetEdge(int xid)
+{
+  if (xid == 1 || xid == 17)
+    return 0; // 下边
+  if (xid >= 2 && xid <= 7)
+    return 1; // 左边（含拐角2、7）
+  if (xid >= 7 && xid <= 11)
+    return 2; // 上边（含拐角7、11）
+  if (xid >= 11 && xid <= 16)
+    return 3; // 右边（含拐角11、16）
+  if (xid == 0)
+    return 4; // 起点
+  return 0;   // 为了去0的时候先x后y
+}
+
+void BarrelToMid(int target_xid)
+{
+  if (target_xid == 2)
+  {
+    chassis.RotateAt(-1.5708f);
+  }
+  if (target_xid == 7)
+  {
+    chassis.RotateAt(-3.1416f);
+  }
+  if (target_xid == 11)
+  {
+    chassis.RotateAt(0.0f);
+  }
+  if (target_xid == 16)
+  {
+    chassis.RotateAt(1.57f);
+  }
+}
 //====================状态函数组织=======================================================================================
 void ChooseArea(StateCore *core)
 {
@@ -100,21 +146,35 @@ void Dock(StateCore *state_core)
   state_core->GetCurState()->Complete = true;
 }
 //**********************************二区状态块***********************************************************************//
+
+int GetBlockHeight(int index_id)
+{
+  if (index_id == 0 || index_id == 6 || index_id == 8 || index_id == 10 || index_id == 12 || index_id == 14)
+  {
+    return 200; // 200高度
+  }
+  else if (index_id == 4 || index_id == 15)
+  {
+    return 600; // 600高度
+  }
+  else
+  {
+    return 400; // 400高度
+  }
+  return 200;
+}
+
 void Action_Planning(StateCore *state_core)
 {
-  // // 等待遥控器确认KFS数据已发好
-  // Seq::WaitUntil([]() -> bool
-  //                { return farcon.button_second_half[10 - 8 - 1] == 1; });
-  // Zone2_Path.index = 0;
+  // 等待遥控器确认KFS数据已发好
+  Seq::WaitUntil([]() -> bool
+                 { return farcon.button_second_half[10 - 8 - 1] == 1; });
+  Zone2_Path.index = 0;
 
-  // // 调用路径规划
-  // GetShortestPath(farcon.KFS_values, Zone2_Path);
+  // 调用路径规划
+  GetShortestPath(farcon.KFS_values, Zone2_Path);
 
-  // // 起点+终点，size>=2
-  // if (Zone2_Path.size >= 2)
-  // {
-  //   is_path_generated = true;
-  // }
+    state_core->GetCurState()->Complete = true;
 }
 
 /**
@@ -123,81 +183,62 @@ void Action_Planning(StateCore *state_core)
  */
 void Action_NavToBlock(StateCore *state_core)
 {
-  // r1block.finish_pre_suck = 0;
   // // 如果刚从取块状态回来，推进index继续导航，
-  // if (is_just_picked)
-  // {
-  //   // is_pick_done = false;
-  //   is_just_picked = false;
-  //   Zone2_Path.index++;
-  // }
 
-  // // 复位取块完成标志（每次进入NavToBlock时清除）
-  // is_pick_done = false;
-  // // is_ready_to_nav = false;
+    Zone2_Path.index++;
 
-  // // 判断是否已走完全部路径点
-  // if (Zone2_Path.index >= Zone2_Path.size)
-  // {
-  //   Zone2_Path.index = 0;
-  //   is_path_generated = false;
-  //   current_area = Area::Area3;
-  //   is_final_goal_reached = true;
-  //   return;
-  // }
+  // 判断是否已走完全部路径点
+  if (Zone2_Path.index >= Zone2_Path.size)
+  {
+    is_final_goal_reached = true;
+    return;
+  }
 
-  // if (!is_final_goal_reached)
-  // {
-  //   // 获取当前目标路径点
-  //   Vec2 target = Zone2_Path.points[Zone2_Path.index];
-  //   int target_xid = Zone2_Path.labels[Zone2_Path.index];
-  //   int edge = GetEdge(target_xid);
-  //   bool is_corner = (target_xid == 2 || target_xid == 7 ||
-  //                     target_xid == 11 || target_xid == 16);
+  if (!is_final_goal_reached)
+  {
+    // 获取当前目标路径点
+    Vec2 target = Zone2_Path.points[Zone2_Path.index];
+    int target_xid = Zone2_Path.labels[Zone2_Path.index];
+    int edge = GetEdge(target_xid);
+    bool is_corner = (target_xid == 2 || target_xid == 7 ||
+                      target_xid == 11 || target_xid == 16);
 
-  //   chassis.MoveAt(Vec2(target.x, target.y));
-  //   if (is_corner && target_xid != 0)
-  //   {
-  //     Seq::WaitUntil([]() -> bool
-  //                    { return (chassis._Walking() == 1); });
-  //     BarrelToMid(target_xid);
-  //     Seq::WaitUntil([]() -> bool
-  //                    { return (chassis._Rotating() == 1); });
-  //   }
-  //   // ── 已到达目标点，查have_block_xids判断是否需要取块 ──
-  //   bool is_kfs_point = false;
-  //   for (int i = 0; i < Zone2_Path.have_block_count; i++)
-  //   {
-  //     if (Zone2_Path.have_block_xids[i] == target_xid)
-  //     {
-  //       is_kfs_point = true;
-  //       break;
-  //     }
-  //   }
+    chassis.MoveAt(Vec2(target.x, target.y));
+    if (is_corner && target_xid != 0)
+    {
+      Seq::WaitUntil([]() -> bool
+                     { return (chassis._Walking() == 1); });
+      BarrelToMid(target_xid);
+      Seq::WaitUntil([]() -> bool
+                     { return (chassis._Rotating() == 1); });
+    }
+    // ── 已到达目标点，查have_block_xids判断是否需要取块 ──
+    bool is_kfs_point = false;
+    for (int i = 0; i < Zone2_Path.have_block_count; i++)
+    {
+      if (Zone2_Path.have_block_xids[i] == target_xid)
+      {
+        is_kfs_point = true;
+        break;
+      }
+    }
 
-  //   if (is_kfs_point)
-  //   {
-  //     target_height = GetBlockHeight(target_xid);
-  //     // 触发取块状态
-  //     is_at_block_point = true;
-  //     // 不推进index，取块完成后回来NavToBlock会继续推进
-  //   }
-  //   else
-  //   {
-  //     // 普通通过点，直接前进
-  //     Zone2_Path.index++;
-  //     //     if (Zone2_Path.index >= Zone2_Path.size)
-  //     //     {
-  //     //         is_path_generated = false;
-  //     //         current_area = Area::Area3;
-  //     //         is_final_goal_reached = true;
-  //     //     }
-  //   }
-  // }
-  // else
-  // {
-  //   return;
-  // }
+    if (is_kfs_point)
+    {
+      target_height = GetBlockHeight(target_xid);
+      // 触发取块状态
+    }
+    else
+    {
+      // 普通通过点，直接前进
+      Zone2_Path.index++;
+    }
+  }
+  else
+  {
+    return;
+  }
+      state_core->GetCurState()->Complete = true;
 }
 
 // 状态：取块
@@ -237,6 +278,7 @@ void AutoGragh_Init(void)
   s_rod.StateAction = GetRod;
   s_dock.StateAction = Dock;
   s_rod.LinkTo(&s_rod.Complete, s_dock);
+  //跑到2区
 
 #elif Run_Zone == 2
   // 只跑二区
@@ -252,13 +294,16 @@ void AutoGragh_Init(void)
   // NavToBlock TO GetBlock：当前目标点有块，需要取块
   s_move.LinkTo(&s_move.Complete, s_pick);
   s_pick.LinkTo(&s_pick.Complete, s_move);
-#elif Run_Zone == 3
+
+#elif Run_Zone == 3 
+
   // 只跑三区
   StateBlock &s_lay_pre = auto_flow.AddState("Pre LayBlock");
   StateBlock &s_lay = auto_flow.AddState("LayBlock");
   s_lay_pre.StateAction = Action_PreLay;
   s_lay.StateAction = Action_LayBlock;
   s_lay_pre.LinkTo(&s_lay_pre.Complete, s_lay);
+  
 #elif Run_Zone == Run_competition
   // 全跑
   StateBlock &s_rod = auto_flow.AddState("GetRod");
