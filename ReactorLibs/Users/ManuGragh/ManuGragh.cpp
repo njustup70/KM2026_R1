@@ -218,9 +218,13 @@ void Action_GetRod(StateCore *state_core)
         {
             return farcon.button_first_half[3 - 1] == 1;  //发送按键3，此时会触发转杆动作
         });
-
-        chassis.MoveAt(Vec2(1.3,3.5));
         comm.SendActionCommand(ActionType::CLAMP_2_ON);
+        Seq::WaitUntil([]() -> bool 
+        {
+            return farcon.button_second_half[16 - 8 - 1] == 1; 
+        });
+        chassis.MoveAt(Vec2(1.3,3.5));
+        
         // Seq::WaitUntil([]() -> bool
         //                         { return (chassis._Walking() == 1); });
         chassis.RotateAt(-1.57f);
@@ -403,35 +407,32 @@ void Action_LayBlock(StateCore *state_core)
 // ================================初始化========================================================================
 void ManuGragh_Init(void)
 {
-//    //单独跑三区的的状态（在跑点之前需要完成）
-//        StateBlock& s_lay_pre = manu_flow.AddState("Pre LayBlock");
+
 
     //1.添加状态块
     StateBlock& s_choosearea = manu_flow.AddState("Choose Area");
     StateBlock& s_chaser = manu_flow.AddState("GetCmdandRun");
-    // StateBlock& s_run = manu_flow.AddState("RunCmd");    
     StateBlock& s_rod = manu_flow.AddState("GetRod");
     StateBlock& s_dock = manu_flow.AddState("Docking");
 
     StateBlock &s_plan = manu_flow.AddState("Planning");
     StateBlock &s_move = manu_flow.AddState("NavtoBlock");
     StateBlock &s_pick = manu_flow.AddState("GetBlocking");
-
-    // // 其实是三区的逻辑，还没想好状态图之间转移的逻辑，故先放在同一个状态图里
+    StateBlock& s_lay_pre = manu_flow.AddState("Pre LayBlock");
     StateBlock &s_lay = manu_flow.AddState("LayBlock");
 
     //2.绑定状态的动作函数
-//    s_lay_pre.StateAction=Action_PreLay;
 
     s_choosearea.StateAction = Action_ChooseArea;
     s_chaser.StateAction = Action_GetandRunPathCmd;
-    // s_run.StateAction = Action_RunCmd;
     s_rod.StateAction = Action_GetRod;
     s_dock.StateAction = Action_Dock;
 
     s_plan.StateAction = Action_Planning;
     s_move.StateAction = Action_NavToBlock;
     s_pick.StateAction = Action_GetBlock;
+    s_lay_pre.StateAction=Action_PreLay;
+
     s_lay.StateAction = Action_LayBlock;
 
     //3.设置linkto
@@ -442,10 +443,8 @@ void ManuGragh_Init(void)
     s_choosearea.LinkTo(&is_at_area2, s_plan);
     s_choosearea.LinkTo(&is_at_area3, s_chaser);
 
-    s_chaser.LinkTo(&s_chaser.Complete, s_rod);
-    s_chaser.LinkTo(&s_chaser.Complete,s_lay);
-    // s_run.LinkTo(&is_ready_to_rod, s_rod);
-    // s_run.LinkTo(&is_ready_to_lay, s_lay); 
+    s_chaser.LinkTo(&is_ready_to_rod, s_rod);
+    s_chaser.LinkTo(&is_ready_to_lay,s_lay);
 
     s_rod.LinkTo(&is_ready_to_dock, s_dock);
     s_dock.LinkTo(&is_ready_to_plan, s_plan);
@@ -463,7 +462,7 @@ void ManuGragh_Init(void)
     state_core.RegistGraph(manu_flow);
 
     // 注册图
-    current_area = Area::Area2;
+    current_area = Area::Area1;
 
 }
 
