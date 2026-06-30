@@ -7,7 +7,7 @@ using MOD::board_can;
 using MOD::farcon;
 
 CommCenter& APP::comm = CommCenter::GetInstance(); 
-void R1CBoardCallback(uint8_t task_id, const uint8_t *payload, uint8_t payload_len, void *user_ctx);
+void AckCBoardCallback(uint8_t task_id, const uint8_t *payload, uint8_t payload_len, void *user_ctx);
 
 void CommCenter::Start()
 {
@@ -25,10 +25,7 @@ void CommCenter::Start()
 
     /**---- 板间通讯 ----**/ 
     board_can.Init(Hardware::hcan_main, 0x220, false);
-    board_can.RegisterTask(1, R1CBoardCallback, this);
-
-    /** ----光通信---- **/
-    //optcomm.Init(Hardware::huart_optical);
+    board_can.RegisterTask(3, AckCBoardCallback, this);
 
 }
 
@@ -37,9 +34,18 @@ void CommCenter::Update()
     pc.SendOdom(System.odometer.transform.x,System.odometer.transform.y,System.odometer.transform.z); 
     pc.SendSickData(MOD::sick.GetData().raw_frame);
     
+    // //=========板间通讯降频发送a to c，发现还是不行不是因为负载太高的原因
+    // static float cooldown_tick1 = 0;
+    // static float cooldown_tick2 = 0;
+    // if (DWT_GetTimeline_Sec() - cooldown_tick1 > 0.05f)
+    // {
+    //     cooldown_tick1 = DWT_GetTimeline_Sec();
     SendButtonData(); //实时发送，目前没发现payload被覆盖的情况
-    if (farcon.button_second_half[16 - 8 - 1] == 1)
+    // }    
+
+    if (farcon.button_second_half[16 - 8 - 1] == 1 )
     {
+        //cooldown_tick2 = DWT_GetTimeline_Sec();
         SendKFSdata();
         //SimplePackAndSendKFS();
     }
@@ -47,8 +53,8 @@ void CommCenter::Update()
     if (farcon.button_second_half[15 - 8 - 1] == 1)
     {
         pc.SendSlamCorrectionCmd();
-        _use_slam_data = false; 
-        System.SetPositionSource(System.odometer.transform);
+        // _use_slam_data = false; 
+        // System.SetPositionSource(System.odometer.transform);
     }
 
     // APP::monit.Track(slam_pos.x);
@@ -140,25 +146,25 @@ void CommCenter::SendActionCommand(ActionType action_id)
     uint8_t payload[8];
     memset(payload, 0, sizeof(payload));
     
-    payload[0] = 0x03;           //  3:ActionCmd
-    payload[1] = (uint8_t)action_id; // 具体的动作代号
-    
-    MOD::board_can.SendTask(0x210, 1, payload, 8, false);
+    payload[0] = 3;           // 33: ActionCmd
+    payload[1] = 3;           // 3: ActionCmd
+    payload[2] = static_cast<uint8_t>(action_id); 
+    // 使用统一的 8 字节长度发送
+    MOD::board_can.SendTask(0x210, 2, payload, sizeof(payload), false);
 }
 
 /** -------------------  板间通讯：接收Cboard数据 的回调函数   ------------------------- **/
-void R1CBoardCallback(uint8_t task_id, const uint8_t *payload, uint8_t payload_len, void *user_ctx)
+void AckCBoardCallback(uint8_t task_id, const uint8_t *payload, uint8_t payload_len, void *user_ctx)
 {
     // auto* self = static_cast<CommCenter*>(user_ctx);
     // if (!self || payload_len < 2) return;
-
-    //所有任务都挂载在task_id 1上
-        if(payload[0] == 1)
-        {
-            comm.rodmotor_OK = true;
-        }
-        else 
-        {
-            comm.rodmotor_OK = false;
-        }
+    
+    if(payload[0] == 1)
+    {
+        comm.rodmotor_OK = true;
+    }
+    else 
+    {
+        comm.rodmotor_OK = false;
+    }
 }
