@@ -264,7 +264,7 @@ void Action_Dock(StateCore *state_core)
     // //对接动作 
     Seq::WaitUntil([]() -> bool 
     {
-        return farcon.button_first_half[16 - 1] == 1;  
+        return farcon.button_second_half[16 - 8 - 1] == 1;  
     }); 
 
     // comm.SendActionCommand(ActionType::CLAMP_2_OFF);
@@ -281,7 +281,7 @@ void Action_Planning(StateCore *state_core)
     // 等待遥控器确认KFS数据已发好
     Seq::WaitUntil([]() -> bool 
     {
-        return farcon.button_first_half[10 - 1] == 1; 
+        return farcon.button_second_half[10 - 8 - 1] == 1; 
     });
     Zone2_Path.index = 0;
 
