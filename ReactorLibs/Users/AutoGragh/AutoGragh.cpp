@@ -11,12 +11,15 @@
 #include "farcon.hpp"
 #include "CommCenter.hpp"
 #include "PathChaser.hpp"
-#include "R1_area1_rod3.hpp"
-#include "R1_area3.hpp"
 
+//更改PATHS
+#include "a1_torod.hpp"
+#include "a1_todock.hpp"
+#include "R1_area3.hpp"
 
 using namespace APP;
 using namespace MOD;
+using namespace MOVE;
 
 // 全局状态图对象
 StateGraph auto_flow{"AutoGragh"};
@@ -32,28 +35,49 @@ void GetRod(StateCore *state_core)
 {
     Seq::WaitUntil([]() -> bool 
     {
-        return farcon.button_second_half[9 - 1] == 1;  
+        return farcon.button_second_half[9 - 8 - 1] == 1;  
     });
 
-    MOVE::MoveToTargPos(Area1RodPath);
+    MOVE::MoveToTargPos(Area1ToRod);
 
+    chassis.Move(Vec3(0.1,0,0),1);
+
+    // //路径可以给个不准确的,场地肯定会有误差，可以靠move再抵到矛杆架
+    // while(!((fabs(sick.GetSingleChannel(0)) - 0.28) < 0.01))
+    // {
+    //     if ((sick.GetSingleChannel(0) - 0.28 )< 0) 
+    //     {
+    //         chassis.Move(Vec2(0,-0.15));
+    //     }
+    //     else
+    //     {
+    //         chassis.Move(Vec2(0,0.15));
+    //     }
+    // }
+    //左右位置定了可以伸出Bow了，再前后
     comm.SendActionCommand(ActionType::BOW);
+    Seq::Wait(0.1);
+
+    Seq::WaitUntil([]() -> bool 
+    {
+        return comm.rodmotor_OK;  
+    });
+    monit.LogInfo("Bow At:(%.3f,%.3f), sick:%.3f", comm.slam_pos.x,comm.slam_pos.y, sick.GetTrueSingleChannel(0));
+
+    comm.SendActionCommand(ActionType::CLAMP);
+    Seq::Wait(0.1);
     Seq::WaitUntil([]() -> bool 
     {
         return comm.rodmotor_OK;  
     });
 
-    // comm.SendActionCommand(ActionType::CLAMP);
-    // Seq::WaitUntil([]() -> bool 
-    // {
-    //     return comm.rodmotor_OK;  
-    // });
+    // chassis.MoveAt(Vec2(1.3,3.5));
+    // chassis.RotateAt(-1.57f);
+    //MOVE::MoveToTargGes(Vec3(1.3,3.5,-1.57));
+    MOVE::MoveToTargPos(Area1ToDock);
 
-    chassis.MoveAt(Vec2(1.3,3.5));
-    chassis.RotateAt(-1.57f);
-
-    
     comm.SendActionCommand(ActionType::PICK);
+    Seq::Wait(0.1);
     Seq::WaitUntil([]() -> bool 
     {
         return comm.rodmotor_OK;  
@@ -65,20 +89,26 @@ void GetRod(StateCore *state_core)
 
 void Dock(StateCore *state_core)
 {
-
-    //对接动作 
+    //一会写一个自动切换底盘模式的，自动自锁模式
+    //手动怼进去
+    
+    //等待人工判断对接完成，发送光通信指令
     Seq::WaitUntil([]() -> bool 
     {
-        return farcon.button_first_half[16 - 1] == 1;  
+        return farcon.button_second_half[16 - 8 - 1] == 1;  
     }); 
-    // comm.SendActionCommand(ActionType::CLAMP_2_OFF);
-    // Seq::Wait(1);
-    // comm.SendActionCommand(ActionType::AWAYFROMDOCK);
-    // Seq::Wait(1);
-    // comm.SendActionCommand(ActionType::PICK);
-    // Seq::Wait(1);
-    // comm.SendActionCommand(ActionType::CLAMP_2_ON);
 
+    comm.SendActionCommand(ActionType::CLAMP_2_OFF);
+    Seq::Wait(0.5);
+    comm.SendActionCommand(ActionType::AWAYFROMDOCK);
+
+    chassis.Move(Vec2(2,0),0.4);//离开0.8m
+    comm.SendActionCommand(ActionType::PICK);//把杆放平，复用一下Pick
+    Seq::Wait(1);
+    comm.SendActionCommand(ActionType::CLAMP_2_ON);
+    MOVE::MoveToTargGes(Vec3(2.45,1.72,-1.57));
+
+    state_core->GetCurState()->Complete = true;
 }
 
 
