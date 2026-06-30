@@ -115,6 +115,13 @@ void ChassisType::_ApplyPidTuner()
     pid_tuner.applied_count++;          // 计数+1，用于确认是否生效
 }
 
+static inline float NormalizeAngle(float angle)
+{
+    while (angle > PI) angle -= 2 * PI;
+    while (angle <= -PI) angle += 2 * PI;
+    return angle;
+}
+
 void ChassisType::Update()
 {
     // 安全退debug
@@ -136,7 +143,7 @@ void ChassisType::Update()
     // 遥控器控制逻辑
     if(farcon.toggle[1] == 1 && farcon.toggle[2] == 0 && farcon.toggle[3] == 0)
     {
-        control_mode = FARCON;
+        control_mode = FIELD_FARCON;
     }
     else if(farcon.toggle[1] == 0 && farcon.toggle[2] == 0 && farcon.toggle[3] == 0)
     {
@@ -172,9 +179,28 @@ void ChassisType::Update()
         _rotating = false;   
         targ_speed.x = -farcon.jys_value[3]*1.0f / 100.f * _max_velo * _farcon_decspeed;   // 前后
         targ_speed.y = -farcon.jys_value[2]*1.0f / 100.f * _max_velo * _farcon_decspeed;   // 左右
-        targ_speed.z = -farcon.jys_value[0]*1.0f / 100.f * _max_omega * _farcon_decspeed;  // 旋转
+        targ_speed.z = -farcon.jys_value[0]*1.0f / 100.f * _max_omega * _farcon_decyawspeed;  // 旋转
         Move(targ_speed);
     }
+
+    if(control_mode == FIELD_FARCON)
+    {
+        _walking = false;
+        _rotating = false;
+
+        Vec2 v_world;
+        v_world.x = -farcon.jys_value[3] * 1.0f / 100.f * _max_velo * _farcon_decspeed; // 摇杆向前 -> 场地X正
+        v_world.y = -farcon.jys_value[2] * 1.0f / 100.f * _max_velo * _farcon_decspeed; // 摇杆向左 -> 场地Y正
+
+        Vec2 v_body = v_world.Rotate(-System.position.z);
+
+        targ_speed.x = v_body.x;
+        targ_speed.y = v_body.y;
+        targ_speed.z = -farcon.jys_value[0] * 1.0f / 100.f * _max_omega * _farcon_decyawspeed; // 自转属于局部坐标
+
+        Move(targ_speed);
+    }
+
     //当前锁yaw模式用于对接，所以yaw是固定值
     if(control_mode == LOCKYAW)
     {
@@ -516,13 +542,6 @@ void ChassisType::MoveAt(Vec2 Pos)
     _walking = true;
 }
 
-static inline float NormalizeAngle(float angle)
-{
-    while (angle > PI) angle -= 2 * PI;
-    while (angle <= -PI) angle += 2 * PI;
-    return angle;
-}
-
 void ChassisType::RotateAt(float yaw)
 {
     targ_ges.z = NormalizeAngle(yaw);
@@ -600,7 +619,6 @@ void ChassisType::MoveRelative(Vec2 rel_xy)
     MoveAt(_rel_target_w);
     // _is_pos_locked = true; 
 }
-
 
 void ChassisType::Rotate(float omega)
 {
