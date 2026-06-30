@@ -264,7 +264,7 @@ void Action_Dock(StateCore *state_core)
     // //对接动作 
     Seq::WaitUntil([]() -> bool 
     {
-        return farcon.button_first_half[16 - 1] == 1;  
+        return farcon.button_second_half[16 - 8 - 1] == 1;  
     }); 
 
     // comm.SendActionCommand(ActionType::CLAMP_2_OFF);
@@ -281,7 +281,7 @@ void Action_Planning(StateCore *state_core)
     // 等待遥控器确认KFS数据已发好
     Seq::WaitUntil([]() -> bool 
     {
-        return farcon.button_first_half[10 - 1] == 1; 
+        return farcon.button_second_half[10 - 8 - 1] == 1; 
     });
     Zone2_Path.index = 0;
 
@@ -395,12 +395,12 @@ void Action_GetBlock(StateCore *state_core)
 void Action_LayBlock(StateCore *state_core)
 {
     // is_ready_to_lay = false;
-    // Seq::WaitUntil([]() -> bool 
-    // {
-    //     return MOD::farcon.button_second_half[13 - 8 - 1] == 1;
-    // });
+    Seq::WaitUntil([]() -> bool 
+    {
+        return MOD::farcon.button_second_half[13 - 8 - 1] == 1;
+    });
 
-    r1block.ReleaseBlock();
+    r1block.ReleaseBlock(1);
     //Seq::Wait(0.1);
 }
 
@@ -410,22 +410,24 @@ void ManuGragh_Init(void)
 
 
     //1.添加状态块
+        StateBlock& s_lay_pre = manu_flow.AddState("Pre LayBlock");
     StateBlock& s_choosearea = manu_flow.AddState("Choose Area");
     StateBlock& s_chaser = manu_flow.AddState("GetCmdandRun");
-    StateBlock& s_rod = manu_flow.AddState("GetRod");
+	    StateBlock &s_lay = manu_flow.AddState("LayBlock");
+    // StateBlock& s_rod = manu_flow.AddState("GetRod");
     StateBlock& s_dock = manu_flow.AddState("Docking");
 
     StateBlock &s_plan = manu_flow.AddState("Planning");
     StateBlock &s_move = manu_flow.AddState("NavtoBlock");
     StateBlock &s_pick = manu_flow.AddState("GetBlocking");
-    StateBlock& s_lay_pre = manu_flow.AddState("Pre LayBlock");
-    StateBlock &s_lay = manu_flow.AddState("LayBlock");
+
+
 
     //2.绑定状态的动作函数
 
     s_choosearea.StateAction = Action_ChooseArea;
     s_chaser.StateAction = Action_GetandRunPathCmd;
-    s_rod.StateAction = Action_GetRod;
+    // s_rod.StateAction = Action_GetRod;
     s_dock.StateAction = Action_Dock;
 
     s_plan.StateAction = Action_Planning;
@@ -437,16 +439,16 @@ void ManuGragh_Init(void)
 
     //3.设置linkto
     //选择从哪一区开始
-//    s_lay_pre.LinkTo(&is_prelay_finished, s_choosearea);
+   s_lay_pre.LinkTo(&is_prelay_finished, s_choosearea);
 
     s_choosearea.LinkTo(&is_at_area1, s_chaser);
     s_choosearea.LinkTo(&is_at_area2, s_plan);
     s_choosearea.LinkTo(&is_at_area3, s_chaser);
 
-    s_chaser.LinkTo(&is_ready_to_rod, s_rod);
-    s_chaser.LinkTo(&is_ready_to_lay,s_lay);
+    // s_chaser.LinkTo(&is_ready_to_rod, s_rod);
+    s_chaser.LinkTo(&state_core.GetCurState()->Complete, s_lay);
 
-    s_rod.LinkTo(&is_ready_to_dock, s_dock);
+    // s_rod.LinkTo(&is_ready_to_dock, s_dock);
     s_dock.LinkTo(&is_ready_to_plan, s_plan);
 
     // Planning TO NavToBlock：路径已生成且底盘在API自动模式
