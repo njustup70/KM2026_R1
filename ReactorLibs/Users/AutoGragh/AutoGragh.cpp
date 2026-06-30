@@ -210,8 +210,8 @@ void Action_GetBlock(StateCore *state_core)
 //**************************************三区状态块*******************************************************//
 void Action_PreLay(StateCore *core)
 {
-  MOVE::MoveToTargPos(Area3Path);
   r1block.PreLayBLock();
+  MOVE::MoveToTargPos(Area3Path);
 
   state_core.GetCurState()->Complete = true;
 }
@@ -241,13 +241,13 @@ void AutoGragh_Init(void)
 #elif Run_Zone == 2
   // 只跑二区
   StateBlock &s_plan = auto_flow.AddState("Planning");
-    StateBlock &s_move = auto_flow.AddState("NavtoBlock");
+  StateBlock &s_move = auto_flow.AddState("NavtoBlock");
   StateBlock &s_pick = auto_flow.AddState("GetBlocking");
 
-    s_plan.StateAction = Action_Planning;
+  s_plan.StateAction = Action_Planning;
   s_move.StateAction = Action_NavToBlock;
   s_pick.StateAction = Action_GetBlock;
-   s_plan.LinkTo(&s_plan.Complete, s_move);
+  s_plan.LinkTo(&s_plan.Complete, s_move);
 
   // NavToBlock TO GetBlock：当前目标点有块，需要取块
   s_move.LinkTo(&s_move.Complete, s_pick);
@@ -284,12 +284,9 @@ void AutoGragh_Init(void)
   s_move.LinkTo(&s_move.Complete, s_pick);
   s_pick.LinkTo(&s_pick.Complete, s_move);
   s_move.LinkTo(&s_move.Complete, s_lay_pre);
-  s_lay_pre.LinkTo(&s_lay_pre.Complete, s_lay);  
-
+  s_lay_pre.LinkTo(&s_lay_pre.Complete, s_lay);
 
 #endif
-
-
 
   // // 注册图
   state_core.RegistGraph(auto_flow);

@@ -740,8 +740,8 @@ void R1Block::
 
 void R1Block::PreLayBLock()
 {
-  if (_lift_origined == 1)
-  {
+    Seq::WaitUntil([&]()
+                   { return (_lift_origined== 1); }); // 往后走一步，退洞
     Seq::WaitUntil([&]()
                    { return (farcon.button_first_half[6] == 1); }); // 往后走一步，退洞
 
@@ -754,7 +754,7 @@ void R1Block::PreLayBLock()
     Clamp_block();
     release_pre_flag = 0;
     is_prelay_finished = true;
-  }
+
 }
 
 void R1Block::ReleaseBlock(int auto_flag)
