@@ -296,10 +296,10 @@ void R1Block::Update()
   }
   BspLog_LogInfo("%f,%f", stretchmotor[0].motor_adrc.eso.z3, stretchmotor[1].motor_adrc.eso.z3);
 
-  // if (!_lift_origined)
-  // {
-  //   _GetLiftOrigin();
-  // }
+  if (!_lift_origined)
+  {
+    _GetLiftOrigin();
+  }
 
   // if (debug_origin == 1)
   // {
@@ -782,10 +782,12 @@ void R1Block::PreLayBLock()
     // 从 0 平滑移动到目标位置，总耗时 4.0 秒，切分 100 步完成
     SmoothMoveTo(0.0f, release_strectch_distance[1], 0.0f, realse_block_height, 4, 100);
     Seq::Wait(1);
+
     Clamp_block();
-    Seq::Wait(1);
     release_pre_flag = 0;
     is_prelay_finished = true;
+    Seq::Wait(1);
+
   }
 }
 
@@ -860,41 +862,38 @@ void R1Block::ReleaseBlock(int auto_flag)
     {
       if (first_spit == 0)
       {
-        Vec2 Spd = {0, -0.05};
+        Seq::WaitUntil([&]()
+                       { return (farcon.button_first_half[6] == 1); }); 
+
+        chassis.MoveRelative({0, -float(0.25-Block_Sick_lf[0])});
+        Seq::WaitUntil([&]()
+                       { return (chassis._Walking() == 1); }); // 往后走一步，退洞
+
+        Seq::WaitUntil([&]()
+                       { return (farcon.button_first_half[6] == 1); }); // 往后走一步，退洞
+
+        chassis.MoveRelative({0.3, 0});
+        Seq::WaitUntil([&]()
+                       { return (chassis._Walking() == 1); }); // 往后走一步，退洞
+        Seq::WaitUntil([&]()
+                       { return (farcon.button_first_half[6] == 1); }); // 往后走一步，退洞
+        first_spit = 1;
+        realase_Confirm = 1;
+      }
+    }
+    else if (auto_flag == 0)
+    {
+      if (release_pre_flag == 1)
+      {
         Loosen_block();
         Seq::Wait(1);
         // 从 0 平滑移动到目标位置，总耗时 4.0 秒，切分 100 步完成
-        SmoothMoveLiftToTarget(0, realse_block_height, 4, 40);
+        SmoothMoveLiftToTarget(0, realse_block_height, 4, 100);
         Seq::Wait(1);
         Clamp_block();
         Seq::Wait(1);
-        // 左右移动
-        chassis.Move(Spd);
-        Seq::WaitUntil([&]()
-                       { return (block_detect[1] == 1); }); // 往右走
-        chassis.Move({0, 0});
-        chassis.MoveRelative({0, 0.2});
-        Seq::WaitUntil([&]()
-                       { return (chassis._Walking() == 1); }); // 往后走一步，退洞
-        // 前后移动
-        // chassis.MoveRelative({0.3, 0});
-        // Seq::WaitUntil([&]()
-        //                { return (chassis._Walking() == 1); }); // 往后走一步，退洞
-        first_spit = 1;
-        // realase_Confirm = 1;
+        release_pre_flag = 0;
       }
-    }
-
-    if (release_pre_flag == 1)
-    {
-      Loosen_block();
-      Seq::Wait(1);
-      // 从 0 平滑移动到目标位置，总耗时 4.0 秒，切分 100 步完成
-      SmoothMoveLiftToTarget(0, realse_block_height, 4, 100);
-      Seq::Wait(1);
-      Clamp_block();
-      Seq::Wait(1);
-      release_pre_flag = 0;
     }
 
     if (realse_order == 0 && realase_Confirm == 1)

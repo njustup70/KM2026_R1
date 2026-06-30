@@ -141,7 +141,7 @@ public:
 
   int  finish_pre_suck=0;
 
-  float Block_Sick_lf[2] = {0, 0}; // Sick数据，单位是mm，sick单位是m,所以 默认要乘以100 （车坐标系下车左边和车前面）***相对坐标系****
+  float Block_Sick_lf[2] = {0, 0}; // Sick数据，单位是m,所以 默认要乘以100 （车坐标系下车左边和车前面）***相对坐标系****
 
   int Area3_distance_l[3] = {110, 650, 1190}; // 第一个吐块的地方对应的Sick离左边墙的距离，第二个......(相隔应该是540mm）
 
