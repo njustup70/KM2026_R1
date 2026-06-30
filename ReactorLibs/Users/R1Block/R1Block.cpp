@@ -11,7 +11,6 @@ using MOD::farcon;
 using MOD::sick;
 Match_Mode COMPETITION_type = KungFu_Master;
 extern bool is_pick_done;
-
 R1Block &APP::r1block = R1Block::GetInstance();
 
 // int stretch_debug = 2100000;
@@ -104,7 +103,7 @@ void R1Block::_GetLiftOrigin()
   // 【核心参数：机械容忍度】
   // 允许左右两边在寻零时出现的最大差值 (Code数)。
   // 需要根据你的机械结构刚度来实测设定。如果设置过大，依然会扭坏结构。
-  const int32_t MAX_ALLOWABLE_DIFF = 10000;
+  const int32_t MAX_ALLOWABLE_DIFF = 20000;
 
   // 如果已经全部回零，直接退出
   if (_lift_origined)
@@ -138,7 +137,7 @@ void R1Block::_GetLiftOrigin()
       _lift_l_origin_code = liftmotor[0].driver.measure.total_angle;
     }
     // 正常的 ESO 扰动碰撞检测
-    else if ((fabs(liftmotor[0].motor_adrc.eso.z3) > 500) && runed_tick > 60)
+    else if ((fabs(liftmotor[0].motor_adrc.eso.z3) > 1500) && runed_tick > 60)
     {
       lift_l_probe_cnt++;
       if (lift_l_probe_cnt >= 10)
@@ -171,7 +170,7 @@ void R1Block::_GetLiftOrigin()
       _lift_r_origin_code = liftmotor[1].driver.measure.total_angle;
     }
     // 正常的 ESO 扰动碰撞检测
-    else if ((fabs(liftmotor[1].motor_adrc.eso.z3) > 1300) && runed_tick > 60)
+    else if ((fabs(liftmotor[1].motor_adrc.eso.z3) > 1500) && runed_tick > 60)
     {
       lift_r_probe_cnt++;
       if (lift_r_probe_cnt >= 10)
@@ -771,12 +770,11 @@ void R1Block::
 
 void R1Block::PreLayBLock()
 {
-  if (farcon.button_first_half[6] == 1)
+  if (_lift_origined == 1)
   {
-    release_pre_flag = 1;
-  }
-  if (release_pre_flag == 1)
-  {
+    Seq::WaitUntil([&]()
+                   { return (farcon.button_first_half[6] == 1); }); // 往后走一步，退洞
+
     Loosen_block();
     Seq::Wait(1);
     // 从 0 平滑移动到目标位置，总耗时 4.0 秒，切分 100 步完成
@@ -786,8 +784,6 @@ void R1Block::PreLayBLock()
     Clamp_block();
     release_pre_flag = 0;
     is_prelay_finished = true;
-    Seq::Wait(1);
-
   }
 }
 
@@ -863,9 +859,9 @@ void R1Block::ReleaseBlock(int auto_flag)
       if (first_spit == 0)
       {
         Seq::WaitUntil([&]()
-                       { return (farcon.button_first_half[6] == 1); }); 
+                       { return (farcon.button_first_half[6] == 1); });
 
-        chassis.MoveRelative({0, -float(0.25-Block_Sick_lf[0])});
+        chassis.MoveRelative({0, -float(0.25 - Block_Sick_lf[0])});
         Seq::WaitUntil([&]()
                        { return (chassis._Walking() == 1); }); // 往后走一步，退洞
 
