@@ -1,204 +1,141 @@
-/**
- * @file LogicGraph.cpp
- * @author @all-mx
- * @brief RC26赛季武林探秘的电控状态机逻辑实现
- * @note 检验一下之前是不是因为用APP组织的逻辑导致爆栈了
- */
-#include "ManuGragh.hpp"
-#include "PathPlaner.hpp"
-#include "System.hpp"
-#include "Chassis.hpp"
-#include "R1Block.hpp"
-#include "farcon.hpp"
-#include "CommCenter.hpp"
-#include "PathChaser.hpp"
-#include "R1_area1_rod3.hpp"
-#include "R1_area3.hpp"
-#include "Autogragh.hpp"
+// /**
+//  * @file LogicGraph.cpp
+//  * @author @all-mx
+//  * @brief RC26赛季武林探秘的电控状态机逻辑实现
+//  * @note 检验一下之前是不是因为用APP组织的逻辑导致爆栈了
+//  */
+// #include "ManuGragh.hpp"
+// #include "PathPlaner.hpp"
+// #include "System.hpp"
+// #include "Chassis.hpp"
+// #include "R1Block.hpp"
+// #include "farcon.hpp"
+// #include "CommCenter.hpp"
+// #include "PathChaser.hpp"
+// #include "R1_area1_rod3.hpp"
+// #include "R1_area3.hpp"
+// #include "Autogragh.hpp"
 
-using namespace APP;
-using namespace MOD;
+// using namespace APP;
+// using namespace MOD;
 
-// --- 1. 全局状态标志位 ---
-Area current_area = Area::Area1;
-///状态转移的标志
-bool is_ready_to_run = false;
-bool is_ready_to_rod = false;
-bool is_ready_to_dock = false; 
-bool is_ready_to_lay = false;
-bool is_ready_to_plan = false;
-bool is_ready_to_nav = false;
-bool is_ready_to_pick = false;
-bool is_final_goal_reached = false;
-bool is_pick_done = false;
+// // --- 1. 全局状态标志位 ---
+// Area current_area = Area::Area1;
+// /// 状态转移的标志
+// bool is_ready_to_run = false;
+// bool is_ready_to_rod = false;
+// bool is_ready_to_dock = false;
+// bool is_ready_to_lay = false;
+// bool is_ready_to_plan = false;
+// bool is_ready_to_nav = false;
+// bool is_ready_to_pick = false;
+// bool is_final_goal_reached = false;
+// bool is_pick_done = false;
 
-///中间过程标志位  
-bool btn_kfs_confirm = false;
-bool is_APIauto_mode = false;
-bool is_path_generated = false;
-bool is_at_block_point = false;
-bool btn_pick_start = false;
-bool btn_lay_start = false;
-bool is_just_picked = false;
+// /// 中间过程标志位
+// bool btn_kfs_confirm = false;
+// bool is_APIauto_mode = false;
+// bool is_path_generated = false;
+// bool is_at_block_point = false;
+// bool btn_pick_start = false;
+// bool btn_lay_start = false;
+// bool is_just_picked = false;
 
-bool is_at_area1 = true;
-bool is_at_area2 = false;
-bool is_at_area3 = false;
+// bool is_at_area1 = true;
+// bool is_at_area2 = false;
+// bool is_at_area3 = false;
 
-bool is_prelay_finished=false;
+// bool is_prelay_finished = false;
 
-int target_height = 200; // 200高度
-int block_time = 1;
+// int target_height = 200; // 200高度
+// int block_time = 1;
 
-// 全局状态图对象
-StateGraph manu_flow{"ManuGragh"};
+// // 全局状态图对象
+// StateGraph manu_flow{"ManuGragh"};
 
-//-------------辅助函数----------------
-/**
- * @brief 辅助函数：判断 X[xid] 在矩形的哪条边
- * @return 0=下边, 1=左边, 2=上边, 3=右边, 4=下边(X[16,17])
- *   下边: X[0,1]  拐角: X[2]  左边: X[3..6]  拐角: X[7]
- *   上边: X[8..10] 拐角: X[11] 右边: X[12..15] 拐角: X[16] 回程: X[17]
- */
-int GetEdge(int xid)
-{
-    if (xid == 1 || xid == 17)
-        return 0; // 下边
-    if (xid >= 2 && xid <= 7)
-        return 1; // 左边（含拐角2、7）
-    if (xid >= 7 && xid <= 11)
-        return 2; // 上边（含拐角7、11）
-    if (xid >= 11 && xid <= 16)
-        return 3; // 右边（含拐角11、16）
-    if (xid == 0)
-        return 4; // 起点
-    return 0;   // 为了去0的时候先x后y
-}
-
-/**
- * @brief 根据所在边返回朝向矩形内侧的yaw角（rad）
- *        车头默认朝+x方向为0°，逆时针为正
- */
-float GetInwardYaw(int xid)
-{
-    int edge = GetEdge(xid);
-    switch (edge)
-    {
-        case 0:
-        return 0.0f; // 下边：朝+x（内侧）
-        case 1:
-        return -1.5708f; // 左边：朝-y（内侧），即车头向右
-        case 2:
-        return 3.1416f; // 上边：朝-x（内侧）
-        case 3:
-        return 1.5708f; // 右边：朝+y（内侧），即车头向左
-        case 4:
-        return 0.0f; // 回程下边同下边
-        default:
-        return 0.0f;
-    }
-}
-
-Vec2 GetInwardTarget(Vec3 cur_pos, int xid, float dist)
-{
-    int edge = GetEdge(xid);
-    switch (edge)
-    {
-        case 0:
-        case 4:
-        return Vec2(cur_pos.x + dist, cur_pos.y); // 下边：+x方向
-        case 1:
-        return Vec2(cur_pos.x, cur_pos.y - dist); // 左边：-y方向
-        case 2:
-        return Vec2(cur_pos.x - dist, cur_pos.y); // 上边：-x方向
-        case 3:
-        return Vec2(cur_pos.x, cur_pos.y + dist); // 右边：+y方向
-        default:
-        return Vec2(cur_pos.x, cur_pos.y);
-    }
-}
-
-void BarrelToMid(int target_xid)
-{
-    if (target_xid == 2)
-    {
-        chassis.RotateAt(-1.5708f);
-    }
-    if (target_xid == 7)
-    {
-        chassis.RotateAt(-3.1416f);
-    }
-    if (target_xid == 11)
-    {
-        chassis.RotateAt(0.0f);
-    }
-    if (target_xid == 16)
-    {
-        chassis.RotateAt(1.57f);
-    }
-}
-
-int GetBlockHeight(int index_id)
-{
-    if (index_id == 0 || index_id == 6 || index_id == 8 || index_id == 10 || index_id == 12 || index_id == 14)
-    {
-        return 200; // 200高度
-    }
-    else if (index_id == 4 || index_id == 15)
-    {
-        return 600; // 600高度
-    }
-    else
-    {
-        return 400; // 400高度
-    }
-    return 200; 
-}
-
-//====================状态函数组织=======================================================================================
-void Action_ChooseArea(StateCore *core)
-{
-    
-}
-
-
-void Action_PreLay(StateCore *core)
-{
-
-    r1block.PreLayBLock();
-    
-}
-
-void Action_GetandRunPathCmd(StateCore *core)
-{
-    monit.LogSpec("GetCMD...");
-    Seq::WaitUntil([]() -> bool 
-    {
-        return MOD::farcon.button_second_half[9 - 8 - 1] == 1;
-    });
-    if(current_area == Area1)
-    {
-        MOVE::MoveToTargPos(Area1RodPath);
-        // APP::path_chaser.ChasePath(Area1RodPath);
-    }
-    else if(current_area == Area3)
-    {
-        MOVE::MoveToTargPos(Area3Path);
-        // APP::path_chaser.ChasePath(Area3Path);
-    }
-    else
-    {
-        return;
-    }
-    state_core.GetCurState()->Complete = true;
-}
-
-// void Action_RunCmd(StateCore *core)
+// //-------------辅助函数----------------
+// /**
+//  * @brief 辅助函数：判断 X[xid] 在矩形的哪条边
+//  * @return 0=下边, 1=左边, 2=上边, 3=右边, 4=下边(X[16,17])
+//  *   下边: X[0,1]  拐角: X[2]  左边: X[3..6]  拐角: X[7]
+//  *   上边: X[8..10] 拐角: X[11] 右边: X[12..15] 拐角: X[16] 回程: X[17]
+//  */
+// int GetEdge(int xid)
 // {
-//     // Vec3 cmd_body = APP::path_chaser.GetCmdBody();
-//     // APP::chassis.Move(cmd_body);
-//     MOVE::MoveToTargPos(Area1RodPath);
+//   if (xid == 1 || xid == 17)
+//     return 0; // 下边
+//   if (xid >= 2 && xid <= 7)
+//     return 1; // 左边（含拐角2、7）
+//   if (xid >= 7 && xid <= 11)
+//     return 2; // 上边（含拐角7、11）
+//   if (xid >= 11 && xid <= 16)
+//     return 3; // 右边（含拐角11、16）
+//   if (xid == 0)
+//     return 4; // 起点
+//   return 0;   // 为了去0的时候先x后y
+// }
 
+// /**
+//  * @brief 根据所在边返回朝向矩形内侧的yaw角（rad）
+//  *        车头默认朝+x方向为0°，逆时针为正
+//  */
+// float GetInwardYaw(int xid)
+// {
+//   int edge = GetEdge(xid);
+//   switch (edge)
+//   {
+//     case 0:
+//       return 0.0f; // 下边：朝+x（内侧）
+//     case 1:
+//       return -1.5708f; // 左边：朝-y（内侧），即车头向右
+//     case 2:
+//       return 3.1416f; // 上边：朝-x（内侧）
+//     case 3:
+//       return 1.5708f; // 右边：朝+y（内侧），即车头向左
+//     case 4:
+//       return 0.0f; // 回程下边同下边
+//     default:
+//       return 0.0f;
+//   }
+// }
+
+// Vec2 GetInwardTarget(Vec3 cur_pos, int xid, float dist)
+// {
+//   int edge = GetEdge(xid);
+//   switch (edge)
+//   {
+//     case 0:
+//     case 4:
+//       return Vec2(cur_pos.x + dist, cur_pos.y); // 下边：+x方向
+//     case 1:
+//       return Vec2(cur_pos.x, cur_pos.y - dist); // 左边：-y方向
+//     case 2:
+//       return Vec2(cur_pos.x - dist, cur_pos.y); // 上边：-x方向
+//     case 3:
+//       return Vec2(cur_pos.x, cur_pos.y + dist); // 右边：+y方向
+//     default:
+//       return Vec2(cur_pos.x, cur_pos.y);
+//   }
+// }
+
+// void BarrelToMid(int target_xid)
+// {
+//   if (target_xid == 2)
+//   {
+//     chassis.RotateAt(-1.5708f);
+//   }
+//   if (target_xid == 7)
+//   {
+//     chassis.RotateAt(-3.1416f);
+//   }
+//   if (target_xid == 11)
+//   {
+//     chassis.RotateAt(0.0f);
+//   }
+//   if (target_xid == 16)
+//   {
+//     chassis.RotateAt(1.57f);
+//   }
 // }
 
 void Action_GetRod(StateCore *state_core)

@@ -35,14 +35,9 @@ void CommCenter::Update()
     pc.SendOdom(System.odometer.transform.x,System.odometer.transform.y,System.odometer.transform.z); 
     pc.SendSickData(MOD::sick.GetData().raw_frame);
     
-    // //=========板间通讯降频发送a to c，发现还是不行不是因为负载太高的原因
-    // static float cooldown_tick1 = 0;
-    // static float cooldown_tick2 = 0;
-    // if (DWT_GetTimeline_Sec() - cooldown_tick1 > 0.05f)
-    // {
-    //     cooldown_tick1 = DWT_GetTimeline_Sec();
+    //=========板间通讯还是不能降频发送a to c，遥控器反应会有点慢
     SendButtonData(); //实时发送，目前没发现payload被覆盖的情况
-    // }    
+
 
     if (farcon.button_second_half[16 - 8 - 1] == 1 )
     {
@@ -120,7 +115,7 @@ void CommCenter::SendKFSdata()
     payload[1] = 2;//KFS
     uint8_t dest[4];
     for (int i = 0; i < 4; i++)
-    {
+    {   
         dest[i] = 0; // 清零
         for (int j = 0; j < 3; j++)
         {
@@ -133,7 +128,7 @@ void CommCenter::SendKFSdata()
     payload[3]=dest[1];
     payload[4]=dest[2];
     payload[5]=dest[3];
-    board_can.SendTask(0x210, 1, payload, sizeof(payload), false);
+    board_can.SendTask(0x010, 2, payload, sizeof(payload), false);
 }
 
 void CommCenter::SendButtonData()
@@ -153,19 +148,19 @@ void CommCenter::SendButtonData()
     payload[2]=temp_button_add_first;
     payload[3]=temp_button_add_second;
 
-    board_can.SendTask(0x210, 1, payload, 8, false);
+    board_can.SendTask(0x010, 2, payload, sizeof(payload), false);
 }
 
 void CommCenter::SendActionCommand(ActionType action_id)
 {
-    uint8_t payload[8];
+    uint8_t payload[3];
     memset(payload, 0, sizeof(payload));
     
     payload[0] = 3;           // 33: ActionCmd
-    payload[1] = 3;           // 3: ActionCmd
+    payload[1] = 3;          
     payload[2] = static_cast<uint8_t>(action_id); 
     // 使用统一的 8 字节长度发送
-    MOD::board_can.SendTask(0x210, 2, payload, sizeof(payload), false);
+    MOD::board_can.SendTask(0x010, 1, payload, sizeof(payload), false);
 }
 
 /** -------------------  板间通讯：接收Cboard数据 的回调函数   ------------------------- **/

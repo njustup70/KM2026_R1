@@ -59,7 +59,7 @@ external_file/
 .mxproject
 CMakeLists.txt
 CMakePresets.json
-*.ioc
+# *.ioc
 *.s
 *.ld
 #--------------------------

@@ -41,8 +41,8 @@ void MainFrameCpp()
   //test.Degenerate(ActionDege);
   //state_core.RegistGraph(test);
 
-  ManuGragh_Init();
-  // AutoGragh_Init();
+  // ManuGragh_Init();
+  AutoGragh_Init();
 
   APP::state_core.Enable(0); // 启动状态机核心，指定初始状态图为0号图 3  
 }

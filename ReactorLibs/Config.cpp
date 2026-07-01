@@ -28,7 +28,10 @@ void Hardware::Config_Hardwares()
     /**-----    配置定时器    -----**/
     Hardware::htim_led = nullptr;
     // Hardware::htim_liftservo = &htim5;
+
     /**-----    配置 GPIO   -----**/
+    Hardware::miniyellow_aim_rod = BSP::GPIO::Inst(Pin{'A', 1});
+
 
     Hardware::Config_Parameters();
 }
