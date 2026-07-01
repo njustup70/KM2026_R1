@@ -7,14 +7,7 @@
 #include "Chassis.hpp"
 // 块中心在场地坐标系的位置，xy 单位为米，height 单位为毫米
 
-enum Match_Mode
-{
 
-  KungFu_Master,
-  Exploring_the_Charms=1,
-  Hidden_Treasures=2,
-  
-};
 
 struct BlockInfo
 {
@@ -103,8 +96,8 @@ public:
   // 取 200/400/600 块时抬升电机3508对应的 total_angle 目标值
   float blockheight_2_liftmotortargetpos[3] = {40000.0f, 450000.0f, 870000.0f};
   float stretch_distance[2] = {2100000, 4200000};
-  float release_strectch_distance[2] = {1000000.0f, 2800000};
-  float realse_block_height = 500000;
+  float release_strectch_distance[2] = {1200000.0f, 2800000};
+  float realse_block_height = 540000;
   volatile int block_detect[2] = {0}; // 左右两边块是否在范围内
   volatile int block_exist[3] = {0};  // 三个位置的块检测
   // ======================== 取块状态机控制 ========================
