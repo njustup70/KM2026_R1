@@ -15,9 +15,10 @@ void CommCenter::Start()
     // 初始化
     pc.Init(Hardware::huart_host);
     // 注册 SLAM 位置回调 (0xA0)
-    pc.Regist(0xA0, OnSlamPosReceived, this);
+    pc.Regist(0xFF, 0xA0, OnSlamPosReceived, this);
     // 注册 SLAM 纠正完成指令回调（0xB2）
-    pc.Regist(0xB2, SlamJYSuccessed, this);
+    pc.Regist(0xFF, 0xB2, SlamJYSuccessed, this);
+    pc.Regist(0xFF, 0xC1, OnR2ColumnReceived, this);
 
 
     /**---- Sick ----**/ 
@@ -92,6 +93,20 @@ void CommCenter::SlamJYSuccessed(uint8_t func, const uint8_t* payload, uint8_t l
     System.SetPositionSource(self->slam_pos);
     
 }
+
+void CommCenter::OnR2ColumnReceived(uint8_t func, const uint8_t* payload, uint8_t len, void* ctx)
+{
+    (void)func;
+    auto* self = static_cast<CommCenter*>(ctx);
+    if (!self || payload == nullptr || len < 1) return;
+
+    uint8_t column = payload[0];
+    if (column >= 1 && column <= 3)
+    {
+        self->r2_block_column = column;
+    }
+}
+
 void CommCenter::SendKFSdata()
 {
     uint8_t payload[8];
@@ -106,7 +121,7 @@ void CommCenter::SendKFSdata()
         {
             // 计算原始数据在 src 数组中的绝对索引: i*3 + j
             // 计算位移量: j*2
-            dest[i] |= (farcon.KFS_values[(i * 3 + j) / 3][(i * 3 + j) % 3] & 0x03) << (j * 2);
+            dest[i] |= (farcon.KFS_values[i * 3 + j] & 0x03) << (j * 2);
         }
     }
     payload[2]=dest[0];

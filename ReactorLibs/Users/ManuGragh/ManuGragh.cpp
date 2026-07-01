@@ -138,327 +138,291 @@
 //   }
 // }
 
-// int GetBlockHeight(int index_id)
-// {
-//   if (index_id == 0 || index_id == 6 || index_id == 8 || index_id == 10 || index_id == 12 || index_id == 14)
-//   {
-//     return 200; // 200高度
-//   }
-//   else if (index_id == 4 || index_id == 15)
-//   {
-//     return 600; // 600高度
-//   }
-//   else
-//   {
-//     return 400; // 400高度
-//   }
-//   return 200;
-// }
+void Action_GetRod(StateCore *state_core)
+{
+    //手动模式
+    // if (farcon.toggle[2 - 1] == 1)
+    // {
+        Seq::WaitUntil([]() -> bool 
+        {
+            return farcon.button_first_half[1 - 1] == 1;  //发送按键1，此时会触发bow动作,在c板处理动作接口
+        });
+        Seq::WaitUntil([]() -> bool 
+        {
+            return farcon.button_first_half[2 - 1] == 1;  //发送按键2，此时会触发夹紧动作
+        });
+        Seq::WaitUntil([]() -> bool 
+        {
+            return farcon.button_first_half[3 - 1] == 1;  //发送按键3，此时会触发转杆动作
+        });
+        comm.SendActionCommand(ActionType::CLAMP_2_ON);
+        Seq::WaitUntil([]() -> bool 
+        {
+            return farcon.button_second_half[16 - 8 - 1] == 1; 
+        });
+        chassis.MoveAt(Vec2(1.3,3.5));
+        
+        // Seq::WaitUntil([]() -> bool
+        //                         { return (chassis._Walking() == 1); });
+        chassis.RotateAt(-1.57f);
+        //Seq::Wait(1);
+        
+        is_ready_to_dock = true; 
 
-// //====================状态函数组织=======================================================================================
-// void Action_ChooseArea(StateCore *core)
-// {
-// }
+   // }
+    // if (farcon.toggle[2 - 1] == 0)
+    // {
+    //     comm.SendActionCommand(ActionType::BOW);
+    //     Seq::WaitUntil([]() -> bool 
+    //     {
+    //         return comm.rodmotor_OK;  
+    //     });
+    //     comm.SendActionCommand(ActionType::CLAMP);
+    //     Seq::WaitUntil([]() -> bool 
+    //     {
+    //         return comm.rodmotor_OK;  
+    //     });
+    //     chassis.MoveAt(Vec2(0.9,3.3));
+    //     // Seq::WaitUntil([]() -> bool
+    //     //                         { return (chassis._Walking() == 1); });
+    //     chassis.RotateAt(-1.57f);
 
-// void Action_PreLay(StateCore *core)
-// {
-//   MOVE::MoveToTargPos(Area3Path);
-  
-//   r1block.PreLayBLock();
-  
-// }
+    //     comm.SendActionCommand(ActionType::PICK);
+    //     Seq::Wait(1);
+    //     comm.SendActionCommand(ActionType::CLAMP_2_ON);
 
-// void Action_GetandRunPathCmd(StateCore *core)
-// {
-//   if (state_core.GetCurState()->Complete != true)
-//   {
-//     monit.LogSpec("GetCMD...");
-//     Seq::WaitUntil([]() -> bool
-//                    { return MOD::farcon.button_second_half[9 - 8 - 1] == 1; });
-//     if (current_area == Area1)
-//     {
-//       MOVE::MoveToTargPos(Area1RodPath);
-//       // APP::path_chaser.ChasePath(Area1RodPath);
-//     }
-//     else if (current_area == Area3)
-//     {
-//       MOVE::MoveToTargPos(Area3Path);
-//       // APP::path_chaser.ChasePath(Area3Path);
-//     }
-//     else
-//     {
-//       return;
-//     }
-//     state_core.GetCurState()->Complete = true;
-//   }
-//   else if (state_core.GetCurState()->Complete == true)
-//   {
-//     r1block.ReleaseBlock(1);
-//   }
-// }
+    //     is_ready_to_dock = true; 
+    // }
+}
 
-// // void Action_RunCmd(StateCore *core)
-// // {
-// //     // Vec3 cmd_body = APP::path_chaser.GetCmdBody();
-// //     // APP::chassis.Move(cmd_body);
-// //     MOVE::MoveToTargPos(Area1RodPath);
+void Action_Dock(StateCore *state_core)
+{
+    
+    // //对接动作 
+    Seq::WaitUntil([]() -> bool 
+    {
+        return farcon.button_second_half[16 - 8 - 1] == 1;  
+    }); 
 
-// // }
+    // comm.SendActionCommand(ActionType::CLAMP_2_OFF);
+    // Seq::Wait(1);
+    // comm.SendActionCommand(ActionType::AWAYFROMDOCK);
+    // Seq::Wait(1);
+    // comm.SendActionCommand(ActionType::PICK);
+    // Seq::Wait(1);
+    // comm.SendActionCommand(ActionType::CLAMP_2_ON);
 
-// void Action_GetRod(StateCore *state_core)
-// {
-//   // 手动模式
-//   //  if (farcon.toggle[2 - 1] == 1)
-//   //  {
-//   Seq::WaitUntil([]() -> bool
-//                  {
-//                    return farcon.button_first_half[1 - 1] == 1; // 发送按键1，此时会触发bow动作,在c板处理动作接口
-//                  });
-//   Seq::WaitUntil([]() -> bool
-//                  {
-//                    return farcon.button_first_half[2 - 1] == 1; // 发送按键2，此时会触发夹紧动作
-//                  });
-//   Seq::WaitUntil([]() -> bool
-//                  {
-//                    return farcon.button_first_half[3 - 1] == 1; // 发送按键3，此时会触发转杆动作
-//                  });
-//   comm.SendActionCommand(ActionType::CLAMP_2_ON);
-//   Seq::WaitUntil([]() -> bool
-//                  { return farcon.button_second_half[16 - 8 - 1] == 1; });
-//   chassis.MoveAt(Vec2(1.3, 3.5));
+}
+void Action_Planning(StateCore *state_core)
+{
+    // 等待遥控器确认KFS数据已发好
+    Seq::WaitUntil([]() -> bool 
+    {
+        return farcon.button_second_half[10 - 8 - 1] == 1; 
+    });
+    Zone2_Path.index = 0;
 
-//   // Seq::WaitUntil([]() -> bool
-//   //                         { return (chassis._Walking() == 1); });
-//   chassis.RotateAt(-1.57f);
-//   // Seq::Wait(1);
+    // 调用路径规划
+    GetShortestPath(farcon.KFS_values, comm.r2_block_column, Zone2_Path);
 
-//   is_ready_to_dock = true;
+    // 起点+终点，size>=2
+    if (Zone2_Path.size >= 2)
+    {
+        is_path_generated = true;
+    }
+}
 
-//   // }
-//   // if (farcon.toggle[2 - 1] == 0)
-//   // {
-//   //     comm.SendActionCommand(ActionType::BOW);
-//   //     Seq::WaitUntil([]() -> bool
-//   //     {
-//   //         return comm.rodmotor_OK;
-//   //     });
-//   //     comm.SendActionCommand(ActionType::CLAMP);
-//   //     Seq::WaitUntil([]() -> bool
-//   //     {
-//   //         return comm.rodmotor_OK;
-//   //     });
-//   //     chassis.MoveAt(Vec2(0.9,3.3));
-//   //     // Seq::WaitUntil([]() -> bool
-//   //     //                         { return (chassis._Walking() == 1); });
-//   //     chassis.RotateAt(-1.57f);
+/**
+ * @brief Action_NavToBlock：沿Zone2_Path逐点移动
+ *   遇到有块的目标点时，触发取块
+ */
+void Action_NavToBlock(StateCore *state_core)
+{
+    r1block.finish_pre_suck=0;
+    // 如果刚从取块状态回来，推进index继续导航，
+    if (is_just_picked)
+    {
+        // is_pick_done = false; 
+        is_just_picked = false;
+        Zone2_Path.index++;
+    }
 
-//   //     comm.SendActionCommand(ActionType::PICK);
-//   //     Seq::Wait(1);
-//   //     comm.SendActionCommand(ActionType::CLAMP_2_ON);
+    // 复位取块完成标志（每次进入NavToBlock时清除）
+    is_pick_done    = false;
+    // is_ready_to_nav = false;
+ 
+    // 判断是否已走完全部路径点
+    if (Zone2_Path.index >= Zone2_Path.size)
+    {
+        Zone2_Path.index = 0; 
+        is_path_generated     = false;
+        current_area = Area::Area3; 
+        is_final_goal_reached = true;
+        return;
+    }
+    
+    if(! is_final_goal_reached)
+    {
+        // 获取当前目标路径点
+        Vec2  target = Zone2_Path.points[Zone2_Path.index];
+        int   target_xid = Zone2_Path.labels[Zone2_Path.index];
+        bool  is_corner = (target_xid == 2 || target_xid == 7 ||
+                            target_xid == 11 || target_xid == 16);
+        PathPickMeta* next_pick = Zone2_Path.GetNextPick(target_xid);
+        PathPickMeta* upcoming_pick = nullptr;
+        if (Zone2_Path.next_pick_index < Zone2_Path.pick_count)
+        {
+            upcoming_pick = &Zone2_Path.pick_metas[Zone2_Path.next_pick_index];
+        }
+        bool is_pick_rotate_point = (upcoming_pick != nullptr &&
+                                     upcoming_pick->rotate_xid == target_xid);
 
-//   //     is_ready_to_dock = true;
-//   // }
-// }
+        chassis.MoveAt(Vec2(target.x, target.y));
+        if (is_pick_rotate_point || (is_corner && target_xid != 0))
+        {
+            Seq::WaitUntil([]() -> bool
+                            { return (chassis._Walking() == 1); });
+            if (is_pick_rotate_point)
+            {
+                chassis.RotateAt(upcoming_pick->pick_yaw);
+            }
+            else
+            {
+                BarrelToMid(target_xid);
+            }
+            Seq::WaitUntil([]() -> bool
+                            { return (chassis._Rotating() == 1); });
+        }
+        // ── 已到达目标点，查have_block_xids判断是否需要取块 ──
+        bool is_kfs_point = (next_pick != nullptr);
+        for (int i = 0; i < Zone2_Path.have_block_count; i++)
+        {
+            if (Zone2_Path.have_block_xids[i] == target_xid)
+            {
+            is_kfs_point = true;
+            break;
+            }
+        }
+        is_kfs_point = (next_pick != nullptr);
 
-// void Action_Dock(StateCore *state_core)
-// {
-//   // //对接动作
-//   Seq::WaitUntil([]() -> bool
-//                  { return farcon.button_second_half[16 - 8 - 1] == 1; });
+        if (is_kfs_point)
+        {
+            target_height = GetBlockHeight(next_pick->pick_xid);
+            // 触发取块状态
+            is_at_block_point = true;
+            // 不推进index，取块完成后回来NavToBlock会继续推进
+        }
+        else
+        {
+                // 普通通过点，直接前进
+                Zone2_Path.index++;
+        //     if (Zone2_Path.index >= Zone2_Path.size)
+        //     {
+        //         is_path_generated = false;
+        //         current_area = Area::Area3; 
+        //         is_final_goal_reached = true;
+        //     }
+        }
+    }
+    else 
+    {
+        return;
+    }
+}
 
-//   // comm.SendActionCommand(ActionType::CLAMP_2_OFF);
-//   // Seq::Wait(1);
-//   // comm.SendActionCommand(ActionType::AWAYFROMDOCK);
-//   // Seq::Wait(1);
-//   // comm.SendActionCommand(ActionType::PICK);
-//   // Seq::Wait(1);
-//   // comm.SendActionCommand(ActionType::CLAMP_2_ON);
-// }
-// void Action_Planning(StateCore *state_core)
-// {
-//   // 等待遥控器确认KFS数据已发好
-//   Seq::WaitUntil([]() -> bool
-//                  { return farcon.button_second_half[10 - 8 - 1] == 1; });
-//   Zone2_Path.index = 0;
+// 状态：取块
+void Action_GetBlock(StateCore *state_core)
+{
 
-//   // 调用路径规划
-//   GetShortestPath(farcon.KFS_values, Zone2_Path);
+    // // 引入一个静态的运行状态标志位（锁）
+    // static bool is_has_blocked = false;
 
-//   // 起点+终点，size>=2
-//   if (Zone2_Path.size >= 2)
-//   {
-//     is_path_generated = true;
-//   }
-// }
+    btn_pick_start = false; 
+    is_just_picked = true; 
+    is_at_block_point = false; 
+    Zone2_Path.MarkNextPickDone();
+    r1block.Get_Block(target_height,1); // TODO: 根据遥控器输入的高度调用不同的函数，目前测试用固定值
+    state_core ->GetCurState()->Complete = true;
+}
 
-// /**
-//  * @brief Action_NavToBlock：沿Zone2_Path逐点移动
-//  *   遇到有块的目标点时，触发取块
-//  */
-// void Action_NavToBlock(StateCore *state_core)
-// {
-//   r1block.finish_pre_suck = 0;
-//   // 如果刚从取块状态回来，推进index继续导航，
-//   if (is_just_picked)
-//   {
-//     // is_pick_done = false;
-//     is_just_picked = false;
-//     Zone2_Path.index++;
-//   }
+void Action_LayBlock(StateCore *state_core)
+{
+    // is_ready_to_lay = false;
+    Seq::WaitUntil([]() -> bool 
+    {
+        return MOD::farcon.button_second_half[13 - 8 - 1] == 1;
+    });
 
-//   // 复位取块完成标志（每次进入NavToBlock时清除）
-//   is_pick_done = false;
-//   // is_ready_to_nav = false;
+    r1block.ReleaseBlock(1);
+    //Seq::Wait(0.1);
+}
 
-//   // 判断是否已走完全部路径点
-//   if (Zone2_Path.index >= Zone2_Path.size)
-//   {
-//     Zone2_Path.index = 0;
-//     is_path_generated = false;
-//     current_area = Area::Area3;
-//     is_final_goal_reached = true;
-//     return;
-//   }
+// ================================初始化========================================================================
+void ManuGragh_Init(void)
+{
 
-//   if (!is_final_goal_reached)
-//   {
-//     // 获取当前目标路径点
-//     Vec2 target = Zone2_Path.points[Zone2_Path.index];
-//     int target_xid = Zone2_Path.labels[Zone2_Path.index];
-//     int edge = GetEdge(target_xid);
-//     bool is_corner = (target_xid == 2 || target_xid == 7 ||
-//                       target_xid == 11 || target_xid == 16);
 
-//     chassis.MoveAt(Vec2(target.x, target.y));
-//     if (is_corner && target_xid != 0)
-//     {
-//       Seq::WaitUntil([]() -> bool
-//                      { return (chassis._Walking() == 1); });
-//       BarrelToMid(target_xid);
-//       Seq::WaitUntil([]() -> bool
-//                      { return (chassis._Rotating() == 1); });
-//     }
-//     // ── 已到达目标点，查have_block_xids判断是否需要取块 ──
-//     bool is_kfs_point = false;
-//     for (int i = 0; i < Zone2_Path.have_block_count; i++)
-//     {
-//       if (Zone2_Path.have_block_xids[i] == target_xid)
-//       {
-//         is_kfs_point = true;
-//         break;
-//       }
-//     }
+    //1.添加状态块
+        StateBlock& s_lay_pre = manu_flow.AddState("Pre LayBlock");
+    StateBlock& s_choosearea = manu_flow.AddState("Choose Area");
+    StateBlock& s_chaser = manu_flow.AddState("GetCmdandRun");
+	    StateBlock &s_lay = manu_flow.AddState("LayBlock");
+    // StateBlock& s_rod = manu_flow.AddState("GetRod");
+    StateBlock& s_dock = manu_flow.AddState("Docking");
 
-//     if (is_kfs_point)
-//     {
-//       target_height = GetBlockHeight(target_xid);
-//       // 触发取块状态
-//       is_at_block_point = true;
-//       // 不推进index，取块完成后回来NavToBlock会继续推进
-//     }
-//     else
-//     {
-//       // 普通通过点，直接前进
-//       Zone2_Path.index++;
-//       //     if (Zone2_Path.index >= Zone2_Path.size)
-//       //     {
-//       //         is_path_generated = false;
-//       //         current_area = Area::Area3;
-//       //         is_final_goal_reached = true;
-//       //     }
-//     }
-//   }
-//   else
-//   {
-//     return;
-//   }
-// }
+    StateBlock &s_plan = manu_flow.AddState("Planning");
+    StateBlock &s_move = manu_flow.AddState("NavtoBlock");
+    StateBlock &s_pick = manu_flow.AddState("GetBlocking");
 
-// // 状态：取块
-// void Action_GetBlock(StateCore *state_core)
-// {
-//   // // 引入一个静态的运行状态标志位（锁）
-//   // static bool is_has_blocked = false;
 
-//   btn_pick_start = false;
-//   is_just_picked = true;
-//   is_at_block_point = false;
-//   r1block.Get_Block(target_height, 1); // TODO: 根据遥控器输入的高度调用不同的函数，目前测试用固定值
-//   state_core->GetCurState()->Complete = true;
-// }
 
-// void Action_LayBlock(StateCore *state_core)
-// {
-//   // is_ready_to_lay = false;
-//   //   Seq::WaitUntil([]() -> bool
-//   //                  { return MOD::farcon.button_second_half[13 - 8 - 1] == 1; });
+    //2.绑定状态的动作函数
 
-//   r1block.ReleaseBlock(1);
-//   // Seq::Wait(0.1);
-// }
+    s_choosearea.StateAction = Action_ChooseArea;
+    s_chaser.StateAction = Action_GetandRunPathCmd;
+    // s_rod.StateAction = Action_GetRod;
+    s_dock.StateAction = Action_Dock;
 
-// // ================================初始化========================================================================
-// void ManuGragh_Init(void)
-// {
-//   // 1.添加状态块
-// //   StateBlock &s_choosearea = manu_flow.AddState("Choose Area");
-//   StateBlock &s_lay_pre = manu_flow.AddState("Pre LayBlock");
-//   StateBlock &s_lay = manu_flow.AddState("LayBlock");
+    s_plan.StateAction = Action_Planning;
+    s_move.StateAction = Action_NavToBlock;
+    s_pick.StateAction = Action_GetBlock;
+    s_lay_pre.StateAction=Action_PreLay;
 
-//   //   StateBlock &s_chaser = manu_flow.AddState("GetCmdandRun");
-//   //   StateBlock &s_lay = manu_flow.AddState("LayBlock");
-//   // StateBlock& s_rod = manu_flow.AddState("GetRod");
-//   // StateBlock& s_dock = manu_flow.AddState("Docking");
+    s_lay.StateAction = Action_LayBlock;
 
-//   // StateBlock &s_plan = manu_flow.AddState("Planning");
-//   // StateBlock &s_move = manu_flow.AddState("NavtoBlock");
-//   // StateBlock &s_pick = manu_flow.AddState("GetBlocking");
+    //3.设置linkto
+    //选择从哪一区开始
+   s_lay_pre.LinkTo(&is_prelay_finished, s_choosearea);
 
-//   // 2.绑定状态的动作函数
+    s_choosearea.LinkTo(&is_at_area1, s_chaser);
+    s_choosearea.LinkTo(&is_at_area2, s_plan);
+    s_choosearea.LinkTo(&is_at_area3, s_chaser);
 
-// //   s_choosearea.StateAction = Action_ChooseArea;
-//   // s_chaser.StateAction = Action_GetandRunPathCmd;
-//   //  s_rod.StateAction = Action_GetRod;
-//   //  s_dock.StateAction = Action_Dock;
+    // s_chaser.LinkTo(&is_ready_to_rod, s_rod);
+    s_chaser.LinkTo(&state_core.GetCurState()->Complete, s_lay);
 
-//   // s_plan.StateAction = Action_Planning;
-//   // s_move.StateAction = Action_NavToBlock;
-//   // s_pick.StateAction = Action_GetBlock;
-//   s_lay_pre.StateAction = Action_PreLay;
-//   s_lay.StateAction = Action_LayBlock;
+    // s_rod.LinkTo(&is_ready_to_dock, s_dock);
+    s_dock.LinkTo(&is_ready_to_plan, s_plan);
 
-//   // 3.设置linkto
-//   // 选择从哪一区开始
-//   //   s_choosearea.LinkTo(&is_at_area1, s_lay_pre);
-// //   s_choosearea.LinkTo(&is_at_area3, s_lay_pre);
+    // Planning TO NavToBlock：路径已生成且底盘在API自动模式
+    s_plan.LinkTo(&is_ready_to_nav, s_move);
+ 
+    // NavToBlock TO GetBlock：当前目标点有块，需要取块
+    s_move.LinkTo(&is_ready_to_pick, s_pick);
+    s_move.LinkTo(&is_final_goal_reached, s_chaser);
 
-//   s_lay_pre.LinkTo(&is_prelay_finished, s_lay);
-//   // s_choosearea.LinkTo(&is_at_area2, s_plan);
+    // // GetBlock TO NavToBlock：取块完成（按键确认），继续导航
+    s_pick.LinkTo(&s_pick.Complete, s_move);
+    // TODO!加一个可以管理遥控器还是半自动的控制权的状态函数之间的转移
+    state_core.RegistGraph(manu_flow);
 
-//   // s_chaser.LinkTo(&is_ready_to_rod, s_rod);
-//   //   s_chaser.LinkTo(&state_core.GetCurState()->Complete, s_lay);
+    // 注册图
+    current_area = Area::Area3;
 
-//   // s_rod.LinkTo(&is_ready_to_dock, s_dock);
-//   // s_dock.LinkTo(&is_ready_to_plan, s_plan);
+}
 
-//   // // Planning TO NavToBlock：路径已生成且底盘在API自动模式
-//   // s_plan.LinkTo(&is_ready_to_nav, s_move);
-
-//   // // NavToBlock TO GetBlock：当前目标点有块，需要取块
-//   // s_move.LinkTo(&is_ready_to_pick, s_pick);
-//   // s_move.LinkTo(&is_final_goal_reached, s_chaser);
-
-//   // // // GetBlock TO NavToBlock：取块完成（按键确认），继续导航
-//   // s_pick.LinkTo(&s_pick.Complete, s_move);
-//   // TODO!加一个可以管理遥控器还是半自动的控制权的状态函数之间的转移
-//   state_core.RegistGraph(manu_flow);
-
-//   // 注册图
-//   current_area = Area::Area3;
-// }
-
-// // --- 4. 逻辑更新 ---
-// void ManuGragh_Update(void)
-// {
-//   // 逻辑判定...
-// }
+// --- 4. 逻辑更新 ---
+void ManuGragh_Update(void)
+{
+    // 逻辑判定...
+}
