@@ -40,8 +40,17 @@ void GetRod(StateCore *state_core)
 
     MOVE::MoveToTargPos(Area1ToRod);
 
-    chassis.Move(Vec3(0.1,0,0),1);
+    //先左右微调，小小黄上拉，0为识别到杆了
+    while(Hardware::miniyellow_aim_rod.Read() != 0)
+    {
+        chassis.Move(Vec3(0,-0.1,0));
+    };
+    chassis.Move(0);
 
+    //左右位置定了可以伸出Bow了，再前后
+    comm.SendActionCommand(ActionType::BOW);
+    chassis.Move(Vec3(0.1,0,0),1);
+    Seq::Wait(1);
     // //路径可以给个不准确的,场地肯定会有误差，可以靠move再抵到矛杆架
     // while(!((fabs(sick.GetSingleChannel(0)) - 0.28) < 0.01))
     // {
@@ -54,9 +63,6 @@ void GetRod(StateCore *state_core)
     //         chassis.Move(Vec2(0,0.15));
     //     }
     // }
-    //左右位置定了可以伸出Bow了，再前后
-    comm.SendActionCommand(ActionType::BOW);
-    Seq::Wait(0.1);
 
     Seq::WaitUntil([]() -> bool 
     {
@@ -70,18 +76,9 @@ void GetRod(StateCore *state_core)
     {
         return comm.rodmotor_OK;  
     });
-
-    // chassis.MoveAt(Vec2(1.3,3.5));
-    // chassis.RotateAt(-1.57f);
-    //MOVE::MoveToTargGes(Vec3(1.3,3.5,-1.57));
+    comm.SendActionCommand(ActionType::PICK);
     MOVE::MoveToTargPos(Area1ToDock);
 
-    comm.SendActionCommand(ActionType::PICK);
-    Seq::Wait(0.1);
-    Seq::WaitUntil([]() -> bool 
-    {
-        return comm.rodmotor_OK;  
-    });
     comm.SendActionCommand(ActionType::CLAMP_2_ON);
 
     state_core->GetCurState()->Complete = true;
@@ -92,17 +89,20 @@ void Dock(StateCore *state_core)
     //一会写一个自动切换底盘模式的，自动自锁模式
     //手动怼进去
     
-    //等待人工判断对接完成，发送光通信指令
+    //等待人类判断对接完成，发送光通信指令
     Seq::WaitUntil([]() -> bool 
     {
         return farcon.button_second_half[16 - 8 - 1] == 1;  
     }); 
 
     comm.SendActionCommand(ActionType::CLAMP_2_OFF);
-    Seq::Wait(0.5);
+    Seq::Wait(1);
     comm.SendActionCommand(ActionType::AWAYFROMDOCK);
+    Seq::Wait(1);
 
-    chassis.Move(Vec2(2,0),0.4);//离开0.8m
+    chassis.Move(Vec2(1,0),0.4);//离开0.8m
+
+    //这里要加一个倒把手的
     comm.SendActionCommand(ActionType::PICK);//把杆放平，复用一下Pick
     Seq::Wait(1);
     comm.SendActionCommand(ActionType::CLAMP_2_ON);
