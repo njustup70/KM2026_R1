@@ -7,14 +7,7 @@
 #include "Chassis.hpp"
 // 块中心在场地坐标系的位置，xy 单位为米，height 单位为毫米
 
-enum Match_Mode
-{
 
-  KungFu_Master,
-  Exploring_the_Charms=1,
-  Hidden_Treasures=2,
-  
-};
 
 struct BlockInfo
 {

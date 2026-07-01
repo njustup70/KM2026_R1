@@ -12,7 +12,7 @@ init(autoreset=True)
 
 # ================= 配置区域 =================
 # 默认串口配置
-DEFAULT_BAUD_RATE = 921600
+DEFAULT_BAUD_RATE = 115200
 FRAME_START_BYTE = ord("[")
 SERIAL_REOPEN_DELAY_SEC = 0.05
 SERIAL_REOPEN_COOLDOWN_SEC = 0.3

@@ -9,7 +9,6 @@
 using APP::chassis;
 using MOD::farcon;
 using MOD::sick;
-Match_Mode COMPETITION_type = KungFu_Master;
 extern bool is_pick_done;
 R1Block &APP::r1block = R1Block::GetInstance();
 
@@ -293,7 +292,7 @@ void R1Block::Update()
   {
     Stop();
   }
-  BspLog_LogInfo("%f,%f", stretchmotor[0].motor_adrc.eso.z3, stretchmotor[1].motor_adrc.eso.z3);
+  // BspLog_LogInfo("%f,%f", stretchmotor[0].motor_adrc.eso.z3, stretchmotor[1].motor_adrc.eso.z3);
 
   if (!_lift_origined)
   {
@@ -761,7 +760,6 @@ void R1Block::ReleaseBlock(int auto_flag)
   appstate = STATE_RELEASEBLOCK;
 
   // 舵机位置设置
-  Loosen_block(); // 松开
                   // R2死了
 #ifdef R2_dead
                   ///////////进洞自动操作
@@ -777,7 +775,7 @@ void R1Block::ReleaseBlock(int auto_flag)
     Seq::WaitUntil([&]()
                    { return (farcon.button_first_half[6] == 1); }); // 往后走一步，退洞
 
-    chassis.MoveRelative({0.3, 0});
+    chassis.MoveRelative({0.6, 0});
     Seq::WaitUntil([&]()
                    { return (chassis._Walking() == 1); }); // 往后走一步，退洞
     Seq::WaitUntil([&]()
