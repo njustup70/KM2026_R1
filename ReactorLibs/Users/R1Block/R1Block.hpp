@@ -190,6 +190,10 @@ public:
   void PreLayBLock();
 
   void ReleaseBlock(int auto_flag = 0);
+//技能赛
+
+
+void PrePut();
 
   void Action_LiftToHeight(float height); // TODO: 预留
   int trans_height(int block_height);

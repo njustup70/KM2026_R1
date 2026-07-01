@@ -19,7 +19,7 @@ R1Block &APP::r1block = R1Block::GetInstance();
 
 extern bool is_prelay_finished;
 int debug_origin = 0;
-int target_height=200;
+int target_height = 200;
 
 // #define Test_device 1
 #define R2_dead 1
@@ -904,6 +904,68 @@ void R1Block::ReleaseBlock(int auto_flag)
 
   //	      SetTargetState(release_strectch_distance[1], release_strectch_distance[1], 0.0f, 0.0f, realse_block_height, realse_block_height);
   // 初始化吐块流程参数
+}
+////*****************技能赛***********//
+
+void R1Block::PrePut()
+{
+  Seq::WaitUntil([&]()
+                 { return (_lift_origined == 1); }); // 往后走一步，退洞
+  Seq::WaitUntil([&]()
+                 { return (farcon.button_first_half[6] == 1); }); // 往后走一步，退洞
+
+  Loosen_block();
+  Seq::Wait(1);
+  if (block_detect[0] == 1)
+  {
+    // Vec2 rel_xy = {0, 0.02};
+    Spd = Vec2{0, 0.05};
+    aim_right = 0;
+    Seq::WaitUntil([&]()
+                   { return block_detect[1] == 1; });
+    Spd = Vec2{0, -0.05};
+    Seq::Wait(0.5);
+    chassis.Move({0, 0});
+    // chassis.MoveRelative(rel_xy);
+    // Seq::WaitUntil([&]()
+    //                { return (chassis._Walking() == 1); }); // 检测到到位置了
+    aim_right = 1;
+  }
+  else if (block_detect[1] == 1)
+  {
+    // Vec2 rel_xy = {0, -0.02};
+    Spd = Vec2{0, -0.05};
+    aim_right = 0;
+    Seq::WaitUntil([&]()
+                   { return block_detect[0] == 1; });
+    Spd = Vec2{0, 0.05};
+    Seq::Wait(0.5);
+    chassis.Move({0, 0});
+    // chassis.MoveRelative(rel_xy);
+    // Seq::WaitUntil([&]()
+    //                { return (chassis._Walking() == 1); }); // 检测到到位置了
+    aim_right = 1;
+  }
+  chassis.Move({0, 0});
+
+  suckmotor[0].SetSpd(-0.8 * suck_speed);
+  suckmotor[1].SetSpd(0.8 * suck_speed);
+  Seq::Wait(1);
+
+  SetTargetStretch(stretch_distance[1], stretch_distance[1]);
+  Seq::WaitUntil([&]()
+                 { return ((stretchmotor[0].IsReached() == 1) && (stretchmotor[1].IsReached() == 1)); }); // 检测到最外面到了
+  Seq::Wait(1);
+
+  Clamp_block(); // 夹紧
+  Seq::Wait(1);
+  SmoothMoveStretchToTarget(stretch_distance[1], 0, 3, 40);
+
+  Seq::WaitUntil([&]()
+                 { return (block_exist[2] == 1); }); // 检测到最里面到了
+
+  suckmotor[0].SetSpd(0);
+  suckmotor[1].SetSpd(0);
 }
 
 void R1Block::Action_LiftToHeight(float height)
