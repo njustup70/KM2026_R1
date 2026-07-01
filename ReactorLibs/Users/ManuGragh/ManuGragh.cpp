@@ -457,8 +457,14 @@
 //   current_area = Area::Area3;
 // }
 
+//     // 注册图
+//     current_area = Area::Area1;
+
+// }
+
 // // --- 4. 逻辑更新 ---
 // void ManuGragh_Update(void)
 // {
-//   // 逻辑判定...
+//     // 逻辑判定...
 // }
+

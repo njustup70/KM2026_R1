@@ -7,8 +7,6 @@
 #include "Chassis.hpp"
 // 块中心在场地坐标系的位置，xy 单位为米，height 单位为毫米
 
-
-
 struct BlockInfo
 {
   float x;

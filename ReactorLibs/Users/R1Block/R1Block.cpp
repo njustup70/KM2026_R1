@@ -19,6 +19,7 @@ R1Block &APP::r1block = R1Block::GetInstance();
 
 extern bool is_prelay_finished;
 int debug_origin = 0;
+int target_height=200;
 
 // #define Test_device 1
 #define R2_dead 1

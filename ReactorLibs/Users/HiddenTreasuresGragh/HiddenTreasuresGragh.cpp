@@ -1,12 +1,11 @@
 /**
- * @file AutoGraph.cpp
- * @author @all-mx
- * @brief RC26赛季武林探秘的电控状态机逻辑实现:半自动模式
+ * @file HiddenTreasuresGraph.cpp
+ * @brief RC26赛季技能挑战赛--九宫藏宝
  */
 #include "ModeSelector.hpp"
-#if Current_Mode == Mode_KungFu_Master //AutoGraph武林探秘
+#if Current_Mode == Mode_Hidden_Treasures
 
-#include "AutoGragh.hpp"
+#include "HiddenTreasuresGragh.hpp"
 #include "PathPlaner.hpp"
 #include "System.hpp"
 #include "Chassis.hpp"
@@ -26,14 +25,7 @@ using namespace MOD;
 using namespace MOVE;
 
 // 全局状态图对象
-StateGraph auto_flow{"AutoGragh"};
-
-#define Zone1 1
-#define Zone2 2
-#define Zone3 3
-#define competition 4
-
-#define Run_Zone Zone3
+StateGraph HT_flow{"HiddenTreasuresGragh"};
 
 //-------------辅助函数----------------
 /**
@@ -83,74 +75,76 @@ void ChooseArea(StateCore *core)
 
 void GetRod(StateCore *state_core)
 {
-  monit.LogInfo("State:GetRod");
-  Seq::WaitUntil([]() -> bool
+    Seq::WaitUntil([]() -> bool
                  { return farcon.button_second_half[9 - 8 - 1] == 1; });
 
-  MOVE::MoveToTargPos(Area1ToRod);
+    MOVE::MoveToTargPos(Area1ToRod);
 
-  // 先左右微调，小小黄上拉，0为识别到杆了
-  while (Hardware::miniyellow_aim_rod.Read() != 0)
-  {
-    chassis.Move(Vec3(0, -0.1, 0));
-  };
-  chassis.Move(0);
+    //先左右微调，小小黄上拉，0为识别到杆了
+    while(Hardware::miniyellow_aim_rod.Read() != 0)
+    {
+        chassis.Move(Vec3(0,-0.1,0));
+    };
+    chassis.Move(0);
 
-  // 左右位置定了可以伸出Bow了，再前后
-  comm.SendActionCommand(ActionType::BOW);
-  chassis.Move(Vec3(0.1, 0, 0), 1);
-  Seq::Wait(1);
-  // //路径可以给个不准确的,场地肯定会有误差，可以靠move再抵到矛杆架
-  // while(!((fabs(sick.GetSingleChannel(0)) - 0.28) < 0.01))
-  // {
-  //     if ((sick.GetSingleChannel(0) - 0.28 )< 0)
-  //     {
-  //         chassis.Move(Vec2(0,-0.15));
-  //     }
-  //     else
-  //     {
-  //         chassis.Move(Vec2(0,0.15));
-  //     }
-  // }
+    //左右位置定了可以伸出Bow了，再前后
+    comm.SendActionCommand(ActionType::BOW);
+    chassis.Move(Vec3(0.1,0,0),1);
+    Seq::Wait(1);
+    // //路径可以给个不准确的,场地肯定会有误差，可以靠move再抵到矛杆架
+    // while(!((fabs(sick.GetSingleChannel(0)) - 0.28) < 0.01))
+    // {
+    //     if ((sick.GetSingleChannel(0) - 0.28 )< 0) 
+    //     {
+    //         chassis.Move(Vec2(0,-0.15));
+    //     }
+    //     else
+    //     {
+    //         chassis.Move(Vec2(0,0.15));
+    //     }
+    // }
 
   Seq::WaitUntil([]() -> bool
                  { return comm.rodmotor_OK; });
   monit.LogInfo("Bow At:(%.3f,%.3f), sick:%.3f", comm.slam_pos.x, comm.slam_pos.y, sick.GetTrueSingleChannel(0));
 
-  comm.SendActionCommand(ActionType::CLAMP);
-  Seq::Wait(0.1);
-  Seq::WaitUntil([]() -> bool
-                 { return comm.rodmotor_OK; });
-  comm.SendActionCommand(ActionType::PICK);
-  MOVE::MoveToTargPos(Area1ToDock);
+    comm.SendActionCommand(ActionType::CLAMP);
+    Seq::Wait(0.1);
+    Seq::WaitUntil([]() -> bool 
+    {
+        return comm.rodmotor_OK;  
+    });
+    comm.SendActionCommand(ActionType::PICK);
+    MOVE::MoveToTargPos(Area1ToDock);
 
-  comm.SendActionCommand(ActionType::CLAMP_2_ON);
+    comm.SendActionCommand(ActionType::CLAMP_2_ON);
 
   state_core->GetCurState()->Complete = true;
 }
 
 void Dock(StateCore *state_core)
 {
-  monit.LogInfo("State:Dock");
-  // 一会写一个自动切换底盘模式的，自动自锁模式
-  // 手动怼进去
+    //一会写一个自动切换底盘模式的，自动自锁模式
+    //手动怼进去
+    
+    //等待人类判断对接完成，发送光通信指令
+    Seq::WaitUntil([]() -> bool 
+    {
+        return farcon.button_second_half[16 - 8 - 1] == 1;  
+    }); 
 
-  // 等待人类判断对接完成，发送光通信指令
-  Seq::WaitUntil([]() -> bool
-                 { return farcon.button_second_half[16 - 8 - 1] == 1; });
+    comm.SendActionCommand(ActionType::CLAMP_2_OFF);
+    Seq::Wait(1);
+    comm.SendActionCommand(ActionType::AWAYFROMDOCK);
+    Seq::Wait(1);
 
-  comm.SendActionCommand(ActionType::CLAMP_2_OFF);
-  Seq::Wait(1);
-  comm.SendActionCommand(ActionType::AWAYFROMDOCK);
-  Seq::Wait(1);
+    chassis.Move(Vec2(1,0),0.4);//离开0.8m
 
-  chassis.Move(Vec2(1, 0), 0.4); // 离开0.8m
-
-  // 这里要加一个倒把手的
-  comm.SendActionCommand(ActionType::PICK); // 把杆放平，复用一下Pick
-  Seq::Wait(1);
-  comm.SendActionCommand(ActionType::CLAMP_2_ON);
-  MOVE::MoveToTargGes(Vec3(2.45, 1.72, -1.57));
+    //这里要加一个倒把手的
+    comm.SendActionCommand(ActionType::PICK);//把杆放平，复用一下Pick
+    Seq::Wait(1);
+    comm.SendActionCommand(ActionType::CLAMP_2_ON);
+    MOVE::MoveToTargGes(Vec3(2.45,1.72,-1.57));
 
   chassis.Move(Vec2(2, 0), 0.4);            // 离开0.8m
   comm.SendActionCommand(ActionType::PICK); // 把杆放平，复用一下Pick
@@ -181,7 +175,6 @@ int GetBlockHeight(int index_id)
 
 void Action_Planning(StateCore *state_core)
 {
-  monit.LogInfo("State:Action_Planning");
   // 等待遥控器确认KFS数据已发好
   Seq::WaitUntil([]() -> bool
                  { return farcon.button_second_half[10 - 8 - 1] == 1; });
@@ -190,7 +183,7 @@ void Action_Planning(StateCore *state_core)
   // 调用路径规划
   GetShortestPath(farcon.KFS_values, Zone2_Path);
 
-  state_core->GetCurState()->Complete = true;
+    state_core->GetCurState()->Complete = true;
 }
 
 /**
@@ -199,10 +192,9 @@ void Action_Planning(StateCore *state_core)
  */
 void Action_NavToBlock(StateCore *state_core)
 {
-  monit.LogInfo("State:Action_NavToBlock");
   // // 如果刚从取块状态回来，推进index继续导航，
 
-  Zone2_Path.index++;
+    Zone2_Path.index++;
 
   // 判断是否已走完全部路径点
   if (Zone2_Path.index >= Zone2_Path.size)
@@ -255,24 +247,20 @@ void Action_NavToBlock(StateCore *state_core)
   {
     return;
   }
-  state_core->GetCurState()->Complete = true;
+      state_core->GetCurState()->Complete = true;
 }
 
 // 状态：取块
 void Action_GetBlock(StateCore *state_core)
 {
-  monit.LogInfo("State:Action_GetBlock");
-  r1block.Get_Block(target_height, 1); // TODO: 根据遥控器输入的高度调用不同的函数，目前测试用固定值
-  state_core->GetCurState()->Complete = true;
+  // r1block.Get_Block(target_height, 1); // TODO: 根据遥控器输入的高度调用不同的函数，目前测试用固定值
+  // state_core->GetCurState()->Complete = true;
 }
 
 //**************************************三区状态块*******************************************************//
 void Action_PreLay(StateCore *core)
 {
-  monit.LogInfo("State:Action_PreLay");
   r1block.PreLayBLock();
-  Seq::WaitUntil([&]()
-                 { return (farcon.button_second_half[9 - 8 - 1] == 1); }); // 往后走一步，退洞
   MOVE::MoveToTargPos(Area3Path);
 
   state_core.GetCurState()->Complete = true;
@@ -280,61 +268,20 @@ void Action_PreLay(StateCore *core)
 
 void Action_LayBlock(StateCore *state_core)
 {
-    monit.LogInfo("State:Action_LayBlock");
   r1block.ReleaseBlock(1);
   state_core->GetCurState()->Complete = true;
 }
 
 // ================================初始化========================================================================
-void AutoGragh_Init(void)
+void HiddenTreasuresGragh_Init(void)
 {
-  // 1.添加状态块
-  //  StateBlock& s_choosearea = auto_flow.AddState("Choose Area");
-  // 假设你之前定义了它的值，例如：#define Run_graph 1
-
-#if Run_Zone == Zone1
-
-  // 只有一区
-  StateBlock &s_rod = auto_flow.AddState("GetRod");
-  StateBlock &s_dock = auto_flow.AddState("Docking");
-  s_rod.StateAction = GetRod;
-  s_dock.StateAction = Dock;
-  s_rod.LinkTo(&s_rod.Complete, s_dock);
-  // 跑到2区
-
-#elif Run_Zone == Zone2
-  // 只跑二区
-  StateBlock &s_plan = auto_flow.AddState("Planning");
-  StateBlock &s_move = auto_flow.AddState("NavtoBlock");
-  StateBlock &s_pick = auto_flow.AddState("GetBlocking");
-
-  s_plan.StateAction = Action_Planning;
-  s_move.StateAction = Action_NavToBlock;
-  s_pick.StateAction = Action_GetBlock;
-  s_plan.LinkTo(&s_plan.Complete, s_move);
-
-  // NavToBlock TO GetBlock：当前目标点有块，需要取块
-  s_move.LinkTo(&s_move.Complete, s_pick);
-  s_pick.LinkTo(&s_pick.Complete, s_move);
-
-#elif Run_Zone == Zone3
-
-  // 只跑三区
-  StateBlock &s_lay_pre = auto_flow.AddState("Pre LayBlock");
-  StateBlock &s_lay = auto_flow.AddState("LayBlock");
-  s_lay_pre.StateAction = Action_PreLay;
-  s_lay.StateAction = Action_LayBlock;
-  s_lay_pre.LinkTo(&s_lay_pre.Complete, s_lay);
-
-#elif Run_Zone == competition
-  // 全跑
-  StateBlock &s_rod = auto_flow.AddState("GetRod");
-  StateBlock &s_dock = auto_flow.AddState("Docking");
-  StateBlock &s_plan = auto_flow.AddState("Planning");
-  StateBlock &s_move = auto_flow.AddState("NavtoBlock");
-  StateBlock &s_pick = auto_flow.AddState("GetBlocking");
-  StateBlock &s_lay_pre = auto_flow.AddState("Pre LayBlock");
-  StateBlock &s_lay = auto_flow.AddState("LayBlock");
+  StateBlock s_rod = HT_flow.AddState("GetRod");
+  StateBlock s_dock = HT_flow.AddState("Docking");
+  StateBlock s_plan = HT_flow.AddState("Planning");
+  StateBlock s_move = HT_flow.AddState("NavtoBlock");
+  StateBlock s_pick = HT_flow.AddState("GetBlocking");
+  StateBlock s_lay_pre = HT_flow.AddState("Pre LayBlock");
+  StateBlock s_lay = HT_flow.AddState("LayBlock");
 
   s_rod.StateAction = GetRod;
   s_dock.StateAction = Dock;
@@ -353,10 +300,8 @@ void AutoGragh_Init(void)
   s_move.LinkTo(&s_move.Complete, s_lay_pre);
   s_lay_pre.LinkTo(&s_lay_pre.Complete, s_lay);
 
-#endif
-
   // // 注册图
-  state_core.RegistGraph(auto_flow);
+  state_core.RegistGraph(HT_flow);
 }
 
 #endif

@@ -9,7 +9,9 @@
 #include "farcon.hpp"
 #include "ManuGragh.hpp"
 #include "Autogragh.hpp"
-#include "R1_area1_rod3.hpp"
+#include "HiddenTreasuresGragh.hpp"
+#include "ExploringCharmsGragh.hpp"
+#include "ModeSelector.hpp"
  
 using namespace APP;
 using namespace MOD;
@@ -38,11 +40,24 @@ void MainFrameCpp()
   System.RegistApp(APP::comm);
   System.RegistApp(APP::path_chaser);
 
-  //test.Degenerate(ActionDege);
-  //state_core.RegistGraph(test);
+  // 1.简并模式测试用
+  #if Current_Mode == Mode_Test_Degenerate
+    test.Degenerate(ActionDege);
+    state_core.RegistGraph(test);
+  
+  // 2.武林探秘
+  #elif Current_Mode == Mode_KungFu_Master
+      AutoGragh_Init(); 
 
-  // ManuGragh_Init();
-  AutoGragh_Init();
+  // 3.崇武探幽
+  #elif Current_Mode == Mode_Exploring_the_Charms
+      ExploringCharmsGragh_Init(); 
+
+  // 4.九宫藏宝
+  #elif Current_Mode == Mode_Hidden_Treasures
+      HiddenTreasuresGragh_Init(); 
+      
+  #endif
 
   APP::state_core.Enable(0); // 启动状态机核心，指定初始状态图为0号图 3  
 }
@@ -51,10 +66,13 @@ static uint8_t enter_flag = 0;
 void ActionDege(StateCore *core)
 {
   Seq::WaitUntil([]() -> bool 
-  {
+  { 
       return MOD::farcon.button_second_half[9 - 8 - 1] == 1;
   });
-  MOVE::MoveToTargPos(Area1RodPath);
+  // MOVE::MoveToTargPos(Area1RodPath);
 
-  core->GetCurState()->Complete = true;
+  
+  comm.SendActionCommand(ActionType::BOW);
+  Seq::Wait(0.5);
+  state_core.GetCurState()->Complete = true;
 }
