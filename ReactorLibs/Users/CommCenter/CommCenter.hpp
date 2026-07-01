@@ -49,6 +49,7 @@ private:
     // 静态回调函数，负责对接 HostPC 的接口
     static void OnSlamPosReceived(uint8_t func, const uint8_t* payload, uint8_t len, void* ctx);
     static void SlamJYSuccessed(uint8_t func, const uint8_t* payload, uint8_t len, void* ctx);
+    static void OnR2ColumnReceived(uint8_t func, const uint8_t* payload, uint8_t len, void* ctx);
     bool _use_slam_data = true; 
 private:  
     // 静态回调函数和发送的任务，负责对接 InterBoardComm 的接口
@@ -68,6 +69,7 @@ public:
     // app层业务逻辑相关的变量
     Vec3 slam_pos;
     bool rodmotor_OK = false;
+    uint8_t r2_block_column = 0; // 上位机下发的R2取块列号：1/2/3，0表示未收到。
 
 // public:
 //     uint8_t KFS_values[12];

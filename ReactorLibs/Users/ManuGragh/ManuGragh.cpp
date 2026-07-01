@@ -286,7 +286,7 @@ void Action_Planning(StateCore *state_core)
     Zone2_Path.index = 0;
 
     // 调用路径规划
-    GetShortestPath(farcon.KFS_values, Zone2_Path);
+    GetShortestPath(farcon.KFS_values, comm.r2_block_column, Zone2_Path);
 
     // 起点+终点，size>=2
     if (Zone2_Path.size >= 2)
@@ -329,21 +329,35 @@ void Action_NavToBlock(StateCore *state_core)
         // 获取当前目标路径点
         Vec2  target = Zone2_Path.points[Zone2_Path.index];
         int   target_xid = Zone2_Path.labels[Zone2_Path.index];
-        int   edge = GetEdge(target_xid);
         bool  is_corner = (target_xid == 2 || target_xid == 7 ||
                             target_xid == 11 || target_xid == 16);
+        PathPickMeta* next_pick = Zone2_Path.GetNextPick(target_xid);
+        PathPickMeta* upcoming_pick = nullptr;
+        if (Zone2_Path.next_pick_index < Zone2_Path.pick_count)
+        {
+            upcoming_pick = &Zone2_Path.pick_metas[Zone2_Path.next_pick_index];
+        }
+        bool is_pick_rotate_point = (upcoming_pick != nullptr &&
+                                     upcoming_pick->rotate_xid == target_xid);
 
         chassis.MoveAt(Vec2(target.x, target.y));
-        if (is_corner && target_xid != 0)
+        if (is_pick_rotate_point || (is_corner && target_xid != 0))
         {
             Seq::WaitUntil([]() -> bool
                             { return (chassis._Walking() == 1); });
-            BarrelToMid(target_xid);
+            if (is_pick_rotate_point)
+            {
+                chassis.RotateAt(upcoming_pick->pick_yaw);
+            }
+            else
+            {
+                BarrelToMid(target_xid);
+            }
             Seq::WaitUntil([]() -> bool
                             { return (chassis._Rotating() == 1); });
         }
         // ── 已到达目标点，查have_block_xids判断是否需要取块 ──
-        bool is_kfs_point = false;
+        bool is_kfs_point = (next_pick != nullptr);
         for (int i = 0; i < Zone2_Path.have_block_count; i++)
         {
             if (Zone2_Path.have_block_xids[i] == target_xid)
@@ -352,10 +366,11 @@ void Action_NavToBlock(StateCore *state_core)
             break;
             }
         }
+        is_kfs_point = (next_pick != nullptr);
 
         if (is_kfs_point)
         {
-            target_height = GetBlockHeight(target_xid);
+            target_height = GetBlockHeight(next_pick->pick_xid);
             // 触发取块状态
             is_at_block_point = true;
             // 不推进index，取块完成后回来NavToBlock会继续推进
@@ -388,6 +403,7 @@ void Action_GetBlock(StateCore *state_core)
     btn_pick_start = false; 
     is_just_picked = true; 
     is_at_block_point = false; 
+    Zone2_Path.MarkNextPickDone();
     r1block.Get_Block(target_height,1); // TODO: 根据遥控器输入的高度调用不同的函数，目前测试用固定值
     state_core ->GetCurState()->Complete = true;
 }
