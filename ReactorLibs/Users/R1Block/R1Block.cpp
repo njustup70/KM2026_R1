@@ -292,7 +292,8 @@ void R1Block::Update()
   {
     Stop();
   }
-  // BspLog_LogInfo("%f,%f", stretchmotor[0].motor_adrc.eso.z3, stretchmotor[1].motor_adrc.eso.z3);
+
+  BspLog_LogInfo("sickl:%f,sickf:%f", sick.GetSingleChannel(0), sick.GetSingleChannel(1));
 
   if (!_lift_origined)
   {
@@ -739,20 +740,18 @@ void R1Block::
 
 void R1Block::PreLayBLock()
 {
-    Seq::WaitUntil([&]()
-                   { return (_lift_origined== 1); }); // 往后走一步，退洞
-    Seq::WaitUntil([&]()
-                   { return (farcon.button_first_half[6] == 1); }); // 往后走一步，退洞
+  Seq::WaitUntil([&]()
+                 { return (_lift_origined == 1); }); // 往后走一步，退洞
+  Seq::WaitUntil([&]()
+                 { return (farcon.button_first_half[6] == 1); }); // 往后走一步，退洞
 
-    Loosen_block();
-    Seq::Wait(1);
-    // 从 0 平滑移动到目标位置，总耗时 4.0 秒，切分 100 步完成
-    SmoothMoveTo(0.0f, release_strectch_distance[1], 0.0f, realse_block_height, 4, 100);
-    Seq::Wait(1);
+  Loosen_block();
+  Seq::Wait(1);
+  // 从 0 平滑移动到目标位置，总耗时 4.0 秒，切分 100 步完成
+  SmoothMoveTo(0.0f, release_strectch_distance[1], 0.0f, realse_block_height, 4, 100);
+  Seq::Wait(1);
 
-    Clamp_block();
-
-
+  Clamp_block();
 }
 
 void R1Block::ReleaseBlock(int auto_flag)
@@ -760,33 +759,35 @@ void R1Block::ReleaseBlock(int auto_flag)
   appstate = STATE_RELEASEBLOCK;
 
   // 舵机位置设置
-                  // R2死了
+  // R2死了
 #ifdef R2_dead
-                  ///////////进洞自动操作
+  ///////////进洞自动操作
   if (auto_flag == 1)
   {
+    // 向右边走一步对准洞
     Seq::WaitUntil([&]()
                    { return (farcon.button_first_half[6] == 1); });
+    Seq::WaitUntil([&]()
+                   { return ((Block_Sick_lf[0] <= 0.5) && (Block_Sick_lf[0] >= 0.2)); });
 
-    chassis.MoveRelative({0, -float(0.25 - Block_Sick_lf[0])});
+    chassis.MoveRelative({0, -float(0.245 - Block_Sick_lf[0])});
     Seq::WaitUntil([&]()
                    { return (chassis._Walking() == 1); }); // 往后走一步，退洞
-
+    // 向前走一步进洞
     Seq::WaitUntil([&]()
                    { return (farcon.button_first_half[6] == 1); }); // 往后走一步，退洞
-
-    chassis.MoveRelative({0.6, 0});
+    Seq::WaitUntil([&]()
+                   { return ((Block_Sick_lf[1] <= 1) && (Block_Sick_lf[1] >= 0.2)); });
+    chassis.MoveRelative({float(Block_Sick_lf[1] - 0.3), 0});
     Seq::WaitUntil([&]()
                    { return (chassis._Walking() == 1); }); // 往后走一步，退洞
     Seq::WaitUntil([&]()
                    { return (farcon.button_first_half[6] == 1); }); // 往后走一步，退洞
   }
-
-  Loosen_block(); // 松开
   suckmotor[0].SetSpd(0);
   suckmotor[1].SetSpd(0);
 
-  // 开始吐第一个块
+  // ************************开始吐第一个块**********************//
   SetTargetState(release_strectch_distance[1], release_strectch_distance[1], 0.0f, 0.0f, realse_block_height, realse_block_height);
   Seq::Wait(2);
   Clamp_block();
@@ -802,22 +803,23 @@ void R1Block::ReleaseBlock(int auto_flag)
 
   // 退洞操作
 
-  chassis.MoveRelative({-0.2, 0});
+  chassis.MoveRelative({-0.5, 0});
   Seq::WaitUntil([&]()
                  { return (chassis._Walking() == 1); }); // 往后走一步，退洞
   chassis.MoveRelative({0, -0.54});
   Seq::WaitUntil([&]()
                  { return (chassis._Walking() == 1); }); // 走到第二个块
-  chassis.MoveRelative({0.2, 0});
+
+  chassis.MoveRelative({0.5, 0});
   Seq::WaitUntil([&]()
-                 { return (chassis._Walking() == 1); }); // 进洞
+                 { return (chassis._Walking() == 1); }); // 往后走一步，退洞
 
   Clamp_block(); // 夹紧
 
   suckmotor[0].SetSpd(0);
   suckmotor[1].SetSpd(0);
 
-  // 开始吐第二个块
+  // **********************************开始吐第二个块*******************//
   SetTargetState(release_strectch_distance[0], release_strectch_distance[0], 0.0f, 0.0f, realse_block_height, realse_block_height);
   Seq::Wait(2);
 
@@ -838,15 +840,15 @@ void R1Block::ReleaseBlock(int auto_flag)
 
   // 退洞操作
 
-  chassis.MoveRelative({-0.2, 0});
+  chassis.MoveRelative({-0.5, 0});
   Seq::WaitUntil([&]()
                  { return (chassis._Walking() == 1); }); // 往后走一步，退洞
   chassis.MoveRelative({0, -0.54});
   Seq::WaitUntil([&]()
-                 { return (chassis._Walking() == 1); }); // 走到第二个块
-  chassis.MoveRelative({0.2, 0});
+                 { return (chassis._Walking() == 1); }); // 走到第三个块
+  chassis.MoveRelative({0.5, 0});
   Seq::WaitUntil([&]()
-                 { return (chassis._Walking() == 1); }); // 进洞
+                 { return (chassis._Walking() == 1); }); // 往后走一步，退洞
 
   spit_finish_flag = 0;
   Clamp_block(); // 夹紧
@@ -855,7 +857,7 @@ void R1Block::ReleaseBlock(int auto_flag)
   Seq::WaitUntil([&]()
                  { return block_exist[1] == 1; }); // 检测到有块在上面的时候
 
-  // 开始吐第三个块
+  //************************* */ 开始吐第三个块****************************//
   SetTargetState(0.0f, 0.0f, 0.0f, 0.0f, realse_block_height, realse_block_height);
   Seq::Wait(2);
   SetTargetState(release_strectch_distance[0], release_strectch_distance[0], 0.0f, 0.0f, realse_block_height, realse_block_height);
@@ -869,7 +871,7 @@ void R1Block::ReleaseBlock(int auto_flag)
   // 退洞操作
   if (auto_flag == 1)
   {
-    chassis.MoveRelative({-0.3, 0});
+    chassis.MoveRelative({-0.6, 0});
     Seq::WaitUntil([&]()
                    { return (chassis._Walking() == 1); }); // 往后走一步，退洞
     SetTargetState(0.0f, 0.0f, 0.0f, 0.0f, 0, 0);
