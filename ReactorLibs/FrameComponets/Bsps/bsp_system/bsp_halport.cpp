@@ -6,6 +6,7 @@ namespace Hardware
     float MainFreq_MHz = 72.0f;
 
     bool RTTLogAtUart = false;
+    bool RTTLogUartItrp = false;
 
     /**-----    配置CAN总线     -----**/
     BSP::CAN::CanID hcan_main = nullptr;
@@ -16,6 +17,9 @@ namespace Hardware
     BSP::UART::UartID huart_farcon = nullptr;
     BSP::UART::UartID huart_odom = nullptr;
     BSP::UART::UartID huart_other = nullptr;
+    BSP::UART::UartID huart_sick = nullptr;
+    BSP::UART::UartID huart_log = nullptr;     
+    BSP::UART::UartID huart_optical = nullptr;  
 
     /**-----    配置SPI总线    -----**/
     BSP::SPI::SpiID spi_main_bus = nullptr;
@@ -24,6 +28,9 @@ namespace Hardware
 
     /**-----    配置定时器    -----**/
     TIM_HandleTypeDef* htim_led = nullptr;
+
     /**-----    配置 GPIO   -----**/
+    BSP::GPIO::Inst miniyellow_aim_rod; 
+
     
 }

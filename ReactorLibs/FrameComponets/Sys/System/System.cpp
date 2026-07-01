@@ -18,32 +18,26 @@ LedWs2812 sys_ledband;
 float target_speed=0;
 void SystemType::Init(bool Sc)
 {
+    // 输出系统启动信息
+    BspLog_LogInfo("\n\n");
+    BspLog_LogSpec("/----^---^-- Welcome to REACTOR SYSTEM --^---^----/");
+    BspLog_LogInfo("Waiting for system initialization...\n\n");
 
-
-    // 初始化DWT计时器（C板）
     DWT_Init(CPU_HERT_A_BOARD_MHZ);
 
     // 初始化Monitor监视器
-    Monitor::GetInstance().Init(Hardware::huart_host, nullptr, false);
-
-    // 初始化系统灯带
-    sys_ledband.Init(ToID(Hardware::htim_led), TIM_CHANNEL_1, 13);
-    // 颜色偏置因子（用于校正颜色）
-    sys_ledband.BiasFactor = Vec3(0.843f, 1.0f, 0.843f); 
-
-    farcon.init(Hardware::huart_farcon);
-    
+    APP::monit.Init(Hardware::huart_log, nullptr, false);
+    MOD::farcon.init(Hardware::huart_farcon);
     odometer.Init(Hardware::huart_odom, true, false, false, true);
-
-
-  // 自动开始自检
-  if (Sc)
-    status = Systems::SELF_CHECK;
-
-
-
+    // 初始化系统灯带
+    // sys_ledband.Init(Hardware::htim_led, TIM_CHANNEL_1, 13);
+    // 颜色偏置因子（用于校正颜色）
+    // sys_ledband.BiasFactor = Vec3(0.843f, 1.0f, 0.843f); 
     // 自动开始自检
-    if (Sc) status = Systems::SELF_CHECK;
+    if (Sc)
+        status = Systems::SELF_CHECK;
+    pos_offset = Vec2(0.45f, 0.425f);  
+
 }
 
 /**
@@ -67,6 +61,15 @@ void SystemType::Run()
     if (pos_source != nullptr)
     {
         position = *pos_source;
+        //加入原点的偏差，相当于对坐标系进行一个平移
+        // position.x += pos_offset.x;
+        // position.y += pos_offset.y;
+        pos_packet.data1 = position.x;
+        pos_packet.data2 = position.y;
+        // pos_packet.data3 = position.z;
+        pos_data[0] = 0x06;
+        memcpy(pos_data + 1, &pos_packet, 8);
+        MOD::farcon.TransmitFarcon(pos_data,sizeof(pos_data));
     }
 
   // 更新全局时间

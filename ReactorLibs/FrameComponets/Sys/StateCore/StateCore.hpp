@@ -80,7 +80,7 @@ class StateGraph
     uint8_t stateNums;              // 状态块数量
 
     uint8_t executor_at_id = 0;     // 当前执行的状态ID
-    StateBlock& current_state = states[0]; // 当前状态块引用
+    StateBlock* current_state = &states[0]; // 当前状态快引用
     
     public:
     StateGraph(const char *name){
@@ -122,7 +122,7 @@ class StateCore
     void RegistGraph(StateGraph& graph);
 
     /// @brief 获得当前状态的引用
-    StateBlock& GetCurState();
+    StateBlock* GetCurState();
     
     /// @brief 所掌控的状态图
     StateGraph* graphs[4];
@@ -177,7 +177,10 @@ namespace Seq
     }
 }
 
-
+namespace APP
+{
+    extern StateCore& state_core;
+}
 
 
 

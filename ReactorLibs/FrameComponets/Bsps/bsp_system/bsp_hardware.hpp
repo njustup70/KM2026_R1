@@ -2,6 +2,7 @@
 #include "bsp_uart.hpp"
 #include "bsp_can.hpp"
 #include "bsp_spi.hpp"
+#include "bsp_gpio.hpp"
 
 namespace Hardware
 {
@@ -14,7 +15,12 @@ namespace Hardware
     extern BSP::UART::UartID huart_odom;
     /// @brief 其他串口
     extern BSP::UART::UartID huart_other;
-
+    /// @brief sick串口
+    extern BSP::UART::UartID huart_sick;    
+    /// @brief 日志串口
+    extern BSP::UART::UartID huart_log;     // 专用日志串口（如果需要）
+    /// @brief 光通信串口
+    extern BSP::UART::UartID huart_optical;
     /***---------------     框架CAN    ---------------***/
     /// @brief 框架所用CAN句柄
     extern BSP::CAN::CanID hcan_main;
@@ -29,8 +35,12 @@ namespace Hardware
     /// @brief 扩展 SPI 总线
     extern BSP::SPI::SpiID spi_ext_bus;
 
-        /***---------------     框架定时器    ---------------***/
-        /// @brief 抬升舵机定时器
+    /***---------------     框架定时器    ---------------***/
+    /// @brief 抬升舵机定时器
     
+    /***---------------     框架GPIO    ---------------***/
+    /// @brief 取杆：对齐杆的小小黄
+     extern BSP::GPIO::Inst miniyellow_aim_rod;   
+
     
 }

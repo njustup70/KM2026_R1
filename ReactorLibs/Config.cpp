@@ -12,9 +12,12 @@ void Hardware::Config_Hardwares()
     Hardware::hcan_sub = ToID(&hcan2);
  
     /**-----    配置串口    -----**/
-    Hardware::huart_host = ToID(&huart1);
+    Hardware::huart_host = ToID(&huart6);
     Hardware::huart_farcon = ToID(&huart3);
-    Hardware::huart_odom = ToID(&huart6);
+    Hardware::huart_odom = ToID(&huart7);
+    Hardware::huart_sick = ToID(&huart2);
+    Hardware::huart_log = ToID(&huart8);
+    Hardware::huart_optical = nullptr; 
     Hardware::huart_other = nullptr;
  
     /**-----    配置SPI总线    -----**/
@@ -25,7 +28,10 @@ void Hardware::Config_Hardwares()
     /**-----    配置定时器    -----**/
     Hardware::htim_led = nullptr;
     // Hardware::htim_liftservo = &htim5;
+
     /**-----    配置 GPIO   -----**/
+    Hardware::miniyellow_aim_rod = BSP::GPIO::Inst(Pin{'A', 1});
+
 
     Hardware::Config_Parameters();
 }

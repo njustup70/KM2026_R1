@@ -120,6 +120,7 @@ public:
   friend Vec3 operator*(const Vec3 &vec, float scalar);
   friend Vec3 operator*(float scalar, const Vec3 &vec);
   friend Vec3 operator/(const Vec3 &vec, float scalar);
+  friend bool operator==(const Vec3 &lhs, const Vec3 &rhs);
 };
 /*********      运算符重载      **********/
 inline Vec3 operator+(const Vec3 &lhs, const Vec3 &rhs)
@@ -154,6 +155,10 @@ inline Vec3 operator/(const Vec3 &vec, float scalar)
     return Vec3(114514, 114514, 114514); // 避免除以零
   else
     return Vec3(vec.x / scalar, vec.y / scalar, vec.z / scalar);
+}
+inline bool operator ==(const Vec3 &lhs, const Vec3 &rhs)
+{ // vec3向量相等比较
+  return (lhs.x == rhs.x) && (lhs.y == rhs.y) && (lhs.z == rhs.z);
 }
 
 /**
@@ -318,6 +323,13 @@ Vec3 Cross3(const Vec3 &a, const Vec3 &b);
 /// @param val 目标值
 /// @return 目标值的符号 + / -
 int signf(float val);
+
+// float 4字节->2字节压缩函数
+void PackFloatToInt16(uint8_t* ptr, float val, float scale);
+float UnpackInt16ToFloat(const uint8_t* ptr, float scale);
+
 } // namespace StdMath
+
+
 
 #endif

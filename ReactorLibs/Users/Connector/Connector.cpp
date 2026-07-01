@@ -67,7 +67,7 @@ void Connector::SendKFSValue()
     uint8_t KFS[14] = {FRAME_HEAD, FRAME_TYPE}; // 存储KFS信息的帧
     for(int i = 0; i < 12; i++)
     {
-        KFS[i+2] = farcon.KFS_values[i];
+        KFS[i+2] = MOD::farcon.KFS_values[i / 3][i % 3];
     }
     if(_protocol == Protocol::UART)
     {

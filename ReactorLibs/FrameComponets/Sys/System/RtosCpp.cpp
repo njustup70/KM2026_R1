@@ -13,6 +13,15 @@
 #include "RtosCpp.hpp"
 #include "Chassis.hpp"
 #include "Monitor.hpp"
+#include "farcon.hpp"
+
+
+// #include "R1GetBlock.hpp"
+//#include "LogicGragh.hpp"
+
+// SemaphoreHandle_t g_getblock_start_sem = nullptr;
+// SemaphoreHandle_t g_getblock_done_sem  = nullptr;
+// extern int target_height;
 
 /* ================= 任务句柄定义 ================= */
 // 如果需要在其他地方引用（如挂起任务），可以在头文件 extern
@@ -31,6 +40,7 @@ void StateCoreCpp();
 void ControlCpp();
 void SpiReadCpp();
 void SpiConsumeCpp();
+//void GetBlockTaskCpp();
 
 
 /* ================= 内部适配器 ================= */
@@ -66,8 +76,8 @@ void Reactor46H_Initialize()
 {
     Hardware::Config_Hardwares();
     // 初始化日志系统
-//    BspLog_Init();
-//    BspLog_LogInfo("\n\n");
+    BspLog_Init();
+    BspLog_LogInfo("\n\n");
 
     // 必须要，因为很多外部设备都要时间初始化
     // 尤其是C620 / C610，第一次上电时如果不等它们自检完就发指令，可能会冲爆
@@ -96,6 +106,9 @@ void Reactor46H_TakeOverRTOS()
         SpiConsumeSemaphore = xSemaphoreCreateBinary();
     }
 
+    // g_getblock_start_sem = xSemaphoreCreateBinary();
+    // g_getblock_done_sem  = xSemaphoreCreateBinary();
+
     xTaskCreate(TaskWrapper, "Control", 256, (void*)ControlCpp, 
                 osPriorityNormal, &ControlTaskHandle);
 
@@ -113,6 +126,9 @@ void Reactor46H_TakeOverRTOS()
 
     xTaskCreate(TaskWrapper, "StateCore", 512, (void*)StateCoreCpp, 
                 osPriorityNormal, &StateCoreTaskHandle);
+    
+    // xTaskCreate(TaskWrapper, "GetBlock",   512, (void*)GetBlockTaskCpp, 
+    //             osPriorityNormal, nullptr);
 
     // 如果你还需要原来的 4 个协程，可以用循环批量创建
     // for(int i = 0; i < 4; i++) {
@@ -232,3 +248,18 @@ void SpiConsumeCpp()
         System._Update_SpiConsumes();
     }
 }
+
+// void GetBlockTaskCpp()
+// {
+//     while(1)
+//     {
+//         // 平时阻塞等待触发
+//         xSemaphoreTake(g_getblock_start_sem, portMAX_DELAY);
+        
+//         // 真正执行取块，深调用栈在这里消耗，不占StateCore的栈
+//         //APP::getblock.Get_Block(target_height);
+        
+//         // 通知StateCore取块完成
+//         xSemaphoreGive(g_getblock_done_sem);
+//     }
+// }

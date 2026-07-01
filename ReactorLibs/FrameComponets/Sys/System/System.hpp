@@ -15,6 +15,15 @@
 #include "Monitor.hpp"
 #include "bsp_hardware.hpp"
 
+///加上这个打包对齐指令，防止编译器在结构体中插入空白填充字节
+#pragma pack(1)
+struct FloatDataPacket {
+    float data1;
+    float data2;
+    float data3;
+};
+#pragma pack() 
+
 namespace Systems
 {
     // 区分红方蓝方
@@ -61,25 +70,26 @@ class Application
     friend class SystemType;            // 允许系统类访问私有成员
 private:
     uint8_t _prescaler_cnt = 0;        // 预分频计数器
-    
-public:
-    char name[24];                          // 应用名称
     uint8_t prescaler = 1;                  // 应用预分频
-    bool CntFull();                         // 预分频计数器满了没
-    
-    // [开机自检] 系统 SELF_CHECK 阶段集中调用，子类按需重写
-    // 返回 true 表示硬件/连接正常，自检通过
-    virtual bool WatchPoint() { return true; }
 
     // [状态量] 用于向系统与其他 App 暴露当前健康状况，外部仅具有只读权限
     // 注意：App 内部不要直接修改这个变量，应当覆写下方的 GetStatus()
     App::Status status = App::Normal;
 
+    bool CntFull();                         // 预分频计数器满了没
+    
+public:
+    char name[24];                          // 应用名称
+
+protected:
+    // [开机自检] 系统 SELF_CHECK 阶段集中调用，子类按需重写
+    // 返回 true 表示硬件/连接正常，自检通过
+    virtual bool WatchPoint() { return true; }
+
     // [状态更新接口] 子类只需覆写此方法描述自身状态
     // 该方法会在 Update 执行前被 System 自动调用并缓存至 status 变量
     virtual App::Status GetStatus() { return App::Normal; }
 
-protected:
     Application(const char *name){
         strncpy(this->name, name, 23);
         this->name[23] = 0; // 确保字符串结尾
@@ -175,8 +185,14 @@ class SystemType
 
     
     LedWs2812*              led_band = nullptr;             // 仅指 "系统灯"
+public:
     Odometer_Ops9           odometer;             // 物理里程计
     Positioner              posner;
+    Vec2 pos_offset;    
+public:
+    //发给遥控器显示的数据包
+    FloatDataPacket pos_packet;
+    uint8_t pos_data[9];
 
     bool is_retrying = false;                               // 是否处于重试状态（从RetryZone出发）
     Application* app_list[24];                              // 系统中的应用实例列表

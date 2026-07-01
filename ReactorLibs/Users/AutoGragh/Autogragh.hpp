@@ -1,0 +1,14 @@
+#ifndef _AUTOGRAGH_HPP_
+#define _AUTOGRAGH_HPP_
+#pragma once
+#include <cstdint>
+#include "System.hpp"
+#include "StateCore.hpp"
+
+// 初始化接口
+void AutoGragh_Init(void);
+
+// 定义区域枚举
+//enum Area { None = 0, Area1 = 1, Area2 = 2, Area3 = 3 };
+
+#endif
