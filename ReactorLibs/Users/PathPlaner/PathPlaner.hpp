@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "std_math.hpp"
 #include <stdint.h>
@@ -15,9 +15,18 @@ struct PathPickMeta
     float pick_yaw = 0.0f;  // 面向梅林块的车头朝向。
 };
 
+struct PathNode
+{
+    Vec2 pos;               // 目标点坐标
+    int label = -1;         // 目标点的X[]索引
+    float target_yaw = 0.0f; // 目标点的车头朝向
+    bool is_pick_point = false; // 是否是取块点
+};
+
 // 二区矩形环路的路径容器。
 struct PathContainer
 {
+    PathNode nodes[MAX_PATH];
     Vec2 points[MAX_PATH];
     uint8_t size = 0;
     uint8_t index = 0;
@@ -50,12 +59,20 @@ struct PathContainer
         }
     }
 
-    void add(Vec2 p, int label)
+    void add(Vec2 p, int label, float yaw = 0.0f, bool is_pick = false)
     {
         if (size >= MAX_PATH) return;
-
+        
+        // 复合新容器赋值
+        nodes[size].pos = p;
+        nodes[size].label = label;
+        nodes[size].target_yaw = yaw;
+        nodes[size].is_pick_point = is_pick;
+        
+        // 兼容传统旧数组成员，防止底盘传统导航部分逻辑报错
         points[size] = p;
         labels[size] = label;
+        
         size++;
     }
 

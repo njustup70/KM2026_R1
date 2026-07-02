@@ -1,8 +1,8 @@
-﻿/**
+/**
  * @author @Agilawood1, @all-mx
  * @brief 
  * 实现：矩形环路18点最短路径规划
- * 未实现：todo红蓝方的转换;仍有bug，可能是非最短路径
+ * 未实现：todo红蓝方的转换
  * 
  * 路径环形索引：
  *                      三区
@@ -372,28 +372,109 @@ static void SearchPriorityOrders(SearchContext& ctx, int depth)
     }
 }
 
-static void WriteRouteToPath(const RouteResult& result, PathContainer& path)
+void WriteRouteToPath(const RouteResult& route, PathContainer& path)
 {
-    Vec2 X[X_COUNT];
-    BuildXPoints(X);
-
     path.clear();
-    if (!result.valid)
+    Vec2 X[X_COUNT];
+    BuildXPoints(X);    
+
+    // 1. 先将规划好的取块元数据存入容器中，方便后续索引和姿态查找
+    for (int i = 0; i < route.pick_count; i++)
     {
-        path.add(ToGlobal(X[END_XID]), END_XID);
-        return;
+        path.addPickMeta(route.picks[i].block_id, 
+                         route.picks[i].pick_xid, 
+                         route.picks[i].rotate_xid, 
+                         route.picks[i].pick_yaw);
     }
 
-    for (int i = 0; i < result.route_count; i++)
+    // 2. 第一次遍历：筛选并计算出所有“原始路径”中各个点的预设 Yaw
+    // 建立一个临时缓冲，长度和原始路径一致
+    float temp_yaws[MAX_PATH] = {0.0f};
+
+    for (int i = 0; i < route.route_count; i++)
     {
-        int xid = result.route_xids[i];
-        path.add(ToGlobal(X[xid]), xid);
+        int xid = route.route_xids[i];
+        
+        // 检查该点是不是规划中的取块点
+        bool is_pick_node = false;
+        float current_pick_yaw = 0.0f;
+        for (int j = 0; j < path.pick_count; j++)
+        {
+            if (path.pick_metas[j].pick_xid == xid)
+            {
+                is_pick_node = true;
+                current_pick_yaw = path.pick_metas[j].pick_yaw;
+                break;
+            }
+        }
+
+        if (is_pick_node)
+        {
+            // 如果是有块的点，直接采用算法解算出的精准取块姿态
+            temp_yaws[i] = current_pick_yaw;
+        }
+        else
+        {
+            // 如果不是取块点（比如过渡点或角点），向后搜寻最近的下一个取块点，提前继承它的旋转目标
+            float next_target_yaw = 0.0f;
+            bool found_next_pick = false;
+            
+            for (int k = i + 1; k < route.route_count; k++)
+            {
+                int next_xid = route.route_xids[k];
+                for (int j = 0; j < path.pick_count; j++)
+                {
+                    if (path.pick_metas[j].pick_xid == next_xid)
+                    {
+                        next_target_yaw = path.pick_metas[j].pick_yaw;
+                        found_next_pick = true;
+                        break;
+                    }
+                }
+                if (found_next_pick) break;
+            }
+
+            if (found_next_pick)
+            {
+                // 找到了后方的取块点，提前在当前点转到对应的航向，防止到点后再转造成时序卡顿
+                temp_yaws[i] = next_target_yaw;
+            }
+            // else
+            // {
+            //     // 如果后面再也没有块要取了（通常是去往最终终点），采用默认内向角度
+            //     temp_yaws[i] = GetInwardYaw(xid);
+            // }
+        }
     }
 
-    for (int i = 0; i < result.pick_count; i++)
+    // 3. 第二次遍历：抽稀路径，【只保留角点和取块点】进入最终容器
+    for (int i = 0; i < route.route_count; i++)
     {
-        const PickPlan& pick = result.picks[i];
-        path.addPickMeta(pick.block_id, pick.pick_xid, pick.rotate_xid, pick.pick_yaw);
+        int xid = route.route_xids[i];
+        
+        // 判断是否是四个拐角点之一
+        bool is_corner = (xid == 2 || xid == 7 || xid == 11 || xid == 16);
+        
+        // 判断是否是需要取块的点
+        bool is_pick_node = false;
+        for (int j = 0; j < path.pick_count; j++)
+        {
+            if (path.pick_metas[j].pick_xid == xid)
+            {
+                is_pick_node = true;
+                break;
+            }
+        }
+
+        // 如果既不是角点，又不是取块点，直接无视它（不加入路径中）
+        if (!is_corner && !is_pick_node)
+        {
+            continue; 
+        }
+
+        // 压入我们精简安全过后的容器，此时外部直接获取 nodes[index] 即可得到完美的 target_yaw
+        Vec2 p = ToGlobal(X[xid]);
+        path.add(p, xid, temp_yaws[i], is_pick_node);
     }
 }
 
