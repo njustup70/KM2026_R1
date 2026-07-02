@@ -88,8 +88,8 @@ public:
 
   int _stretch_l_origin_code = 0;
   int _stretch_r_origin_code = 0;
-  int _stretch_l_origined=0;
-  int _stretch_r_origined=0;
+  int _stretch_l_origined = 0;
+  int _stretch_r_origined = 0;
   int _stretch_origined = 0;
   // 取 200/400/600 块时抬升电机3508对应的 total_angle 目标值
   float blockheight_2_liftmotortargetpos[3] = {40000.0f, 450000.0f, 870000.0f};
@@ -116,7 +116,7 @@ public:
   bool suck_finish = false;
   volatile int suck_flag = 0; // 取块触发
   // ======================== 吐块状态机控制 ========================
-  volatile int first_spit=0;
+  volatile int first_spit = 0;
   volatile int begin_spit_flag = 0; // 吐块触发
   volatile int release_pre_flag = 0;
   volatile int realse_order = 0; // 吐块顺序
@@ -130,7 +130,7 @@ public:
 
   // =========================全自动（定位）相关数据=======================////////////
 
-  int  finish_pre_suck=0;
+  int finish_pre_suck = 0;
 
   float Block_Sick_lf[2] = {0, 0}; // Sick数据，单位是m,所以 默认要乘以100 （车坐标系下车左边和车前面）***相对坐标系****
 
@@ -190,10 +190,12 @@ public:
   void PreLayBLock();
 
   void ReleaseBlock(int auto_flag = 0);
-//技能赛
-
-
-void PrePut();
+  // 技能赛
+  void PrePut();
+  void FromMiddleToAny();
+  void AnyToMiddleGrid();
+  void PutBlock();
+  void GetGroundBlock();
 
   void Action_LiftToHeight(float height); // TODO: 预留
   int trans_height(int block_height);
