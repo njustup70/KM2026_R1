@@ -38,6 +38,8 @@ void SystemType::Init(bool Sc)
         status = Systems::SELF_CHECK;
     pos_offset = Vec2(0.45f, 0.425f);  
 
+    camp = Systems::Camp_Red; 
+
 }
 
 /**
