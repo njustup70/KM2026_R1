@@ -115,7 +115,7 @@ void R1Block::_GetLiftOrigin()
   if (!_lift_l_origined || !_lift_r_origined)
   {
     if (runed_tick > 60)
-      shared_probe_code += 200;
+      shared_probe_code += 300;
     else if (runed_tick > 30)
       shared_probe_code += 65;
     else
@@ -926,17 +926,17 @@ void R1Block::FromMiddleToAny()
 {
   static int put_dposition = 1;
 
-  while (farcon.button_middle[1][1] != 1)
+  while (farcon.button_middle[2][1] != 1)
   {
-    if (farcon.button_middle[0][0] == 1)
+    if (farcon.button_middle[3][0] == 1)
     {
       put_dposition = 0;
     }
-    else if (farcon.button_middle[0][2] == 1)
+    else if (farcon.button_middle[3][2] == 1)
     {
       put_dposition = 2;
     }
-    else if (farcon.button_middle[0][1] == 1)
+    else if (farcon.button_middle[3][1] == 1)
     {
       put_dposition = 1;
     }
@@ -972,24 +972,8 @@ void R1Block::AnyToMiddleGrid()
   Seq::WaitUntil([&]()
                  { return (chassis._Rotating() == 1); });
 
-  // 向右边走一步对准洞
-  Seq::WaitUntil([&]()
-                 { return (farcon.button_first_half[6] == 1); });
-  Seq::WaitUntil([&]()
-                 { return ((Block_Sick_lf[0] <= 2) && (Block_Sick_lf[0] >= 0.2)); });
-
-  chassis.MoveRelative({0, -float(0.785 - Block_Sick_lf[0])});
-  Seq::WaitUntil([&]()
-                 { return (chassis._Walking() == 1); });
-
-  // 向前走一步进洞
-  Seq::WaitUntil([&]()
-                 { return (farcon.button_first_half[6] == 1); });
-  Seq::WaitUntil([&]()
-                 { return ((Block_Sick_lf[1] <= 1) && (Block_Sick_lf[1] >= 0.2)); });
-  chassis.MoveRelative({float(Block_Sick_lf[1] - 0.3), 0});
-  Seq::WaitUntil([&]()
-                 { return (chassis._Walking() == 1); });
+  chassis.MoveAt({10.75,4.85});
+  
 }
 
 // 包括吐块和出洞
@@ -1039,9 +1023,7 @@ void R1Block::GetGroundBlock()
     Spd = Vec2{0, -0.05};
     Seq::Wait(0.5);
     chassis.Move({0, 0});
-    // chassis.MoveRelative(rel_xy);
-    // Seq::WaitUntil([&]()
-    //                { return (chassis._Walking() == 1); }); // 检测到到位置了
+
     aim_right = 1;
   }
   else if (block_detect[1] == 1)
@@ -1054,9 +1036,6 @@ void R1Block::GetGroundBlock()
     Spd = Vec2{0, 0.05};
     Seq::Wait(0.5);
     chassis.Move({0, 0});
-    // chassis.MoveRelative(rel_xy);
-    // Seq::WaitUntil([&]()
-    //                { return (chassis._Walking() == 1); }); // 检测到到位置了
     aim_right = 1;
   }
   chassis.Move({0, 0});
@@ -1081,6 +1060,8 @@ void R1Block::GetGroundBlock()
   suckmotor[1].SetSpd(0);
 
   // 取完块
+
+  SmoothMoveLiftToTarget(0, realse_block_height, 3, 100); // 差一个高度变化
 }
 
 void R1Block::Action_LiftToHeight(float height)
