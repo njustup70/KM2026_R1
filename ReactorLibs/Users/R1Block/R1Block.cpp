@@ -703,13 +703,14 @@ void R1Block::
     last_height = block_height;
   }
   // 取第二个块
-  if (block_exist[2] == 1 && block_exist[1] == 0 && block_exist[0] == 0)
+  else if (block_exist[2] == 1 && block_exist[1] == 0 && block_exist[0] == 0)
   {
     Seq::WaitUntil([&]()
                    { return (block_exist[0] == 1); }); // 检测到最外面到了
     SetTargetStretch(stretch_distance[0], stretch_distance[0]);
     Seq::WaitUntil([&]()
                    { return (block_exist[1] == 1); }); // 检测到中间到了
+    SetTargetStretch(0, 0);
     suckmotor[0].SetSpd(0);
     suckmotor[1].SetSpd(0);
     Clamp_block(); // 夹紧
@@ -717,7 +718,7 @@ void R1Block::
     last_height = block_height;
   }
   // 取第三个块
-  if (block_exist[2] == 1 && block_exist[1] == 1 && block_exist[0] == 0)
+  else if (block_exist[2] == 1 && block_exist[1] == 1 && block_exist[0] == 0)
   {
     Seq::WaitUntil([&]()
                    { return (block_exist[0] == 1); }); // 检测到最外面到了
@@ -969,26 +970,26 @@ void R1Block::AnyToMiddleGrid()
   // 需要测试参数
   chassis.RotateAt(1.57);
   Seq::WaitUntil([&]()
-                 { return (chassis._Rotating() == 1); }); 
+                 { return (chassis._Rotating() == 1); });
 
-    // 向右边走一步对准洞
-    Seq::WaitUntil([&]()
-                   { return (farcon.button_first_half[6] == 1); });
-    Seq::WaitUntil([&]()
-                   { return ((Block_Sick_lf[0] <=2) && (Block_Sick_lf[0] >= 0.2)); });
+  // 向右边走一步对准洞
+  Seq::WaitUntil([&]()
+                 { return (farcon.button_first_half[6] == 1); });
+  Seq::WaitUntil([&]()
+                 { return ((Block_Sick_lf[0] <= 2) && (Block_Sick_lf[0] >= 0.2)); });
 
-    chassis.MoveRelative({0, -float(0.785 - Block_Sick_lf[0])});
-    Seq::WaitUntil([&]()
-                   { return (chassis._Walking() == 1); }); 
+  chassis.MoveRelative({0, -float(0.785 - Block_Sick_lf[0])});
+  Seq::WaitUntil([&]()
+                 { return (chassis._Walking() == 1); });
 
-    // 向前走一步进洞
-    Seq::WaitUntil([&]()
-                   { return (farcon.button_first_half[6] == 1); }); 
-    Seq::WaitUntil([&]()
-                   { return ((Block_Sick_lf[1] <= 1) && (Block_Sick_lf[1] >= 0.2)); });
-    chassis.MoveRelative({float(Block_Sick_lf[1] - 0.3), 0});
-    Seq::WaitUntil([&]()
-                   { return (chassis._Walking() == 1); });
+  // 向前走一步进洞
+  Seq::WaitUntil([&]()
+                 { return (farcon.button_first_half[6] == 1); });
+  Seq::WaitUntil([&]()
+                 { return ((Block_Sick_lf[1] <= 1) && (Block_Sick_lf[1] >= 0.2)); });
+  chassis.MoveRelative({float(Block_Sick_lf[1] - 0.3), 0});
+  Seq::WaitUntil([&]()
+                 { return (chassis._Walking() == 1); });
 }
 
 // 包括吐块和出洞
