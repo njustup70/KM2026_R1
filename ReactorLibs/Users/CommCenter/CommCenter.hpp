@@ -68,6 +68,7 @@ public:
     // app层业务逻辑相关的变量
     Vec3 slam_pos;
     bool rodmotor_OK = false;
+    bool rodair_state = false;
 
 // public:
 //     uint8_t KFS_values[12];

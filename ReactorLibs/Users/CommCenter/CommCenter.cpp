@@ -40,9 +40,7 @@ void CommCenter::Update()
 
     if (farcon.button_second_half[16 - 8 - 1] == 1 )
     {
-        //cooldown_tick2 = DWT_GetTimeline_Sec();
-        SendKFSdata();
-        //SimplePackAndSendKFS();
+        SendKFSdata(); //板间通讯
     }
 
     if (farcon.button_second_half[15 - 8 - 1] == 1)
@@ -153,13 +151,29 @@ void AckCBoardCallback(uint8_t task_id, const uint8_t *payload, uint8_t payload_
 {
     // auto* self = static_cast<CommCenter*>(user_ctx);
     // if (!self || payload_len < 2) return;
-    
-    if(payload[0] == 1)
+    //处理电机的 
+    if (payload[0] == 0)
     {
-        comm.rodmotor_OK = true;
+        if(payload[1] == 1)
+        {
+            comm.rodmotor_OK = true;
+        }
+        else 
+        {
+            comm.rodmotor_OK = false;
+        }
     }
-    else 
+    //处理气路有关的
+    else if (payload[0] == 1)
     {
-        comm.rodmotor_OK = false;
+        if(payload[1] == 1)
+        {
+            comm.rodair_state = true;
+        }
+        else 
+        {
+            comm.rodair_state = false;
+        }
     }
+
 }
