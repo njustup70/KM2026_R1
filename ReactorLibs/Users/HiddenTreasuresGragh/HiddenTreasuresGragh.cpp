@@ -56,7 +56,7 @@ void Action_InPlantoGetGroundBlock(StateCore *state_core)
                  { return (chassis._Rotating() == 1); });
   Seq::WaitUntil([&]()
                  { return (farcon.button_first_half[5] == 1); });
-  chassis.MoveAt({10.9, 2.52});
+  chassis.MoveAt({10.9, 2.60});
   Seq::WaitUntil([&]()
                  { return (chassis._Walking() == 1); });
 
@@ -92,13 +92,19 @@ void Action_freetogrid(StateCore *state_core)
 
   if (freeput_pos == 0)
   {
-    chassis.MoveAt({10.75, 4.31});
+    chassis.MoveAt({10.21, 4.85});
     Seq::WaitUntil([&]()
                    { return (chassis._Walking() == 1); });
   }
   else if (freeput_pos == 2)
   {
-    chassis.MoveAt({10.75, 5.39});
+    chassis.MoveAt({11.29, 4.85});
+    Seq::WaitUntil([&]()
+                   { return (chassis._Walking() == 1); });
+  }
+  else if (freeput_pos == 1)
+  {
+        chassis.MoveAt({10.75, 4.85});
     Seq::WaitUntil([&]()
                    { return (chassis._Walking() == 1); });
   }
@@ -149,7 +155,7 @@ void HiddenTreasuresGragh_Init(void)
   s_planpickground.LinkTo(&s_planpickground.Complete, s_free_togrid);
   s_free_togrid.LinkTo(&s_free_togrid.Complete, s_free_put);
   s_free_put.LinkTo(&s_free_put.Complete, s_free_pick);
-  s_free_pick.LinkTo(&s_free_pick.Complete,s_free_togrid);
+  s_free_pick.LinkTo(&s_free_pick.Complete, s_free_togrid);
   // // 注册图
   state_core.RegistGraph(HT_flow);
 }

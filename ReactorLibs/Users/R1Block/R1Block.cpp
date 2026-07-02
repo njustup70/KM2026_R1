@@ -972,8 +972,7 @@ void R1Block::AnyToMiddleGrid()
   Seq::WaitUntil([&]()
                  { return (chassis._Rotating() == 1); });
 
-  chassis.MoveAt({10.75,4.85});
-  
+  chassis.MoveAt({10.75, 4.85});
 }
 
 // 包括吐块和出洞
@@ -981,12 +980,15 @@ void R1Block::PutBlock()
 {
   // ************************开始吐块**********************//
   // SetTargetState(release_strectch_distance[1], release_strectch_distance[1], 0.0f, 0.0f, realse_block_height, realse_block_height);
-  Seq::Wait(2);
   Clamp_block();
-  suckmotor[0].SetSpd(suck_speed * 0.9);
-  suckmotor[1].SetSpd(-suck_speed * 0.9);
-  Seq::Wait(2);
+  suckmotor[0].SetSpd(suck_speed);
+  suckmotor[1].SetSpd(-suck_speed);
+
+  Seq::WaitUntil([&]()
+                 { return block_exist[2] == 0; }); // 检测到没有块在上面的时候
   SetTargetStretch(release_strectch_distance[0], release_strectch_distance[0]);
+  Seq::WaitUntil([&]()
+                 { return block_exist[0] == 1; }); // 检测到没有块在上面的时候
   Seq::WaitUntil([&]()
                  { return block_exist[0] == 0; }); // 检测到没有块在上面的时候
   suckmotor[0].SetSpd(0);
@@ -1010,7 +1012,8 @@ void R1Block::GetGroundBlock()
 
   SmoothMoveLiftToTarget(realse_block_height, 0, 3, 100); // 差一个高度变化
   Seq::WaitUntil([&]()
-                 { return (farcon.button_first_half[5] == 1); });
+                 { return ((liftmotor[0].IsReached() == 1) && (liftmotor[1].IsReached() == 1)); }); // 检测到最外面到了
+
   Loosen_block();
   Seq::Wait(1);
   if (block_detect[0] == 1)
