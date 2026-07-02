@@ -294,8 +294,6 @@ void R1Block::Update()
     Stop();
   }
 
-  BspLog_LogInfo("sickl:%f,sickf:%f", sick.GetSingleChannel(0), sick.GetSingleChannel(1));
-
   if (!_lift_origined)
   {
     _GetLiftOrigin();
