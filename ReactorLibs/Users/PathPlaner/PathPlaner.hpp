@@ -118,5 +118,5 @@ struct PathContainer
 
 void GetShortestPath(uint8_t KFS_values[12], uint8_t r2_column, PathContainer& path);
 void GetShortestPath(uint8_t KFS_values[12], PathContainer& path);
-
+void GetPathDog(int *meilin_blocks, PathNode *path_dog, int auto_dog_flag, int *priority_block=nullptr);
 extern PathContainer Zone2_Path;
