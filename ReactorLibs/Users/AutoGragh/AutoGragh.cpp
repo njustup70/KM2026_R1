@@ -28,6 +28,12 @@ using namespace MOVE;
 // 全局状态图对象
 StateGraph auto_flow{"AutoGragh"};
 
+int meilin_block[12] = {1, 0, 1, 2, 0, 2, 1, 2, 2, 0, 3, 0};
+int kfs_point[12] = {1, 0, 1,
+                     0, 2, 1,
+                     0, 2, 2,
+                     3, 2, 0};
+int kfs_data[12] = {0};
 #define Zone1 1
 #define Zone2 2
 #define Zone3 3
@@ -128,24 +134,20 @@ void Action_Planning(StateCore *state_core)
   Seq::WaitUntil([]() -> bool
                  { return farcon.button_second_half[9 - 8 - 1] == 1; });
 
-//   uint8_t kfs_data[12] = {0};
-//   if (System.camp == Systems::Camp_Red)
-//   {
-//     farcon.PackKFSValues(kfs_data, false); // 红区
-//   }
-//   else
-//   {
-//     farcon.PackKFSValues(kfs_data, true); // 蓝区
-//   }
-int kfs_point[12] = {1,0,1,
-	0,2,1,
-	0,2,2,
-	3,2,0};
+  //   if (System.camp == Systems::Camp_Red)
+  //   {
+  //     farcon.PackKFSValues(kfs_data, false); // 红区
+  //   }
+  //   else
+  //   {
+  //     farcon.PackKFSValues(kfs_data, true); // 蓝区
+  //   }
+
   // 路径规划需要的一些
-  //int kfs_point =(int)(kfs_data);
-  int block_priority[3] = {-1, -1, -1};
+  //   int block_priority[3] = {-1, -1, -1};
   // 调用路径规划
-  GetPathDog(kfs_point, guide_dog, true);
+  //   GetPathDog(meilin_block,guide_dog,1);
+//  GetPathDog(farcon.KFS_int, guide_dog, true);
   // GetPathDog(&kfs_point, guide_dog, true,&block_priority[0]);
 
   state_core->GetCurState()->Complete = true;
@@ -159,8 +161,8 @@ int kfs_point[12] = {1,0,1,
 void Action_NavToBlock(StateCore *state_core)
 {
   monit.LogInfo("State:Action_NavToBlock");
-  if (is_ready_to_pick || is_final_goal_reached)
-    return; // 如果已经触发取块，直接返回，等待状态切换,防止线程时序问题没有正确跳转
+  //   if (is_ready_to_pick || is_final_goal_reached)
+  //    return; // 如果已经触发取块，直接返回，等待状态切换,防止线程时序问题没有正确跳转
 
   // 提取当前这一帧动作节点的打包数据
   Vec2 target_pos = guide_dog[guide_dog_index].pos;
@@ -168,46 +170,46 @@ void Action_NavToBlock(StateCore *state_core)
   float target_yaw = guide_dog[guide_dog_index].target_yaw;
   bool is_corner = (target_xid == 2 || target_xid == 7 || target_xid == 11 || target_xid == 16);
 
-  // 移动底盘到目标点
+  //   // 移动底盘到目标点
   chassis.MoveAt(target_pos);
 
-  // 姿态控制：如果是四个角点，调用旋转指令并强等待底盘就位
-  if (is_corner)
-  {
-    // 强等待底盘横移就位
-    Seq::WaitUntil([]() -> bool
-                   { return (chassis._Walking() == 1); });
+  //   // 姿态控制：如果是四个角点，调用旋转指令并强等待底盘就位
+  //   if (is_corner)
+  //   {
+  //     // 强等待底盘横移就位
+  //     Seq::WaitUntil([]() -> bool
+  //                    { return (chassis._Walking() == 1); });
 
-    // 调整yaw
-    chassis.RotateAt(target_yaw);
+  //     // 调整yaw
+  //     chassis.RotateAt(target_yaw);
 
-    // 强等待旋转就位
-    Seq::WaitUntil([]() -> bool
-                   { return (chassis._Rotating() == 1); });
-  }
-  else
-  {
-    // 普通通过点，也只需要等底盘横移到达即可
-    Seq::WaitUntil([]() -> bool
-                   { return (chassis._Walking() == 1); });
-  }
+  //     // 强等待旋转就位
+  //     Seq::WaitUntil([]() -> bool
+  //                    { return (chassis._Rotating() == 1); });
+  //   }
+  //   else
+  //   {
+  //     // 普通通过点，也只需要等底盘横移到达即可
+  //     Seq::WaitUntil([]() -> bool
+  //                    { return (chassis._Walking() == 1); });
+  //   }
 
-  if (guide_dog[guide_dog_index].is_pick_point)
-  {
-    // 如果是有块的点：获取高度，准备通过 LinkTo 条件触发切入 Action_GetBlock
-    target_height = GetBlockHeight(target_xid);
-    is_ready_to_pick = true; // 马上跳转，保证状态块只跑一次
-  }
-  else if (guide_dog[guide_dog_index].is_at_end)
-  {
-    is_final_goal_reached = true;
-  }
-  else
-  {
-    // 如果是普通通过点：不切外部状态，自主自增索引，并自回环重新进入本状态
-    guide_dog_index++;
-    state_core->GetCurState()->Complete = true;
-  }
+  //   if (guide_dog[guide_dog_index].is_pick_point)
+  //   {
+  //     // 如果是有块的点：获取高度，准备通过 LinkTo 条件触发切入 Action_GetBlock
+  //     target_height = GetBlockHeight(target_xid);
+  //     is_ready_to_pick = true; // 马上跳转，保证状态块只跑一次
+  //   }
+  //   else if (guide_dog[guide_dog_index].is_at_end)
+  //   {
+  //     is_final_goal_reached = true;
+  //   }
+  //   else
+  //   {
+  //     // 如果是普通通过点：不切外部状态，自主自增索引，并自回环重新进入本状态
+  //     guide_dog_index++;
+  //     state_core->GetCurState()->Complete = true;
+  //   }
 }
 
 // 状态：取块
