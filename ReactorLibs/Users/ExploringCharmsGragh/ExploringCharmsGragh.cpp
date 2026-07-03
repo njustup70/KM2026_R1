@@ -15,145 +15,147 @@
 #include "PathChaser.hpp"
 #include "Logic.hpp"
 
-// 更改PATHS
-#include "a1_torod.hpp"
-#include "a1_todock.hpp"
-#include "R1_area3.hpp"
+// 加入PATHS
+#include "rod1.hpp"
+#include "rod2.hpp"
+#include "rod3.hpp"
+#include "a1_todock2.hpp"
+#include "a1_toassemble.hpp"
 
 using namespace APP;
 using namespace MOD;
 using namespace MOVE;
 
+//全局变量
+bool is_rod1 = false;
+bool is_rod2 = false;
+bool is_rod3 = false;
+bool is_assemble = false;
+
 // 全局状态图对象
 StateGraph EC_flow{"ExploringCharmsGragh"};
 
-//-------------辅助函数----------------
-/**
- * @brief 辅助函数：判断 X[xid] 在矩形的哪条边
- * @return 0=下边, 1=左边, 2=上边, 3=右边, 4=下边(X[16,17])
- *   下边: X[0,1]  拐角: X[2]  左边: X[3..6]  拐角: X[7]
- *   上边: X[8..10] 拐角: X[11] 右边: X[12..15] 拐角: X[16] 回程: X[17]
- */
-int GetEdge(int xid)
-{
-  if (xid == 1 || xid == 17)
-    return 0; // 下边
-  if (xid >= 2 && xid <= 7)
-    return 1; // 左边（含拐角2、7）
-  if (xid >= 7 && xid <= 11)
-    return 2; // 上边（含拐角7、11）
-  if (xid >= 11 && xid <= 16)
-    return 3; // 右边（含拐角11、16）
-  if (xid == 0)
-    return 4; // 起点
-  return 0;   // 为了去0的时候先x后y
-}
-
-void BarrelToMid(int target_xid)
-{
-  if (target_xid == 2)
-  {
-    chassis.RotateAt(-1.5708f);
-  }
-  if (target_xid == 7)
-  {
-    chassis.RotateAt(-3.1416f);
-  }
-  if (target_xid == 11)
-  {
-    chassis.RotateAt(0.0f);
-  }
-  if (target_xid == 16)
-  {
-    chassis.RotateAt(1.57f);
-  }
-}
 //====================状态函数组织=======================================================================================
-void ChooseArea(StateCore *core)
+void ChooseRod(StateCore *state_core)
 {
+	is_assemble = false;
+//   Seq::WaitUntil([]() -> bool
+//                  { return (farcon.button_second_half[9 - 8 - 1] == 1) |
+// 						  (farcon.button_second_half[10 - 8 - 1] == 1) |
+// 						  (farcon.button_second_half[11 - 8 - 1] == 1); 
+//                  });
+	while (1)
+	{
+		if (farcon.button_second_half[9 - 8 - 1] == 1)
+		{
+			is_rod1 = true;
+			is_rod2 = false;
+			is_rod3 = false;
+			break; 
+		}
+		if (farcon.button_second_half[10 - 8 - 1] == 1)
+		{
+			is_rod1 = false;
+			is_rod2 = true;
+			is_rod3 = false;
+			break;
+		}
+		if (farcon.button_second_half[11 - 8 - 1] == 1)
+		{
+			is_rod1 = false;
+			is_rod2 = false;
+			is_rod3 = true;
+			break;
+		}
+	}
+
+	state_core->GetCurState()->Complete = true;
+}
+void GetRodandDock(StateCore *state_core)
+{
+    if(is_rod1)
+    {
+      MOVE::MoveToTargPos(Rod1);
+    }
+    else if(is_rod2)
+    {
+      MOVE::MoveToTargPos(Rod2);
+    }
+    else if(is_rod3)
+    {
+      MOVE::MoveToTargPos(Rod3);
+    }
+
+    //先往前怼到杆架子
+    chassis.Move(Vec3(0.15,0,0),1);
+    chassis.RotateAt(3.14); //锁yaw
+
+	//再左右微调，小小黄上拉，0为识别到杆了
+	while(Hardware::miniyellow_aim_rod.Read() != 0)
+	{
+		chassis.Move(Vec3(0,-0.1,0));
+	};
+	chassis.Move(0);
+
+	//左右位置定了可以伸出Bow了
+	comm.SendActionCommand(ActionType::BOW);
+	Seq::Wait(1);
+	Seq::WaitUntil([]() -> bool
+			{ return comm.rodmotor_OK; });
+	monit.LogInfo("Bow At:(%.3f,%.3f), sick:%.3f", comm.slam_pos.x, comm.slam_pos.y, sick.GetTrueSingleChannel(0));
+
+	comm.SendActionCommand(ActionType::CLAMP);
+	Seq::Wait(2);
+	Seq::WaitUntil([]() -> bool 
+	{
+		return comm.rodmotor_OK;  
+	});
+
+	comm.SendActionCommand(ActionType::PICK);
+	Seq::Wait(0.5);
+	MOVE::MoveToTargPos(Area1ToDock);
+	comm.SendActionCommand(ActionType::CLAMP_2_ON);
+
+	//对接
+	//等待人类判断对接完成，发送光通信指令
+	Seq::WaitUntil([]() -> bool 
+	{
+		return farcon.button_second_half[16 - 8 - 1] == 1;  
+	}); 
+
+	comm.SendActionCommand(ActionType::CLAMP_2_OFF);
+	Seq::WaitUntil([]() -> bool 
+	{
+		return !comm.rodair_state;  
+	});
+	comm.SendActionCommand(ActionType::AWAYFROMDOCK);
+	Seq::Wait(0.8);
+    chassis.Move(Vec2(1, 0), 0.4);
+
+    if(is_rod3)
+    {
+		// 这里要加一个倒把手的
+		MOVE::MoveToTargGes(Vec3(2.45, 1.72, -1.57));
+		comm.SendActionCommand(ActionType::PICK); // 把杆放平，复用一下Pick
+		Seq::Wait(1);
+		comm.SendActionCommand(ActionType::CLAMP_2_ON);
+
+		state_core->GetCurState()->Complete = true;
+    }
+    else
+    {
+   		MOVE::MoveToTargPos(ToAssemble);
+
+		comm.SendActionCommand(ActionType::BOW);
+		Seq::Wait(1);
+		Seq::WaitUntil([]() -> bool
+				{ return comm.rodmotor_OK; });
+
+		comm.SendActionCommand(ActionType::PICK); // 复用一下Pick
+		is_assemble = true;
+    }
 }
 
-void GetRod(StateCore *state_core)
-{
-    Seq::WaitUntil([]() -> bool
-                 { return farcon.button_second_half[9 - 8 - 1] == 1; });
-
-    MOVE::MoveToTargPos(Area1ToRod);
-
-    //先左右微调，小小黄上拉，0为识别到杆了
-    while(Hardware::miniyellow_aim_rod.Read() != 0)
-    {
-        chassis.Move(Vec3(0,-0.1,0));
-    };
-    chassis.Move(0);
-
-    //左右位置定了可以伸出Bow了，再前后
-    comm.SendActionCommand(ActionType::BOW);
-    chassis.Move(Vec3(0.1,0,0),1);
-    Seq::Wait(1);
-    // //路径可以给个不准确的,场地肯定会有误差，可以靠move再抵到矛杆架
-    // while(!((fabs(sick.GetSingleChannel(0)) - 0.28) < 0.01))
-    // {
-    //     if ((sick.GetSingleChannel(0) - 0.28 )< 0) 
-    //     {
-    //         chassis.Move(Vec2(0,-0.15));
-    //     }
-    //     else
-    //     {
-    //         chassis.Move(Vec2(0,0.15));
-    //     }
-    // }
-
-  Seq::WaitUntil([]() -> bool
-                 { return comm.rodmotor_OK; });
-  monit.LogInfo("Bow At:(%.3f,%.3f), sick:%.3f", comm.slam_pos.x, comm.slam_pos.y, sick.GetTrueSingleChannel(0));
-
-    comm.SendActionCommand(ActionType::CLAMP);
-    Seq::Wait(0.1);
-    Seq::WaitUntil([]() -> bool 
-    {
-        return comm.rodmotor_OK;  
-    });
-    comm.SendActionCommand(ActionType::PICK);
-    MOVE::MoveToTargPos(Area1ToDock);
-
-    comm.SendActionCommand(ActionType::CLAMP_2_ON);
-
-  state_core->GetCurState()->Complete = true;
-}
-
-void Dock(StateCore *state_core)
-{
-    //一会写一个自动切换底盘模式的，自动自锁模式
-    //手动怼进去
-    
-    //等待人类判断对接完成，发送光通信指令
-    Seq::WaitUntil([]() -> bool 
-    {
-        return farcon.button_second_half[16 - 8 - 1] == 1;  
-    }); 
-
-    comm.SendActionCommand(ActionType::CLAMP_2_OFF);
-    Seq::Wait(1);
-    comm.SendActionCommand(ActionType::AWAYFROMDOCK);
-    Seq::Wait(1);
-
-    chassis.Move(Vec2(1,0),0.4);//离开0.8m
-
-    //这里要加一个倒把手的
-    comm.SendActionCommand(ActionType::PICK);//把杆放平，复用一下Pick
-    Seq::Wait(1);
-    comm.SendActionCommand(ActionType::CLAMP_2_ON);
-    MOVE::MoveToTargGes(Vec3(2.45,1.72,-1.57));
-
-  chassis.Move(Vec2(2, 0), 0.4);            // 离开0.8m
-  comm.SendActionCommand(ActionType::PICK); // 把杆放平，复用一下Pick
-  Seq::Wait(1);
-  comm.SendActionCommand(ActionType::CLAMP_2_ON);
-  MOVE::MoveToTargGes(Vec3(2.45, 1.72, -1.57));
-
-  state_core->GetCurState()->Complete = true;
-}
 //**********************************二区状态块***********************************************************************//
 
 int GetBlockHeight(int index_id)
@@ -257,51 +259,35 @@ void Action_GetBlock(StateCore *state_core)
   // state_core->GetCurState()->Complete = true;
 }
 
-//**************************************三区状态块*******************************************************//
-void Action_PreLay(StateCore *core)
-{
-  r1block.PreLayBLock();
-  MOVE::MoveToTargPos(Area3Path);
-
-  state_core.GetCurState()->Complete = true;
-}
-
-void Action_LayBlock(StateCore *state_core)
-{
-  r1block.ReleaseBlock(1);
-  state_core->GetCurState()->Complete = true;
-}
 
 // ================================初始化========================================================================
 void ExploringCharmsGragh_Init(void)
 {
-  StateBlock &s_rod = EC_flow.AddState("GetRod");
-  StateBlock &s_dock = EC_flow.AddState("Docking");
-  StateBlock &s_plan = EC_flow.AddState("Planning");
-  StateBlock &s_move = EC_flow.AddState("NavtoBlock");
-  StateBlock &s_pick = EC_flow.AddState("GetBlocking");
-  StateBlock &s_lay_pre = EC_flow.AddState("Pre LayBlock");
-  StateBlock &s_lay = EC_flow.AddState("LayBlock");
+	StateBlock &s_chooserod = EC_flow.AddState("ChooseRod");
+	StateBlock &s_rodanddock = EC_flow.AddState("GetRodandDock");
 
-  s_rod.StateAction = GetRod;
-  s_dock.StateAction = Dock;
-  s_plan.StateAction = Action_Planning;
-  s_move.StateAction = Action_NavToBlock;
-  s_pick.StateAction = Action_GetBlock;
-  s_lay_pre.StateAction = Action_PreLay;
-  s_lay.StateAction = Action_LayBlock;
+	StateBlock &s_plan = EC_flow.AddState("Planning");
+	StateBlock &s_move = EC_flow.AddState("NavtoBlock");
+	StateBlock &s_pick = EC_flow.AddState("GetBlocking");
 
-  // 状态转移关系
-  s_rod.LinkTo(&s_rod.Complete, s_dock);
-  s_dock.LinkTo(&s_dock.Complete, s_plan);
-  s_plan.LinkTo(&s_plan.Complete, s_move);
-  s_move.LinkTo(&s_move.Complete, s_pick);
-  s_pick.LinkTo(&s_pick.Complete, s_move);
-  s_move.LinkTo(&s_move.Complete, s_lay_pre);
-  s_lay_pre.LinkTo(&s_lay_pre.Complete, s_lay);
+	s_chooserod.StateAction = ChooseRod;
+	s_rodanddock.StateAction = GetRodandDock;
+	s_plan.StateAction = Action_Planning;
+	s_move.StateAction = Action_NavToBlock;
+	s_pick.StateAction = Action_GetBlock;
 
-  // // 注册图
-  state_core.RegistGraph(EC_flow);
+	// 状态转移关系
+	s_chooserod.LinkTo(&s_chooserod.Complete, s_rodanddock);
+	s_rodanddock.LinkTo(&is_assemble, s_chooserod);
+
+	s_rodanddock.LinkTo(&s_rodanddock.Complete, s_plan);
+
+	s_plan.LinkTo(&s_plan.Complete, s_move);
+	s_move.LinkTo(&s_move.Complete, s_pick);
+	s_pick.LinkTo(&s_pick.Complete, s_move);
+
+	// // 注册图
+	state_core.RegistGraph(EC_flow);
 }
 
 #endif
