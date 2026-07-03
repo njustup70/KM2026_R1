@@ -50,9 +50,9 @@ void GetRod(StateCore *state_core)
                  { return farcon.button_second_half[9 - 8 - 1] == 1; });
 
   MOVE::MoveToTargPos(Area1ToRod);
-  chassis.Move(Vec2(0.3, 0), 1.0f); // 向前走0.1m
+  chassis.Move(Vec2(0.2, 0), 1.0f); // 向前走0.1m
 	Seq::Wait(1);
-  chassis.RotateAt(3.14);
+  //chassis.RotateAt(3.14);
 
   // 先左右微调，小小黄上拉，0为识别到杆了
   while (Hardware::miniyellow_aim_rod.Read() != 0)
@@ -70,8 +70,8 @@ void GetRod(StateCore *state_core)
 
   comm.SendActionCommand(ActionType::CLAMP);
   Seq::Wait(2);
-//   Seq::WaitUntil([]() -> bool
-//                  { return comm.rodmotor_OK; });
+  Seq::WaitUntil([]() -> bool
+                 { return comm.rodmotor_OK; });
 
   comm.SendActionCommand(ActionType::PICK);
   MOVE::MoveToTargPos(Area1ToDock);
@@ -106,7 +106,7 @@ void Dock(StateCore *state_core)
   Seq::Wait(1);
   comm.SendActionCommand(ActionType::CLAMP_2_ON);
 
-    GetPathDog(farcon.KFS_int, guide_dog, true);
+	GetPathDog(farcon.KFS_int, guide_dog, true);
 
 
   state_core->GetCurState()->Complete = true;

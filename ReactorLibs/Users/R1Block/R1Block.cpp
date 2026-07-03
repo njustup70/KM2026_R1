@@ -573,28 +573,25 @@ void R1Block::Aim_Block()
 {
   if (block_detect[0] == 1)
   {
-    Vec2 rel_xy = {0, 0.02};
     Spd = Vec2{0, 0.05};
     aim_right = 0;
     Seq::WaitUntil([&]()
-                   { return block_detect[0] == 0; }); // 检测到没有块在上面的时候
+                   { return block_detect[1] == 1; }); // 检测到没有块在上面的时候
+    Spd = Vec2{0, -0.05};
+    Seq::Wait(1);
     chassis.Move({0, 0});
-    chassis.MoveRelative(rel_xy);
-    Seq::WaitUntil([&]()
-                   { return (chassis._Walking() == 1); }); // 检测到到位置了
     aim_right = 1;
   }
   else if (block_detect[1] == 1)
   {
-    Vec2 rel_xy = {0, -0.02};
     Spd = Vec2{0, -0.05};
     aim_right = 0;
     Seq::WaitUntil([&]()
-                   { return block_detect[1] == 0; }); // 检测到没有块在上面的时候
+                   { return block_detect[0] == 1; }); // 检测到没有块在上面的时候
+    Spd = Vec2{0, 0.05};
+    Seq::Wait(1);
     chassis.Move({0, 0});
-    chassis.MoveRelative(rel_xy);
-    Seq::WaitUntil([&]()
-                   { return (chassis._Walking() == 1); }); // 检测到到位置了
+
     aim_right = 1;
   }
   chassis.Move({0, 0});
@@ -632,6 +629,8 @@ void R1Block::
 // suckmotor[0].SetSpd(-test_suck_speed);
 // suckmotor[1].SetSpd(test_suck_speed);
 #else
+  static int get_finish_block = 0;
+
   height_blcok[0] = 0x02;
   height_blcok[1] = block_height >> 8;
   height_blcok[2] = (uint8_t)(block_height & 0xFF); // 低 8 位
@@ -658,8 +657,8 @@ void R1Block::
       Seq::WaitUntil([&]()
                      { return (llift_reached && rlift_reached); }); // 检测到抬升到对应位置
     }
-chassis.Move({0.05,0},2);
-Seq::Wait(2);
+    chassis.Move({0.2, 0}, 2);
+    Seq::Wait(2);
   }
 
   Loosen_block();
@@ -677,7 +676,7 @@ Seq::Wait(2);
   // 可优化自动取块
 
   // 取第一个块
-  if (block_exist[2] == 0 && block_exist[1] == 0 && block_exist[0] == 0)
+  if (block_exist[2] == 0 && block_exist[1] == 0 && block_exist[0] == 0 && get_finish_block == 0)
   {
     Seq::WaitUntil([&]()
                    { return (block_exist[0] == 1); }); // 检测到最外面到了
@@ -689,41 +688,51 @@ Seq::Wait(2);
                    { return (block_exist[2] == 1); }); // 检测到最里面到了
     suckmotor[0].SetSpd(0);
     suckmotor[1].SetSpd(0);
-
+    if (block_exist[2] == 1 && block_exist[1] == 0 && block_exist[0] == 0)
+    {
+      get_finish_block = 1;
+    }
     Clamp_block(); // 夹紧
     Seq::Wait(1);
-    last_height = block_height;
+    return;
   }
   // 取第二个块
-  else if (block_exist[2] == 1 && block_exist[1] == 0 && block_exist[0] == 0)
+  else if (block_exist[2] == 1 && block_exist[1] == 0 && block_exist[0] == 0 && get_finish_block == 1)
   {
-    Seq::WaitUntil([&]()
-                   { return (block_exist[0] == 1); }); // 检测到最外面到了
-    SetTargetStretch(stretch_distance[0], stretch_distance[0]);
-    Seq::WaitUntil([&]()
-                   { return (block_exist[1] == 1); }); // 检测到中间到了
+    Seq::Wait(2);
+    SetTargetStretch(0, 0);
+    Seq::Wait(2);
     suckmotor[0].SetSpd(0);
     suckmotor[1].SetSpd(0);
-    Clamp_block(); // 夹紧
     Seq::Wait(1);
-    last_height = block_height;
+    if (block_exist[2] == 1 && block_exist[1] == 1 && block_exist[0] == 0)
+    {
+      get_finish_block = 2;
+    }
+    Seq::Wait(1);
+    return;
   }
   // 取第三个块
-  else if (block_exist[2] == 1 && block_exist[1] == 1 && block_exist[0] == 0)
+  else if (block_exist[2] == 1 && block_exist[1] == 1 && block_exist[0] == 0 && get_finish_block == 2)
   {
     Seq::WaitUntil([&]()
                    { return (block_exist[0] == 1); }); // 检测到最外面到了
     SetTargetStretch(release_strectch_distance[1], release_strectch_distance[1]);
+    Seq::WaitUntil([&]()
+                   { return ((stretchmotor[0].IsReached() == 1) && (stretchmotor[1].IsReached() == 1)); }); // 检测到最外面到了
     suckmotor[0].SetSpd(0);
     suckmotor[1].SetSpd(0);
     Clamp_block(); // 夹紧
     Seq::Wait(1);
-    last_height = block_height;
-    if (block_exist[1] == 1 && block_exist[2] == 1 && block_exist[0] == 1)
+
+    SmoothMoveLiftToTarget(trans_height(last_height), trans_height(600), 3);
+
+    if (block_exist[2] == 1 && block_exist[1] == 1 && block_exist[0] == 1)
     {
-      SmoothMoveLiftToTarget(trans_height(last_height), trans_height(600), 3);
+      get_finish_block = 3;
     }
-    Seq::Wait(1);
+    last_height = 600;
+    Seq::Wait(2);
   }
 
   // 记录上次高度
