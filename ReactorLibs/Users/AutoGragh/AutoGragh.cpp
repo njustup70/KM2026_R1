@@ -50,7 +50,8 @@ void GetRod(StateCore *state_core)
                  { return farcon.button_second_half[9 - 8 - 1] == 1; });
 
   MOVE::MoveToTargPos(Area1ToRod);
-  chassis.Move(Vec3(0.3, 0, 0), 1.0f); // 向前走0.1m
+  chassis.Move(Vec2(0.3, 0), 1.0f); // 向前走0.1m
+	Seq::Wait(1);
   chassis.RotateAt(3.14);
 
   // 先左右微调，小小黄上拉，0为识别到杆了
@@ -63,14 +64,14 @@ void GetRod(StateCore *state_core)
   // 左右位置定了可以伸出Bow了，再前后
   comm.SendActionCommand(ActionType::BOW);
   Seq::Wait(1);
-  Seq::WaitUntil([]() -> bool
-                 { return comm.rodmotor_OK; });
+//   Seq::WaitUntil([]() -> bool
+//                  { return comm.rodmotor_OK; });
   monit.LogInfo("Bow At:(%.3f,%.3f), sick:%.3f", comm.slam_pos.x, comm.slam_pos.y, sick.GetTrueSingleChannel(0));
 
   comm.SendActionCommand(ActionType::CLAMP);
   Seq::Wait(2);
-  Seq::WaitUntil([]() -> bool
-                 { return comm.rodmotor_OK; });
+//   Seq::WaitUntil([]() -> bool
+//                  { return comm.rodmotor_OK; });
 
   comm.SendActionCommand(ActionType::PICK);
   MOVE::MoveToTargPos(Area1ToDock);

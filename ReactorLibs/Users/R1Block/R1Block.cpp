@@ -19,7 +19,7 @@ R1Block &APP::r1block = R1Block::GetInstance();
 
 extern bool is_prelay_finished;
 int debug_origin = 0;
-int target_height=200;
+int target_height = 200;
 
 // #define Test_device 1
 #define R2_dead 1
@@ -658,14 +658,8 @@ void R1Block::
       Seq::WaitUntil([&]()
                      { return (llift_reached && rlift_reached); }); // 检测到抬升到对应位置
     }
-    if (Block_Sick_lf[1] > 0.27)
-    {
-      chassis.MoveRelative({float(Block_Sick_lf[1] - 0.27), 0});
-
-      Seq::WaitUntil([&]()
-                     { return (chassis._Walking() == 1); }); // 检测到到位置了
-    }
-    chassis.MoveRelative({float(Block_Sick_lf[1] - 0.27), 0});
+chassis.Move({0.05,0},2);
+Seq::Wait(2);
   }
 
   Loosen_block();
@@ -701,7 +695,7 @@ void R1Block::
     last_height = block_height;
   }
   // 取第二个块
-  if (block_exist[2] == 1 && block_exist[1] == 0 && block_exist[0] == 0)
+  else if (block_exist[2] == 1 && block_exist[1] == 0 && block_exist[0] == 0)
   {
     Seq::WaitUntil([&]()
                    { return (block_exist[0] == 1); }); // 检测到最外面到了
@@ -715,7 +709,7 @@ void R1Block::
     last_height = block_height;
   }
   // 取第三个块
-  if (block_exist[2] == 1 && block_exist[1] == 1 && block_exist[0] == 0)
+  else if (block_exist[2] == 1 && block_exist[1] == 1 && block_exist[0] == 0)
   {
     Seq::WaitUntil([&]()
                    { return (block_exist[0] == 1); }); // 检测到最外面到了
