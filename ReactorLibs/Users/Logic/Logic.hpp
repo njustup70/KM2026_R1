@@ -9,6 +9,7 @@
 
 extern bool is_final_goal_reached;
 extern int target_height;
+extern bool is_ready_to_pick;
 
 class TaskLogic: public Application
 {

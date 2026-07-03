@@ -35,47 +35,6 @@ StateGraph auto_flow{"AutoGragh"};
 
 #define Run_Zone Zone1
 
-//-------------辅助函数----------------
-/**
- * @brief 辅助函数：判断 X[xid] 在矩形的哪条边
- * @return 0=下边, 1=左边, 2=上边, 3=右边, 4=下边(X[16,17])
- *   下边: X[0,1]  拐角: X[2]  左边: X[3..6]  拐角: X[7]
- *   上边: X[8..10] 拐角: X[11] 右边: X[12..15] 拐角: X[16] 回程: X[17]
- */
-int GetEdge(int xid)
-{
-  if (xid == 1 || xid == 17)
-    return 0; // 下边
-  if (xid >= 2 && xid <= 7)
-    return 1; // 左边（含拐角2、7）
-  if (xid >= 7 && xid <= 11)
-    return 2; // 上边（含拐角7、11）
-  if (xid >= 11 && xid <= 16)
-    return 3; // 右边（含拐角11、16）
-  if (xid == 0)
-    return 4; // 起点
-  return 0;   // 为了去0的时候先x后y
-}
-
-void BarrelToMid(int target_xid)
-{
-  if (target_xid == 2)
-  {
-    chassis.RotateAt(-1.5708f);
-  }
-  if (target_xid == 7)
-  {
-    chassis.RotateAt(-3.1416f);
-  }
-  if (target_xid == 11)
-  {
-    chassis.RotateAt(0.0f);
-  }
-  if (target_xid == 16)
-  {
-    chassis.RotateAt(1.57f);
-  }
-}
 //====================状态函数组织=======================================================================================
 void ChooseArea(StateCore *core)
 {
@@ -204,6 +163,7 @@ void Action_Planning(StateCore *state_core)
 /**
  * @brief Action_NavToBlock：沿Zone2_Path逐点移动
  *   遇到有块的目标点时，触发取块
+ *   设计思想是保证每次进入这个状态只跑一次，不要循环
  */
 void Action_NavToBlock(StateCore *state_core)
 {
@@ -273,9 +233,13 @@ void Action_NavToBlock(StateCore *state_core)
 // 状态：取块
 void Action_GetBlock(StateCore *state_core)
 {
-  monit.LogInfo("State:Action_GetBlock");
-  r1block.Get_Block(target_height, 1); // TODO: 根据遥控器输入的高度调用不同的函数，目前测试用固定值
-  state_core->GetCurState()->Complete = true;
+	monit.LogInfo("State:Action_GetBlock");
+	r1block.Get_Block(target_height, 1); 
+
+	Zone2_Path.index++; 
+	is_ready_to_pick = false; 
+	
+	state_core->GetCurState()->Complete = true;
 }
 
 //**************************************三区状态块*******************************************************//
@@ -300,75 +264,80 @@ void Action_LayBlock(StateCore *state_core)
 // ================================初始化========================================================================
 void AutoGragh_Init(void)
 {
-  // 1.添加状态块
-  //  StateBlock& s_choosearea = auto_flow.AddState("Choose Area");
-  // 假设你之前定义了它的值，例如：#define Run_graph 1
+	// 1.添加状态块
+	//  StateBlock& s_choosearea = auto_flow.AddState("Choose Area");
+	// 假设你之前定义了它的值，例如：#define Run_graph 1
 
-#if Run_Zone == Zone1
+	#if Run_Zone == Zone1
 
-  // 只有一区
-  StateBlock &s_rod = auto_flow.AddState("GetRod");
-  StateBlock &s_dock = auto_flow.AddState("Docking");
-  s_rod.StateAction = GetRod;
-  s_dock.StateAction = Dock;
-  s_rod.LinkTo(&s_rod.Complete, s_dock);
-  // 跑到2区
+	// 只有一区
+	StateBlock &s_rod = auto_flow.AddState("GetRod");
+	StateBlock &s_dock = auto_flow.AddState("Docking");
+	s_rod.StateAction = GetRod;
+	s_dock.StateAction = Dock;
+	s_rod.LinkTo(&s_rod.Complete, s_dock);
+	// 跑到2区
 
-#elif Run_Zone == Zone2
-  // 只跑二区
-  StateBlock &s_plan = auto_flow.AddState("Planning");
-  StateBlock &s_move = auto_flow.AddState("NavtoBlock");
-  StateBlock &s_pick = auto_flow.AddState("GetBlocking");
+	#elif Run_Zone == Zone2
+	// 只跑二区
+	StateBlock &s_plan = auto_flow.AddState("Planning");
+	// StateBlock &s_move = auto_flow.AddState("NavtoBlock");
+	// StateBlock &s_pick = auto_flow.AddState("GetBlocking");
 
-  s_plan.StateAction = Action_Planning;
-  s_move.StateAction = Action_NavToBlock;
-  s_pick.StateAction = Action_GetBlock;
-  s_plan.LinkTo(&s_plan.Complete, s_move);
+	s_plan.StateAction = Action_Planning;
+	// s_move.StateAction = Action_NavToBlock;
+	// s_pick.StateAction = Action_GetBlock;
+	// s_plan.LinkTo(&s_plan.Complete, s_move);
 
-  // NavToBlock TO GetBlock：当前目标点有块，需要取块
-  s_move.LinkTo(&s_move.Complete, s_pick);
-  s_pick.LinkTo(&s_pick.Complete, s_move);
+	// // NavToBlock TO GetBlock：当前目标点有块，需要取块
+	// s_move.LinkTo(&s_move.Complete, s_pick);
+	// s_pick.LinkTo(&s_pick.Complete, s_move);
 
-#elif Run_Zone == Zone3
+	#elif Run_Zone == Zone3
 
-  // 只跑三区
-  StateBlock &s_lay_pre = auto_flow.AddState("Pre LayBlock");
-  StateBlock &s_lay = auto_flow.AddState("LayBlock");
-  s_lay_pre.StateAction = Action_PreLay;
-  s_lay.StateAction = Action_LayBlock;
-  s_lay_pre.LinkTo(&s_lay_pre.Complete, s_lay);
+	// 只跑三区
+	StateBlock &s_lay_pre = auto_flow.AddState("Pre LayBlock");
+	StateBlock &s_lay = auto_flow.AddState("LayBlock");
+	s_lay_pre.StateAction = Action_PreLay;
+	s_lay.StateAction = Action_LayBlock;
+	s_lay_pre.LinkTo(&s_lay_pre.Complete, s_lay);
 
-#elif Run_Zone == competition
-  // 全跑
-  StateBlock &s_rod = auto_flow.AddState("GetRod");
-  StateBlock &s_dock = auto_flow.AddState("Docking");
-  StateBlock &s_plan = auto_flow.AddState("Planning");
-  StateBlock &s_move = auto_flow.AddState("NavtoBlock");
-  StateBlock &s_pick = auto_flow.AddState("GetBlocking");
-  StateBlock &s_lay_pre = auto_flow.AddState("Pre LayBlock");
-  StateBlock &s_lay = auto_flow.AddState("LayBlock");
+	#elif Run_Zone == competition
+	// 全跑
+	StateBlock &s_rod = auto_flow.AddState("GetRod");
+	StateBlock &s_dock = auto_flow.AddState("Docking");
+	StateBlock &s_plan = auto_flow.AddState("Planning");
+	StateBlock &s_move = auto_flow.AddState("NavtoBlock");
+	StateBlock &s_pick = auto_flow.AddState("GetBlocking");
+	StateBlock &s_lay_pre = auto_flow.AddState("Pre LayBlock");
+	StateBlock &s_lay = auto_flow.AddState("LayBlock");
 
-  s_rod.StateAction = GetRod;
-  s_dock.StateAction = Dock;
-  s_plan.StateAction = Action_Planning;
-  s_move.StateAction = Action_NavToBlock;
-  s_pick.StateAction = Action_GetBlock;
-  s_lay_pre.StateAction = Action_PreLay;
-  s_lay.StateAction = Action_LayBlock;
+	s_rod.StateAction = GetRod;
+	s_dock.StateAction = Dock;
+	s_plan.StateAction = Action_Planning;
+	s_move.StateAction = Action_NavToBlock;
+	s_pick.StateAction = Action_GetBlock;
+	s_lay_pre.StateAction = Action_PreLay;
+	s_lay.StateAction = Action_LayBlock;
 
-  // 状态转移关系
-  s_rod.LinkTo(&s_rod.Complete, s_dock);
-  s_dock.LinkTo(&s_dock.Complete, s_plan);
-  s_plan.LinkTo(&s_plan.Complete, s_move);
-  s_move.LinkTo(&s_move.Complete, s_pick);
-  s_pick.LinkTo(&s_pick.Complete, s_move);
-  s_move.LinkTo(&s_move.Complete, s_lay_pre);
-  s_lay_pre.LinkTo(&s_lay_pre.Complete, s_lay);
+	// 状态转移关系
+	s_rod.LinkTo(&s_rod.Complete, s_dock);
+	s_dock.LinkTo(&s_dock.Complete, s_plan);
 
-#endif
+	s_plan.LinkTo(&s_plan.Complete, s_move);
 
-  // // 注册图
-  state_core.RegistGraph(auto_flow);
+	s_move.LinkTo(&is_ready_to_pick , s_pick);
+	s_move.LinkTo(&is_final_goal_reached, s_lay_pre);
+	s_move.LinkTo(&s_move.Complete, s_move);
+
+	s_pick.LinkTo(&s_pick.Complete, s_move);
+
+	s_lay_pre.LinkTo(&s_lay_pre.Complete, s_lay);
+
+	#endif
+
+	// // 注册图
+	state_core.RegistGraph(auto_flow);
 }
 
 #endif

@@ -11,6 +11,8 @@
 //全局变量
 bool is_final_goal_reached = false;
 
+bool is_ready_to_pick = false;
+
 TaskLogic &APP::logic = TaskLogic::GetInstance();
 using namespace MOD;
 using namespace APP;
