@@ -9,7 +9,7 @@ from tkinter import messagebox
 YAW_BOTTOM = 0.0    
 YAW_LEFT = -1.57    
 YAW_RIGHT = 1.57    
-YAW_TOP = 3.54      
+YAW_TOP = 3.14      
 
 RING_AISLES = [7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 0, 1, 2, 3, 4, 5, 6]
 
@@ -101,22 +101,21 @@ def find_shortest_path(start_id, start_yaw, target_id, target_yaw=None):
             path.pop(0) 
     return path
 
-# 【修改】接收 mode 和 manual_seq 参数
-def generate_full_route(start_id, start_yaw, r1_blocks, r2_path, exit_id, mode, manual_seq):
+def generate_full_route(start_id, start_yaw, r1_blocks, r2_path, exit_id, auto_dog_flag, priority_block):
     full_path = [{'id': start_id, 'yaw': start_yaw, 'is_pick': False, 'is_at_point': False, 'target_block': None}]
     
-    # 动态优先级判断
+    # 优先级判定 (同步 C++ 逻辑)
     def get_priority(block_id):
-        if mode == "manual":
-            # 手动模式：完全遵循用户输入的顺序列表
-            if block_id in manual_seq:
-                return manual_seq.index(block_id)
-            return 999 # 如果用户少输了，没输的排到最后
-        else:
-            # 自动模式：基于 R2 的避让顺序
+        if auto_dog_flag == 1:
+            # 自动模式
             if block_id in r2_path:
                 return r2_path.index(block_id) 
             return 999 
+        else:
+            # 手动模式
+            if block_id in priority_block:
+                return priority_block.index(block_id)
+            return 999
 
     targets = [{'id': b, 'priority': get_priority(b)} for b in r1_blocks]
     targets.sort(key=lambda x: x['priority'])
@@ -148,14 +147,13 @@ def generate_full_route(start_id, start_yaw, r1_blocks, r2_path, exit_id, mode, 
             
     return full_path
 
-# 【修改】透传 mode 和 manual_seq
-def find_optimal_mission(start_candidates, r1_blocks, r2_path, exit_id, mode, manual_seq):
+def find_optimal_mission(start_candidates, r1_blocks, r2_path, exit_id, auto_dog_flag, priority_block):
     best_path = None
     best_start = None
     min_steps = float('inf')
     
     for s_id in start_candidates:
-        path = generate_full_route(s_id, YAW_BOTTOM, r1_blocks, r2_path, exit_id, mode, manual_seq)
+        path = generate_full_route(s_id, YAW_BOTTOM, r1_blocks, r2_path, exit_id, auto_dog_flag, priority_block)
         path_length = len(path)
         if path_length < min_steps:
             min_steps = path_length
@@ -165,8 +163,8 @@ def find_optimal_mission(start_candidates, r1_blocks, r2_path, exit_id, mode, ma
     return best_start, best_path
 
 # === 绘图可视化 ===
-def draw_scene(r1_blocks, r2_blocks, fake_block, r2_path, exit_id, generated_path, mode):
-    fig, ax = plt.subplots(figsize=(10, 8))
+def draw_scene(r1_blocks, r2_blocks, fake_block, r2_path, exit_id, generated_path, auto_dog_flag):
+    fig, ax = plt.subplots(figsize=(10, 8)) 
     ax.set_aspect('equal')
     ax.axis('off')
 
@@ -217,7 +215,7 @@ def draw_scene(r1_blocks, r2_blocks, fake_block, r2_path, exit_id, generated_pat
                         arrowprops=dict(facecolor='green', shrink=0, width=4, headwidth=10))
             ax.text(x+dx*1.2, y+dy*1.2, f"Pick {p['target_block']}", color='green', fontweight='bold', ha='center')
 
-    title_mode_str = "AUTO Decision Engine" if mode == "auto" else "MANUAL Priority Override"
+    title_mode_str = "AUTO Decision Engine" if auto_dog_flag == 1 else "MANUAL Priority Override"
     plt.title(f"R1 Optimal Path ({title_mode_str})")
     
     r1_patch = patches.Patch(color='#ff9999', label='R1 Blocks')
@@ -235,14 +233,14 @@ class RoboconSetupUI:
     def __init__(self, root):
         self.root = root
         self.root.title("ROBOCON UP70 - 赛前场控配置")
-        self.root.geometry("400x530")  # 增高以容纳新组件
+        self.root.geometry("400x530") 
         
         self.r1_blocks = []
         self.r2_blocks = []
         self.fake_block = []
         self.r2_path = []
-        self.mode = "auto"
-        self.manual_seq = []
+        self.auto_dog_flag = 1
+        self.priority_block = []
         self.ready = False
         
         self.block_states = {i: 0 for i in range(12)}
@@ -264,24 +262,22 @@ class RoboconSetupUI:
             btn.grid(row=row, column=col, padx=5, pady=5)
             self.buttons[i] = btn
             
-        # --- 新增：模式切换区 ---
         tk.Label(root, text="R1 战术规划模式:", font=("Arial", 11, "bold")).pack(pady=(15, 5))
         
-        self.mode_var = tk.StringVar(value="auto")
+        self.mode_var = tk.IntVar(value=1)
         mode_frame = tk.Frame(root)
         mode_frame.pack()
         
-        tk.Radiobutton(mode_frame, text="自动躲避 R2", variable=self.mode_var, value="auto", command=self.toggle_mode).pack(side=tk.LEFT, padx=10)
-        tk.Radiobutton(mode_frame, text="手动指定顺序", variable=self.mode_var, value="manual", command=self.toggle_mode).pack(side=tk.LEFT, padx=10)
+        tk.Radiobutton(mode_frame, text="自动躲避 R2", variable=self.mode_var, value=1, command=self.toggle_mode).pack(side=tk.LEFT, padx=10)
+        tk.Radiobutton(mode_frame, text="手动指定顺序", variable=self.mode_var, value=0, command=self.toggle_mode).pack(side=tk.LEFT, padx=10)
         
-        # 手动输入框
         self.manual_frame = tk.Frame(root)
         self.manual_frame.pack(pady=5)
         tk.Label(self.manual_frame, text="优先级 (逗号分隔, 如 11,2):").pack(side=tk.LEFT)
         self.manual_entry = tk.Entry(self.manual_frame, width=12, state=tk.DISABLED)
         self.manual_entry.pack(side=tk.LEFT, padx=5)
 
-        submit_btn = tk.Button(root, text="🚀 生成最终规划", font=("Arial", 14, "bold"), bg="#aaffaa", command=self.submit)
+        submit_btn = tk.Button(root, text="🚀 生成下发序列", font=("Arial", 14, "bold"), bg="#aaffaa", command=self.submit)
         submit_btn.pack(pady=15)
 
     def toggle_block(self, idx):
@@ -290,8 +286,7 @@ class RoboconSetupUI:
         self.buttons[idx].config(text=f"{idx}\n{self.labels[state]}", bg=self.colors[state])
 
     def toggle_mode(self):
-        # 激活或禁用手动输入框
-        if self.mode_var.get() == "manual":
+        if self.mode_var.get() == 0:
             self.manual_entry.config(state=tk.NORMAL)
         else:
             self.manual_entry.config(state=tk.DISABLED)
@@ -305,15 +300,13 @@ class RoboconSetupUI:
             messagebox.showerror("配置错误", "Fake块数量不能超过1个！")
             return
             
-        # 模式与手动序列校验
-        self.mode = self.mode_var.get()
-        if self.mode == "manual":
+        self.auto_dog_flag = self.mode_var.get()
+        if self.auto_dog_flag == 0:
             seq_str = self.manual_entry.get().strip()
             if seq_str:
                 try:
-                    self.manual_seq = [int(x.strip()) for x in seq_str.split(',') if x.strip()]
-                    # 校验输入的方块是否真的是 R1 的块
-                    for b in self.manual_seq:
+                    self.priority_block = [int(x.strip()) for x in seq_str.split(',') if x.strip()]
+                    for b in self.priority_block:
                         if b not in self.r1_blocks:
                             messagebox.showwarning("警告", f"输入的方块 {b} 不在当前配置的 R1 块中！")
                             return
@@ -321,9 +314,9 @@ class RoboconSetupUI:
                     messagebox.showerror("格式错误", "请输入有效的数字序列，并用英文逗号分隔。")
                     return
             else:
-                self.manual_seq = []
+                self.priority_block = []
         
-        # --- R2 最佳路线自动判定逻辑 (用于可视化) ---
+        # R2 最佳路线自动判定
         candidate_paths = [
             [9, 6, 3, 0],   
             [10, 7, 4, 1],  
@@ -341,7 +334,7 @@ class RoboconSetupUI:
                 max_r2_count = r2_count
                 best_path = path
                 
-        if not best_path:
+        if not best_path and self.auto_dog_flag == 1:
             messagebox.showerror("战术无解", "由于 Fake 块的存在或布局问题，无法规划出合法的 R2 路线！")
             return
             
@@ -367,46 +360,63 @@ if __name__ == "__main__":
     r2_blocks = app.r2_blocks
     fake_block = app.fake_block
     r2_path = app.r2_path
-    mode = app.mode
-    manual_seq = app.manual_seq
+    auto_dog_flag = app.auto_dog_flag
+    priority_block = app.priority_block
     
     print("\n--- 读取配置与战术判定 ---")
     print(f"R1 块: {r1_blocks}")
     print(f"R2 块: {r2_blocks}")
     print(f"假 块: {fake_block}")
     print(f"R2 路线: {r2_path}")
-    print(f"规划模式: {'手动 (用户覆盖)' if mode == 'manual' else '自动 (避让 R2)'}")
-    if mode == "manual" and manual_seq:
-        print(f"指定优先级: {manual_seq}")
+    print(f"规划模式: {'自动 (避让 R2)' if auto_dog_flag == 1 else '手动 (用户覆盖)'}")
+    if auto_dog_flag == 0 and priority_block:
+        print(f"指定优先级: {priority_block}")
     print()
 
-    # 运行核心规划算法，传入新参数
+    # 运行核心规划算法
     best_start_id, best_path_sequence = find_optimal_mission(
-        start_candidates, r1_blocks, r2_path, exit_node, mode, manual_seq
+        start_candidates, r1_blocks, r2_path, exit_node, auto_dog_flag, priority_block
     )
     
     if best_path_sequence:
-        print("--- 最终执行序列（已过滤关键节点） ---")
+        print("--- 最终下发底层序列 (已滤除直道冗余点 & 原地旋转重叠点) ---")
+        
+        filtered_nodes = []
+        
+        # 核心去重逻辑：保留中偏后的节点，继承 is_pick
         for i, step in enumerate(best_path_sequence):
-            
             is_start = (i == 0)
             is_end = (i == len(best_path_sequence) - 1)
-            is_pick = step.get('is_pick')
+            is_pick = step.get('is_pick', False)
             is_corner_node = step['id'] in [2, 7, 11, 16] 
             
-            # 仅输出满足条件的节点
             if is_start or is_end or is_pick or is_corner_node:
-                if is_pick:
-                    action = f"** 抓取方块 {step['target_block']} **"
-                elif is_start:
-                    action = "起点出发"
-                elif is_end:
-                    action = "到达终点离场"
-                else:
-                    action = "经过角点 / 转向"
                 
-                print(f"过道: {step['id']:2d} | Yaw: {step['yaw']:5.2f} | is_at_point: {step['is_at_point']} | 动作: {action}")
+                # 向后看一眼：如果下一个节点的物理坐标（id）一模一样，说明仅仅是原地旋转
+                # 舍弃当前节点，并把取块状态继承给下一个节点防止丢失
+                if i + 1 < len(best_path_sequence) and best_path_sequence[i]['id'] == best_path_sequence[i+1]['id']:
+                    best_path_sequence[i+1]['is_pick'] = best_path_sequence[i+1].get('is_pick', False) or is_pick
+                    best_path_sequence[i+1]['is_at_point'] = best_path_sequence[i+1].get('is_at_point', False) or step.get('is_at_point', False)
+                    if is_pick:
+                        best_path_sequence[i+1]['target_block'] = step.get('target_block')
+                    continue
                 
-        draw_scene(r1_blocks, r2_blocks, fake_block, r2_path, exit_node, best_path_sequence, mode)
+                filtered_nodes.append(step)
+                
+        # 打印底层真正接收到的点
+        for step in filtered_nodes:
+            if step.get('is_pick'):
+                action = f"** 抓取方块 {step['target_block']} **"
+            elif step == filtered_nodes[0]:
+                action = "起点出发"
+            elif step == filtered_nodes[-1]:
+                action = "到达终点离场"
+            else:
+                action = "经过角点 / 转向"
+            
+            print(f"过道: {step['id']:2d} | Yaw: {step['yaw']:5.2f} | is_at_point: {step.get('is_at_point', False)} | 动作: {action}")
+                
+        # 绘图还是传入完整序列，保证箭头连贯性
+        draw_scene(r1_blocks, r2_blocks, fake_block, r2_path, exit_node, best_path_sequence, auto_dog_flag)
     else:
         print("未能生成有效路径，请检查方块配置是否合理！")

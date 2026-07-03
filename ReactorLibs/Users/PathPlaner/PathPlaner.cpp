@@ -769,7 +769,6 @@ void GetPathDog(int *meilin_blocks, PathNode *path_dog, int auto_dog_flag, int *
         else if (meilin_blocks[i] == 3) fake_blocks.push_back(i);
     }
 
-    // R2 路线自动决策引擎 (避开fake，找R2最多的路)
     std::vector<std::vector<int>> candidate_paths = {
         {9, 6, 3, 0},
         {10, 7, 4, 1},
@@ -799,7 +798,6 @@ void GetPathDog(int *meilin_blocks, PathNode *path_dog, int auto_dog_flag, int *
         }
     }
 
-    // 若无合法路径且处于自动模式，直接返回防崩
     if (best_r2_path.empty() && auto_dog_flag == 1) {
         path_dog[0].is_at_end = true;
         return;
@@ -812,7 +810,6 @@ void GetPathDog(int *meilin_blocks, PathNode *path_dog, int auto_dog_flag, int *
     int min_steps = 999999;
 
     for (int s_id : start_candidates) {
-        // 【修改】向底层传递 auto_dog_flag 和 priority_block
         auto path = generate_full_route(s_id, YAW_BOTTOM, r1_blocks, best_r2_path, exit_node, auto_dog_flag, priority_block);
         if (path.size() < min_steps && !path.empty()) {
             min_steps = path.size();
@@ -825,7 +822,7 @@ void GetPathDog(int *meilin_blocks, PathNode *path_dog, int auto_dog_flag, int *
         return;
     }
 
-    // 滤除冗余点，提取关键节点
+    // --- 【修改点】：滤除冗余点逻辑优化 ---
     int out_index = 0;
     for (size_t i = 0; i < best_path_sequence.size(); ++i) {
         bool is_start = (i == 0);
@@ -834,6 +831,13 @@ void GetPathDog(int *meilin_blocks, PathNode *path_dog, int auto_dog_flag, int *
         bool is_corner_node = is_corner(best_path_sequence[i].id);
 
         if (is_start || is_end || is_pick || is_corner_node) {
+            
+            // 【核心去重】：如果下一个节点的物理位置跟当前节点一模一样，说明仅仅是原地旋转
+            // 我们直接跳过当前节点，让底盘直奔最终带有新 Yaw 的那个状态点即可
+            if (i + 1 < best_path_sequence.size() && best_path_sequence[i].id == best_path_sequence[i+1].id) {
+                continue; 
+            }
+
             if (out_index >= MAX_PATH) break;
 
             PathNode pn;
