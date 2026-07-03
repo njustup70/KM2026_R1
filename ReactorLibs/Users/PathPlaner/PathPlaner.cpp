@@ -568,12 +568,12 @@ const float YAW_BOTTOM = 0.0f;
 const float YAW_LEFT   = -1.57f;
 const float YAW_RIGHT  = 1.57f;
 const float YAW_TOP    = 3.14f;
-const float YAW_ANY    = 999.0f; // 标记任意朝向皆可 (用于驶向出口)
+const float YAW_ANY    = 999.0f; 
 
 const int RING_AISLES[] = {7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 0, 1, 2, 3, 4, 5, 6};
 const int RING_SIZE = 18;
 
-// 内部使用的路线节点
+// 内部定长数据结构
 struct InternalNode {
     int id;
     float yaw;
@@ -581,7 +581,17 @@ struct InternalNode {
     int target_block;
 };
 
-// 工具函数
+struct TargetPriority {
+    int id;
+    int priority;
+};
+
+struct PickupOption {
+    int aisle;
+    float yaw;
+};
+
+// === 基础静态工具函数 ===
 static bool is_corner(int aisle_id) {
     return aisle_id == 7 || aisle_id == 11 || aisle_id == 2 || aisle_id == 16;
 }
@@ -593,41 +603,62 @@ static int yaw_to_index(float yaw) {
     return 3;
 }
 
-static std::vector<std::pair<int, float>> get_valid_pickups(int merlin_id) {
-    std::vector<std::pair<int, float>> pickups;
+// 静态查找有效取块点
+static int get_valid_pickups(int merlin_id, PickupOption options_out[2]) {
+    int count = 0;
     switch (merlin_id) {
-        case 0: pickups.push_back({8, YAW_TOP}); pickups.push_back({6, YAW_LEFT}); break;
-        case 1: pickups.push_back({9, YAW_TOP}); break;
-        case 2: pickups.push_back({10, YAW_TOP}); pickups.push_back({12, YAW_RIGHT}); break;
-        case 3: pickups.push_back({5, YAW_LEFT}); break;
-        case 4: break;
-        case 5: pickups.push_back({13, YAW_RIGHT}); break;
-        case 6: pickups.push_back({4, YAW_LEFT}); break;
-        case 7: break;
-        case 8: pickups.push_back({14, YAW_RIGHT}); break;
-        case 9: pickups.push_back({3, YAW_LEFT}); break; // 强制约束: 只能3
-        case 10: pickups.push_back({0, YAW_BOTTOM}); break;
-        case 11: pickups.push_back({15, YAW_RIGHT}); break; // 强制约束: 只能15
+        case 0:  options_out[count++] = {8, YAW_TOP}; options_out[count++] = {6, YAW_LEFT}; break;
+        case 1:  options_out[count++] = {9, YAW_TOP}; break;
+        case 2:  options_out[count++] = {10, YAW_TOP}; options_out[count++] = {12, YAW_RIGHT}; break;
+        case 3:  options_out[count++] = {5, YAW_LEFT}; break;
+        case 4:  break;
+        case 5:  options_out[count++] = {13, YAW_RIGHT}; break;
+        case 6:  options_out[count++] = {4, YAW_LEFT}; break;
+        case 7:  break;
+        case 8:  options_out[count++] = {14, YAW_RIGHT}; break;
+        case 9:  options_out[count++] = {3, YAW_LEFT}; break; 
+        case 10: options_out[count++] = {0, YAW_BOTTOM}; break;
+        case 11: options_out[count++] = {15, YAW_RIGHT}; break; 
     }
-    return pickups;
+    return count;
 }
 
-// === BFS 核心寻路 ===
-static std::vector<InternalNode> find_shortest_path(int start_id, float start_yaw, int target_id, float target_yaw) {
-    std::map<std::pair<int, int>, std::pair<int, float>> came_from;
-    
-    struct QNode { int id; float yaw; int dist; };
-    std::queue<QNode> q;
-    
-    q.push({start_id, start_yaw, 0});
-    came_from[{start_id, yaw_to_index(start_yaw)}] = {-1, 0.0f};
+static bool array_contains(const int* arr, int size, int val) {
+    for (int i = 0; i < size; ++i) {
+        if (arr[i] == val) return true;
+    }
+    return false;
+}
 
+static int get_index_in_array(const int* arr, int size, int val) {
+    for (int i = 0; i < size; ++i) {
+        if (arr[i] == val) return i;
+    }
+    return -1;
+}
+
+// === BFS 核心寻路 (完全静态) ===
+static int find_shortest_path(int start_id, float start_yaw, int target_id, float target_yaw, InternalNode path_out[MAX_PATH]) {
+    // 状态空间：18个过道 × 4个朝向 = 72 个状态，完全避免 map 的内存申请
+    bool visited[18][4] = {false};
+    int came_from_id[18][4];
+    float came_from_yaw[18][4];
+    
+    struct QNode { int id; float yaw; };
+    QNode q[100]; // 静态环形队列
+    int head = 0, tail = 0;
+
+    int start_yaw_idx = yaw_to_index(start_yaw);
+    visited[start_id][start_yaw_idx] = true;
+    came_from_id[start_id][start_yaw_idx] = -1;
+    
+    q[tail++] = {start_id, start_yaw};
+    
     bool found = false;
     float final_yaw = target_yaw;
 
-    while (!q.empty()) {
-        QNode curr = q.front();
-        q.pop();
+    while (head < tail) {
+        QNode curr = q[head++];
 
         if (curr.id == target_id && (target_yaw == YAW_ANY || std::abs(curr.yaw - target_yaw) < 0.1f)) {
             found = true;
@@ -644,161 +675,188 @@ static std::vector<InternalNode> find_shortest_path(int start_id, float start_ya
         int right_idx = (ring_idx + 1) % RING_SIZE;
         int next_nodes[] = {RING_AISLES[left_idx], RING_AISLES[right_idx]};
 
-        for (int nxt : next_nodes) {
-            auto state_key = std::make_pair(nxt, yaw_to_index(curr.yaw));
-            if (came_from.find(state_key) == came_from.end()) {
-                came_from[state_key] = {curr.id, curr.yaw};
-                q.push({nxt, curr.yaw, curr.dist + 1});
+        // 处理平移
+        for (int i = 0; i < 2; ++i) {
+            int nxt = next_nodes[i];
+            int c_y_idx = yaw_to_index(curr.yaw);
+            if (!visited[nxt][c_y_idx]) {
+                visited[nxt][c_y_idx] = true;
+                came_from_id[nxt][c_y_idx] = curr.id;
+                came_from_yaw[nxt][c_y_idx] = curr.yaw;
+                q[tail++] = {nxt, curr.yaw};
             }
         }
 
+        // 处理角点旋转
         if (is_corner(curr.id)) {
             float all_yaws[] = {YAW_BOTTOM, YAW_LEFT, YAW_RIGHT, YAW_TOP};
-            for (float n_yaw : all_yaws) {
-                auto state_key = std::make_pair(curr.id, yaw_to_index(n_yaw));
-                if (came_from.find(state_key) == came_from.end()) {
-                    came_from[state_key] = {curr.id, curr.yaw};
-                    q.push({curr.id, n_yaw, curr.dist + 1});
+            for (int i = 0; i < 4; ++i) {
+                float n_yaw = all_yaws[i];
+                int n_y_idx = yaw_to_index(n_yaw);
+                if (!visited[curr.id][n_y_idx]) {
+                    visited[curr.id][n_y_idx] = true;
+                    came_from_id[curr.id][n_y_idx] = curr.id;
+                    came_from_yaw[curr.id][n_y_idx] = curr.yaw;
+                    q[tail++] = {curr.id, n_yaw};
                 }
             }
         }
     }
 
-    std::vector<InternalNode> path;
+    int path_len = 0;
     if (found) {
         int curr_i = target_id;
         float curr_y = final_yaw;
         while (curr_i != -1) {
-            path.push_back({curr_i, curr_y, false, -1});
-            auto prev = came_from[{curr_i, yaw_to_index(curr_y)}];
-            curr_i = prev.first;
-            curr_y = prev.second;
+            if (path_len < MAX_PATH) {
+                path_out[path_len++] = {curr_i, curr_y, false, -1};
+            }
+            int next_i = came_from_id[curr_i][yaw_to_index(curr_y)];
+            float next_y = came_from_yaw[curr_i][yaw_to_index(curr_y)];
+            curr_i = next_i;
+            curr_y = next_y;
         }
-        std::reverse(path.begin(), path.end());
-        if (!path.empty()) path.erase(path.begin()); // 移除起点重复
+
+        // 静态数组反转
+        for (int i = 0; i < path_len / 2; ++i) {
+            InternalNode temp = path_out[i];
+            path_out[i] = path_out[path_len - 1 - i];
+            path_out[path_len - 1 - i] = temp;
+        }
+        
+        // 移除起点重复
+        if (path_len > 0) {
+            for (int i = 1; i < path_len; ++i) {
+                path_out[i - 1] = path_out[i];
+            }
+            path_len--;
+        }
     }
-    return path;
+    return path_len;
 }
 
-// 生成整条非压缩路线
-static std::vector<InternalNode> generate_full_route(int start_id, float start_yaw, 
-                                                     const std::vector<int>& r1_blocks, 
-                                                     const std::vector<int>& r2_path, 
-                                                     int exit_id,
-                                                     int auto_dog_flag,
-                                                     int *priority_block) {
-    std::vector<InternalNode> full_path;
-    full_path.push_back({start_id, start_yaw, false, -1});
+// === 生成完整路径 ===
+static int generate_full_route(int start_id, float start_yaw, 
+                               const int* r1_blocks, int r1_count, 
+                               const int* r2_path, int r2_path_len, 
+                               int exit_id, int auto_dog_flag, const int* priority_block,
+                               InternalNode full_path[MAX_PATH]) 
+{
+    int full_len = 0;
+    full_path[full_len++] = {start_id, start_yaw, false, -1};
 
-    struct TargetPriority { int id; int priority; };
-    std::vector<TargetPriority> targets;
-    
-    // 【修改核心逻辑】根据 auto_dog_flag 决定优先级
-    for (int b : r1_blocks) {
-        int prio = 999; // 默认优先级极低，排在最后
+    TargetPriority targets[12];
+    for (int i = 0; i < r1_count; ++i) {
+        int b = r1_blocks[i];
+        int prio = 999;
         
         if (auto_dog_flag == 1) {
-            // 自动模式：阻挡 R2 路线的优先
-            auto it = std::find(r2_path.begin(), r2_path.end(), b);
-            if (it != r2_path.end()) {
-                prio = std::distance(r2_path.begin(), it); 
-            }
+            int idx = get_index_in_array(r2_path, r2_path_len, b);
+            if (idx != -1) prio = idx;
         } else {
-            // 手动模式：完全服从 priority_block 数组的顺序
-            // 假设 priority_block 最大长度为 3，且空位用 -1 填充
-            for (int i = 0; i < 3; ++i) {
-                if (priority_block[i] == b) {
-                    prio = i;
-                    break; // 越靠前，prio 越小，优先级越高
-                }
+            for (int p = 0; p < 3; ++p) {
+                if (priority_block[p] == b) { prio = p; break; }
             }
         }
-        targets.push_back({b, prio});
+        targets[i] = {b, prio};
     }
 
-    // 按优先级从小到大排序
-    std::sort(targets.begin(), targets.end(), [](const TargetPriority& a, const TargetPriority& b) {
-        return a.priority < b.priority;
-    });
+    // 冒泡排序，按优先级排序 (数量最多只有12个，极快)
+    for (int i = 0; i < r1_count - 1; ++i) {
+        for (int j = 0; j < r1_count - 1 - i; ++j) {
+            if (targets[j].priority > targets[j+1].priority) {
+                TargetPriority temp = targets[j];
+                targets[j] = targets[j+1];
+                targets[j+1] = temp;
+            }
+        }
+    }
 
     int curr_id = start_id;
     float curr_yaw = start_yaw;
 
-    for (const auto& tgt : targets) {
-        auto options = get_valid_pickups(tgt.id);
-        if (options.empty()) continue;
+    for (int i = 0; i < r1_count; ++i) {
+        PickupOption options[2];
+        int opt_count = get_valid_pickups(targets[i].id, options);
+        if (opt_count == 0) continue;
 
-        int target_aisle = options[0].first;
-        float target_yaw = options[0].second;
+        int target_aisle = options[0].aisle;
+        float target_yaw = options[0].yaw;
 
-        auto segment = find_shortest_path(curr_id, curr_yaw, target_aisle, target_yaw);
+        InternalNode segment[MAX_PATH];
+        int seg_len = find_shortest_path(curr_id, curr_yaw, target_aisle, target_yaw, segment);
         
-        if (segment.empty() && curr_id == target_aisle && std::abs(curr_yaw - target_yaw) < 0.1f) {
-            full_path.back().is_pick = true;
-            full_path.back().target_block = tgt.id;
-        } else if (!segment.empty()) {
-            segment.back().is_pick = true;
-            segment.back().target_block = tgt.id;
-            full_path.insert(full_path.end(), segment.begin(), segment.end());
-            curr_id = segment.back().id;
-            curr_yaw = segment.back().yaw;
+        if (seg_len == 0 && curr_id == target_aisle && std::abs(curr_yaw - target_yaw) < 0.1f) {
+            full_path[full_len - 1].is_pick = true;
+            full_path[full_len - 1].target_block = targets[i].id;
+        } else if (seg_len > 0) {
+            segment[seg_len - 1].is_pick = true;
+            segment[seg_len - 1].target_block = targets[i].id;
+            
+            for (int k = 0; k < seg_len; ++k) {
+                if (full_len < MAX_PATH) full_path[full_len++] = segment[k];
+            }
+            curr_id = segment[seg_len - 1].id;
+            curr_yaw = segment[seg_len - 1].yaw;
         }
     }
 
     // 前往出口
-    auto exit_segment = find_shortest_path(curr_id, curr_yaw, exit_id, YAW_ANY);
-    if (!exit_segment.empty()) {
-        full_path.insert(full_path.end(), exit_segment.begin(), exit_segment.end());
+    InternalNode exit_seg[MAX_PATH];
+    int exit_len = find_shortest_path(curr_id, curr_yaw, exit_id, YAW_ANY, exit_seg);
+    for (int i = 0; i < exit_len; ++i) {
+        if (full_len < MAX_PATH) full_path[full_len++] = exit_seg[i];
     }
 
-    return full_path;
+    return full_len;
 }
 
-// === 【修改】对外接口 ===
+// === 对外接口 (零动态内存开销) ===
 void GetPathDog(int *meilin_blocks, PathNode *path_dog, int auto_dog_flag, int *priority_block) {
     Vec2 X_Pos[X_COUNT];
     BuildXPoints(X_Pos);
 
-    std::vector<int> r1_blocks;
-    std::vector<int> r2_blocks;
-    std::vector<int> fake_blocks;
+    int r1_blocks[12], r2_blocks[12], fake_blocks[1];
+    int r1_count = 0, r2_count = 0, fake_count = 0;
 
     for (int i = 0; i < 12; ++i) {
-        if (meilin_blocks[i] == 1) r1_blocks.push_back(i);
-        else if (meilin_blocks[i] == 2) r2_blocks.push_back(i);
-        else if (meilin_blocks[i] == 3) fake_blocks.push_back(i);
+        if (meilin_blocks[i] == 1) r1_blocks[r1_count++] = i;
+        else if (meilin_blocks[i] == 2) r2_blocks[r2_count++] = i;
+        else if (meilin_blocks[i] == 3 && fake_count < 1) fake_blocks[fake_count++] = i;
     }
 
-    std::vector<std::vector<int>> candidate_paths = {
+    int candidate_paths[3][4] = {
         {9, 6, 3, 0},
         {10, 7, 4, 1},
         {11, 8, 5, 2}
     };
     
-    std::vector<int> best_r2_path;
-    int max_r2_count = -1;
+    int best_r2_path[4];
+    int best_r2_len = 0;
+    int max_r2_hit = -1;
 
-    for (const auto& path : candidate_paths) {
+    for (int p = 0; p < 3; ++p) {
         bool has_fake = false;
-        for (int b : path) {
-            if (std::find(fake_blocks.begin(), fake_blocks.end(), b) != fake_blocks.end()) {
+        for (int i = 0; i < 4; ++i) {
+            if (fake_count > 0 && candidate_paths[p][i] == fake_blocks[0]) {
                 has_fake = true; break;
             }
         }
         if (has_fake) continue;
 
-        int r2_count = 0;
-        for (int b : path) {
-            if (std::find(r2_blocks.begin(), r2_blocks.end(), b) != r2_blocks.end()) r2_count++;
+        int r2_hit = 0;
+        for (int i = 0; i < 4; ++i) {
+            if (array_contains(r2_blocks, r2_count, candidate_paths[p][i])) r2_hit++;
         }
 
-        if (r2_count > max_r2_count) {
-            max_r2_count = r2_count;
-            best_r2_path = path;
+        if (r2_hit > max_r2_hit) {
+            max_r2_hit = r2_hit;
+            for (int i = 0; i < 4; ++i) best_r2_path[i] = candidate_paths[p][i];
+            best_r2_len = 4;
         }
     }
 
-    if (best_r2_path.empty() && auto_dog_flag == 1) {
+    if (best_r2_len == 0 && auto_dog_flag == 1) {
         path_dog[0].is_at_end = true;
         return;
     }
@@ -806,35 +864,41 @@ void GetPathDog(int *meilin_blocks, PathNode *path_dog, int auto_dog_flag, int *
     int start_candidates[] = {2, 0, 16};
     int exit_node = 11;
     
-    std::vector<InternalNode> best_path_sequence;
+    InternalNode best_path_sequence[MAX_PATH];
+    int best_seq_len = 0;
     int min_steps = 999999;
 
-    for (int s_id : start_candidates) {
-        auto path = generate_full_route(s_id, YAW_BOTTOM, r1_blocks, best_r2_path, exit_node, auto_dog_flag, priority_block);
-        if (path.size() < min_steps && !path.empty()) {
-            min_steps = path.size();
-            best_path_sequence = path;
+    for (int i = 0; i < 3; ++i) {
+        InternalNode temp_path[MAX_PATH];
+        int temp_len = generate_full_route(start_candidates[i], YAW_BOTTOM, 
+                                           r1_blocks, r1_count, 
+                                           best_r2_path, best_r2_len, 
+                                           exit_node, auto_dog_flag, priority_block, temp_path);
+        
+        if (temp_len > 0 && temp_len < min_steps) {
+            min_steps = temp_len;
+            best_seq_len = temp_len;
+            for (int k = 0; k < temp_len; ++k) best_path_sequence[k] = temp_path[k];
         }
     }
 
-    if (best_path_sequence.empty()) {
+    if (best_seq_len == 0) {
         path_dog[0].is_at_end = true;
         return;
     }
 
-    // --- 【修改点】：滤除冗余点逻辑优化 ---
+    // --- 滤除冗余点逻辑优化 (与之前一致，只针对静态数组适配) ---
     int out_index = 0;
-    for (size_t i = 0; i < best_path_sequence.size(); ++i) {
+    for (int i = 0; i < best_seq_len; ++i) {
         bool is_start = (i == 0);
-        bool is_end = (i == best_path_sequence.size() - 1);
+        bool is_end = (i == best_seq_len - 1);
         bool is_pick = best_path_sequence[i].is_pick;
         bool is_corner_node = is_corner(best_path_sequence[i].id);
 
         if (is_start || is_end || is_pick || is_corner_node) {
             
-            // 【核心去重】：如果下一个节点的物理位置跟当前节点一模一样，说明仅仅是原地旋转
-            // 我们直接跳过当前节点，让底盘直奔最终带有新 Yaw 的那个状态点即可
-            if (i + 1 < best_path_sequence.size() && best_path_sequence[i].id == best_path_sequence[i+1].id) {
+            // 跳过原地旋转的冗余中间点
+            if (i + 1 < best_seq_len && best_path_sequence[i].id == best_path_sequence[i+1].id) {
                 continue; 
             }
 

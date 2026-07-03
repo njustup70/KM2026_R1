@@ -12,14 +12,15 @@
 #include "HiddenTreasuresGragh.hpp"
 #include "ExploringCharmsGragh.hpp"
 #include "ModeSelector.hpp"
- 
+ #include "PathPlaner.hpp"
 using namespace APP;
 using namespace MOD;
 using namespace MOVE;
 
 StateGraph test{"DegeTest"};
 void ActionDege(StateCore *core);
-
+//int meilin_block[12]={1,0,1,2,0,2,1,2,2,0,3,0};
+//extern PathNode Guide_dog[MAX_PATH];
 /**
  * @brief 程序主入口
  * @warning 严禁阻塞
@@ -30,7 +31,7 @@ void MainFrameCpp()
   // monit.Track(chassis.motors[0].targ_spd);
   // monit.Track(chassis.motors[0].targ_spd_rad);
   // monit.Track(chassis.motors[0].driver.measure.speed_rpm);
-
+//GetPathDog(meilin_block,Guide_dog,1);
   //System.SetPositionSource(System.odometer.transform);
   System.SetPositionSource(APP::comm.slam_pos);
 
