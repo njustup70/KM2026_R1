@@ -36,9 +36,6 @@ StateGraph auto_flow{"AutoGragh"};
 #define Run_Zone Zone1
 
 //====================状态函数组织=======================================================================================
-void ChooseArea(StateCore *core)
-{
-}
 
 void GetRod(StateCore *state_core)
 {
@@ -47,6 +44,8 @@ void GetRod(StateCore *state_core)
 					{ return farcon.button_second_half[9 - 8 - 1] == 1; });
 
 	MOVE::MoveToTargPos(Area1ToRod);
+	chassis.Move(Vec3(0.1, 0, 0), 1.0f); // 向前走0.1m
+	chassis.RotateAt(3.14);
 
 	// 先左右微调，小小黄上拉，0为识别到杆了
 	while (Hardware::miniyellow_aim_rod.Read() != 0)
@@ -57,31 +56,18 @@ void GetRod(StateCore *state_core)
 
 	// 左右位置定了可以伸出Bow了，再前后
 	comm.SendActionCommand(ActionType::BOW);
-	chassis.Move(Vec3(0.1, 0, 0), 1.0f); // 向前走0.1m
-	// //路径可以给个不准确的,场地肯定会有误差，可以靠move再抵到矛杆架
-	// while(!((fabs(sick.GetSingleChannel(0)) - 0.28) < 0.01))
-	// {
-	//     if ((sick.GetSingleChannel(0) - 0.28 )< 0)
-	//     {
-	//         chassis.Move(Vec2(0,-0.15));
-	//     }
-	//     else
-	//     {
-	//         chassis.Move(Vec2(0,0.15));
-	//     }
-	// }
-
+	Seq::Wait(1);
 	Seq::WaitUntil([]() -> bool
 					{ return comm.rodmotor_OK; });
 	monit.LogInfo("Bow At:(%.3f,%.3f), sick:%.3f", comm.slam_pos.x, comm.slam_pos.y, sick.GetTrueSingleChannel(0));
 
 	comm.SendActionCommand(ActionType::CLAMP);
-	Seq::Wait(1.5);
+	Seq::Wait(2);
 	Seq::WaitUntil([]() -> bool
 					{ return comm.rodmotor_OK; });
+
 	comm.SendActionCommand(ActionType::PICK);
 	MOVE::MoveToTargPos(Area1ToDock);
-
 	comm.SendActionCommand(ActionType::CLAMP_2_ON);
 
 	state_core->GetCurState()->Complete = true;
@@ -98,15 +84,13 @@ void Dock(StateCore *state_core)
 					{ return farcon.button_second_half[16 - 8 - 1] == 1; });
 
 	comm.SendActionCommand(ActionType::CLAMP_2_OFF);
-	Seq::Wait(0.2);
 	Seq::WaitUntil([]() -> bool
 					{ return !comm.rodair_state; });
-
 	comm.SendActionCommand(ActionType::AWAYFROMDOCK);
 	Seq::Wait(0.5);
 	Seq::WaitUntil([]() -> bool
 					{ return comm.rodmotor_OK; });
-	chassis.Move(Vec2(1, 0), 0.3); // 离开0.8m
+	chassis.Move(Vec2(1, 0), 0.3); 
 
 	// 这里要加一个倒把手的
 
