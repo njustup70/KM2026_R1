@@ -27,14 +27,7 @@
 
 
 #include "PathPlaner.hpp"
-
-
-#include <iostream>
-#include <vector>
-#include <queue>
-#include <map>
-#include <cmath>
-#include <algorithm>
+#define  abs(x) (((x) > 0) ? (x) : -(x))
 
 #define UNIT 1.2f
 
@@ -598,9 +591,9 @@ static bool is_corner(int aisle_id) {
 }
 
 static int yaw_to_index(float yaw) {
-    if (std::abs(yaw - YAW_BOTTOM) < 0.1f) return 0;
-    if (std::abs(yaw - YAW_LEFT) < 0.1f) return 1;
-    if (std::abs(yaw - YAW_RIGHT) < 0.1f) return 2;
+    if (abs(yaw - YAW_BOTTOM) < 0.1f) return 0;
+    if (abs(yaw - YAW_LEFT) < 0.1f) return 1;
+    if (abs(yaw - YAW_RIGHT) < 0.1f) return 2;
     return 3;
 }
 
@@ -661,7 +654,7 @@ static int find_shortest_path(int start_id, float start_yaw, int target_id, floa
     while (head < tail) {
         QNode curr = q[head++];
 
-        if (curr.id == target_id && (target_yaw == YAW_ANY || std::abs(curr.yaw - target_yaw) < 0.1f)) {
+        if (curr.id == target_id && (target_yaw == YAW_ANY || abs(curr.yaw - target_yaw) < 0.1f)) {
             found = true;
             if (target_yaw == YAW_ANY) final_yaw = curr.yaw;
             break;
@@ -787,7 +780,7 @@ static int generate_full_route(int start_id, float start_yaw,
         InternalNode segment[MAX_PATH];
         int seg_len = find_shortest_path(curr_id, curr_yaw, target_aisle, target_yaw, segment);
         
-        if (seg_len == 0 && curr_id == target_aisle && std::abs(curr_yaw - target_yaw) < 0.1f) {
+        if (seg_len == 0 && curr_id == target_aisle && abs(curr_yaw - target_yaw) < 0.1f) {
             full_path[full_len - 1].is_pick = true;
             full_path[full_len - 1].target_block = targets[i].id;
         } else if (seg_len > 0) {
