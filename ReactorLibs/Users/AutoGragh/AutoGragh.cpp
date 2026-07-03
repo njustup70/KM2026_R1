@@ -39,7 +39,7 @@ int kfs_data[12] = {0};
 #define Zone3 3
 #define competition 4
 
-#define Run_Zone Zone2
+#define Run_Zone competition
 
 //====================状态函数组织=======================================================================================
 
@@ -105,6 +105,9 @@ void Dock(StateCore *state_core)
   Seq::Wait(1);
   comm.SendActionCommand(ActionType::CLAMP_2_ON);
 
+    GetPathDog(farcon.KFS_int, guide_dog, true);
+
+
   state_core->GetCurState()->Complete = true;
 }
 //**********************************二区状态块***********************************************************************//
@@ -147,7 +150,7 @@ void Action_Planning(StateCore *state_core)
   //   int block_priority[3] = {-1, -1, -1};
   // 调用路径规划
   //   GetPathDog(meilin_block,guide_dog,1);
-//  GetPathDog(farcon.KFS_int, guide_dog, true);
+  GetPathDog(farcon.KFS_int, guide_dog, true);
   // GetPathDog(&kfs_point, guide_dog, true,&block_priority[0]);
 
   state_core->GetCurState()->Complete = true;
@@ -169,47 +172,49 @@ void Action_NavToBlock(StateCore *state_core)
   int target_xid = guide_dog[guide_dog_index].label;
   float target_yaw = guide_dog[guide_dog_index].target_yaw;
   bool is_corner = (target_xid == 2 || target_xid == 7 || target_xid == 11 || target_xid == 16);
+  Seq::Wait(1);
 
   //   // 移动底盘到目标点
   chassis.MoveAt(target_pos);
 
-  //   // 姿态控制：如果是四个角点，调用旋转指令并强等待底盘就位
-  //   if (is_corner)
-  //   {
-  //     // 强等待底盘横移就位
-  //     Seq::WaitUntil([]() -> bool
-  //                    { return (chassis._Walking() == 1); });
+  // 姿态控制：如果是四个角点，调用旋转指令并强等待底盘就位
+  if (is_corner)
+  {
+    // 强等待底盘横移就位
+    Seq::WaitUntil([]() -> bool
+                   { return (chassis._Walking() == 1); });
 
-  //     // 调整yaw
-  //     chassis.RotateAt(target_yaw);
+    // 调整yaw
+    chassis.RotateAt(target_yaw);
 
-  //     // 强等待旋转就位
-  //     Seq::WaitUntil([]() -> bool
-  //                    { return (chassis._Rotating() == 1); });
-  //   }
-  //   else
-  //   {
-  //     // 普通通过点，也只需要等底盘横移到达即可
-  //     Seq::WaitUntil([]() -> bool
-  //                    { return (chassis._Walking() == 1); });
-  //   }
+    // 强等待旋转就位
+    Seq::WaitUntil([]() -> bool
+                   { return (chassis._Rotating() == 1); });
+  }
+  else
+  {
+    // 普通通过点，也只需要等底盘横移到达即可
+    Seq::WaitUntil([]() -> bool
+                   { return (chassis._Walking() == 1); });
+  }
 
-  //   if (guide_dog[guide_dog_index].is_pick_point)
-  //   {
-  //     // 如果是有块的点：获取高度，准备通过 LinkTo 条件触发切入 Action_GetBlock
-  //     target_height = GetBlockHeight(target_xid);
-  //     is_ready_to_pick = true; // 马上跳转，保证状态块只跑一次
-  //   }
-  //   else if (guide_dog[guide_dog_index].is_at_end)
-  //   {
-  //     is_final_goal_reached = true;
-  //   }
-  //   else
-  //   {
-  //     // 如果是普通通过点：不切外部状态，自主自增索引，并自回环重新进入本状态
-  //     guide_dog_index++;
-  //     state_core->GetCurState()->Complete = true;
-  //   }
+  if (guide_dog[guide_dog_index].is_pick_point)
+  {
+    // 如果是有块的点：获取高度，准备通过 LinkTo 条件触发切入 Action_GetBlock
+    target_height = GetBlockHeight(target_xid);
+    is_ready_to_pick = true; // 马上跳转，保证状态块只跑一次
+                             //   return;
+  }
+  else if (guide_dog[guide_dog_index].is_at_end)
+  {
+    is_final_goal_reached = true;
+  }
+  else
+  {
+    // 如果是普通通过点：不切外部状态，自主自增索引，并自回环重新进入本状态
+    guide_dog_index++;
+    state_core->GetCurState()->Complete = true;
+  }
 }
 
 // 状态：取块
@@ -306,7 +311,7 @@ void AutoGragh_Init(void)
 
   // 状态转移关系
   s_rod.LinkTo(&s_rod.Complete, s_dock);
-  s_dock.LinkTo(&s_dock.Complete, s_plan);
+  s_dock.LinkTo(&s_dock.Complete, s_move);
 
   s_plan.LinkTo(&s_plan.Complete, s_move);
 

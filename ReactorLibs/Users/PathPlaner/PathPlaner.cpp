@@ -84,6 +84,7 @@ struct SearchContext
 
 static void BuildXPoints(Vec2 X[X_COUNT])
 {
+    // 1. 原本的相对/原始坐标保持不变
     X[0]  = Vec2(0, 0);
     X[1]  = Vec2(0, UNIT * 1.0f);
     X[2]  = Vec2(-0.08f, 2.4865f);
@@ -102,6 +103,14 @@ static void BuildXPoints(Vec2 X[X_COUNT])
     X[15] = Vec2(UNIT * 1.0f, -2.4575f);
     X[16] = Vec2(-0.115f, -2.35f);
     X[17] = Vec2(0, -UNIT * 1.0f);
+
+    const Vec2 S_point(2.565f, 2.9575f);
+
+    for (int i = 0; i < X_COUNT; i++)
+    {
+        X[i].x += S_point.x;
+        X[i].y += S_point.y;
+    }
 }
 
 static Vec2 ToGlobal(Vec2 local)
