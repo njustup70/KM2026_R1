@@ -39,6 +39,7 @@
 #define UNIT 1.2f
 
 PathContainer Zone2_Path;
+PathNode guide_dog[MAX_PATH];
 
 static const int X_COUNT = 18;
 static const int BLOCK_COUNT = 12;
@@ -811,8 +812,9 @@ static int generate_full_route(int start_id, float start_yaw,
     return full_len;
 }
 
-// === 对外接口 (零动态内存开销) ===
-void GetPathDog(int *meilin_blocks, PathNode *path_dog, int auto_dog_flag, int *priority_block) {
+// === 【修改】对外接口 ===
+void GetPathDog(int *meilin_blocks, PathNode *path_dog, int auto_dog_flag, int *priority_block) 
+{
     Vec2 X_Pos[X_COUNT];
     BuildXPoints(X_Pos);
 
