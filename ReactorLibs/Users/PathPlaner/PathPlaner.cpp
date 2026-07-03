@@ -567,7 +567,7 @@ bool PathPlanerSelfCheck()
 const float YAW_BOTTOM = 0.0f;
 const float YAW_LEFT   = -1.57f;
 const float YAW_RIGHT  = 1.57f;
-const float YAW_TOP    = 3.54f;
+const float YAW_TOP    = 3.14f;
 const float YAW_ANY    = 999.0f; // 标记任意朝向皆可 (用于驶向出口)
 
 const int RING_AISLES[] = {7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 0, 1, 2, 3, 4, 5, 6};
