@@ -684,23 +684,39 @@ static std::vector<InternalNode> find_shortest_path(int start_id, float start_ya
 static std::vector<InternalNode> generate_full_route(int start_id, float start_yaw, 
                                                      const std::vector<int>& r1_blocks, 
                                                      const std::vector<int>& r2_path, 
-                                                     int exit_id) {
+                                                     int exit_id,
+                                                     int auto_dog_flag,
+                                                     int *priority_block) {
     std::vector<InternalNode> full_path;
     full_path.push_back({start_id, start_yaw, false, -1});
 
     struct TargetPriority { int id; int priority; };
     std::vector<TargetPriority> targets;
     
+    // 【修改核心逻辑】根据 auto_dog_flag 决定优先级
     for (int b : r1_blocks) {
-        int prio = 999;
-        auto it = std::find(r2_path.begin(), r2_path.end(), b);
-        if (it != r2_path.end()) {
-            prio = std::distance(r2_path.begin(), it); // R2撞见顺序
+        int prio = 999; // 默认优先级极低，排在最后
+        
+        if (auto_dog_flag == 1) {
+            // 自动模式：阻挡 R2 路线的优先
+            auto it = std::find(r2_path.begin(), r2_path.end(), b);
+            if (it != r2_path.end()) {
+                prio = std::distance(r2_path.begin(), it); 
+            }
+        } else {
+            // 手动模式：完全服从 priority_block 数组的顺序
+            // 假设 priority_block 最大长度为 3，且空位用 -1 填充
+            for (int i = 0; i < 3; ++i) {
+                if (priority_block[i] == b) {
+                    prio = i;
+                    break; // 越靠前，prio 越小，优先级越高
+                }
+            }
         }
         targets.push_back({b, prio});
     }
 
-    // 按优先级从小到大排序，优先拔除挡路块
+    // 按优先级从小到大排序
     std::sort(targets.begin(), targets.end(), [](const TargetPriority& a, const TargetPriority& b) {
         return a.priority < b.priority;
     });
@@ -738,13 +754,11 @@ static std::vector<InternalNode> generate_full_route(int start_id, float start_y
     return full_path;
 }
 
-// === 你请求的核心接口 ===
-void GetPathDog(int *meilin_blocks, PathNode *path_dog) {
-    // 1. 获取物理坐标字典
+// === 【修改】对外接口 ===
+void GetPathDog(int *meilin_blocks, PathNode *path_dog, int auto_dog_flag, int *priority_block) {
     Vec2 X_Pos[X_COUNT];
     BuildXPoints(X_Pos);
 
-    // 2. 解析阵地状态
     std::vector<int> r1_blocks;
     std::vector<int> r2_blocks;
     std::vector<int> fake_blocks;
@@ -755,7 +769,7 @@ void GetPathDog(int *meilin_blocks, PathNode *path_dog) {
         else if (meilin_blocks[i] == 3) fake_blocks.push_back(i);
     }
 
-    // 3. R2 路线自动决策引擎 (避开fake，找R2最多的路)
+    // R2 路线自动决策引擎 (避开fake，找R2最多的路)
     std::vector<std::vector<int>> candidate_paths = {
         {9, 6, 3, 0},
         {10, 7, 4, 1},
@@ -785,13 +799,12 @@ void GetPathDog(int *meilin_blocks, PathNode *path_dog) {
         }
     }
 
-    // 若无合法路径，直接设置起点为终点后返回防崩
-    if (best_r2_path.empty()) {
+    // 若无合法路径且处于自动模式，直接返回防崩
+    if (best_r2_path.empty() && auto_dog_flag == 1) {
         path_dog[0].is_at_end = true;
         return;
     }
 
-    // 4. 评估最优起点
     int start_candidates[] = {2, 0, 16};
     int exit_node = 11;
     
@@ -799,7 +812,8 @@ void GetPathDog(int *meilin_blocks, PathNode *path_dog) {
     int min_steps = 999999;
 
     for (int s_id : start_candidates) {
-        auto path = generate_full_route(s_id, YAW_BOTTOM, r1_blocks, best_r2_path, exit_node);
+        // 【修改】向底层传递 auto_dog_flag 和 priority_block
+        auto path = generate_full_route(s_id, YAW_BOTTOM, r1_blocks, best_r2_path, exit_node, auto_dog_flag, priority_block);
         if (path.size() < min_steps && !path.empty()) {
             min_steps = path.size();
             best_path_sequence = path;
@@ -811,7 +825,7 @@ void GetPathDog(int *meilin_blocks, PathNode *path_dog) {
         return;
     }
 
-    // 5. 滤除直道冗余点，仅写入关键节点 (起点、取块点、角点、终点) 到 PathNode
+    // 滤除冗余点，提取关键节点
     int out_index = 0;
     for (size_t i = 0; i < best_path_sequence.size(); ++i) {
         bool is_start = (i == 0);
@@ -820,13 +834,12 @@ void GetPathDog(int *meilin_blocks, PathNode *path_dog) {
         bool is_corner_node = is_corner(best_path_sequence[i].id);
 
         if (is_start || is_end || is_pick || is_corner_node) {
-            // 防止越界
             if (out_index >= MAX_PATH) break;
 
             PathNode pn;
             pn.label = best_path_sequence[i].id;
             pn.target_yaw = best_path_sequence[i].yaw;
-            pn.pos = X_Pos[pn.label]; // 直接绑定物理坐标
+            pn.pos = X_Pos[pn.label]; 
             pn.is_pick_point = is_pick;
             pn.is_at_end = is_end;
 
@@ -835,7 +848,6 @@ void GetPathDog(int *meilin_blocks, PathNode *path_dog) {
         }
     }
     
-    // 强制保险：确保最后一个写入的节点拥有 is_at_end = true (防止因数组截断丢失终点)
     if (out_index > 0) {
         path_dog[out_index - 1].is_at_end = true;
     }
