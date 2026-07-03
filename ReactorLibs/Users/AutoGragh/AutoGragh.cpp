@@ -147,14 +147,14 @@ void Action_Planning(StateCore *state_core)
     Zone2_Path.index = 0;
 
     uint8_t kfs_data[12] = {0};
-    if(System.camp == Systems::Camp_Red)
-    {
-        farcon.PackKFSValues(kfs_data, false); // 红方
-    }
-    else
-    {
-        farcon.PackKFSValues(kfs_data, true);  // 蓝方
-    }
+//    if(System.camp == Systems::Camp_Red)
+//    {
+//        farcon.PackKFSValues(kfs_data, false); // 红方
+//    }
+//    else
+//    {
+//        farcon.PackKFSValues(kfs_data, true);  // 蓝方
+//    }
     
     GetShortestPath(kfs_data, Zone2_Path);
 

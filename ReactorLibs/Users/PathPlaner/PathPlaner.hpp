@@ -3,7 +3,7 @@
 #include "std_math.hpp"
 #include <stdint.h>
 
-#define MAX_PATH 32
+#define MAX_PATH 36
 #define MAX_PICK_COUNT 12
 
 // 单个取块动作的规划结果。
@@ -21,6 +21,7 @@ struct PathNode
     int label = -1;         // 目标点的X[]索引
     float target_yaw = 0.0f; // 目标点的车头朝向
     bool is_pick_point = false; // 是否是取块点
+    bool is_at_end=false;
 };
 
 // 二区矩形环路的路径容器。
