@@ -695,7 +695,7 @@ void R1Block::
     Clamp_block(); // 夹紧
     Seq::Wait(1);
     return;
-  }
+  } 
   // 取第二个块
   else if (block_exist[2] == 1 && block_exist[1] == 0 && block_exist[0] == 0 && get_finish_block == 1)
   {

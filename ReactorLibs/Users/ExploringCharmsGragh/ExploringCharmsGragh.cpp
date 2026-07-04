@@ -100,19 +100,19 @@ void GetRodandDock(StateCore *state_core)
 	//左右位置定了可以伸出Bow了
 	comm.SendActionCommand(ActionType::BOW);
 	Seq::Wait(1);
-	Seq::WaitUntil([]() -> bool
-			{ return comm.rodmotor_OK; });
+	// Seq::WaitUntil([]() -> bool
+	// 		{ return comm.rodmotor_OK; });
 	monit.LogInfo("Bow At:(%.3f,%.3f), sick:%.3f", comm.slam_pos.x, comm.slam_pos.y, sick.GetTrueSingleChannel(0));
 
 	comm.SendActionCommand(ActionType::CLAMP);
 	Seq::Wait(2);
-	Seq::WaitUntil([]() -> bool 
-	{
-		return comm.rodmotor_OK;  
-	});
+	// Seq::WaitUntil([]() -> bool 
+	// {
+	// 	return comm.rodmotor_OK;  
+	// });
 
 	comm.SendActionCommand(ActionType::PICK);
-	Seq::Wait(0.5);
+	Seq::Wait(0.8);
 	MOVE::MoveToTargPos(Area1ToDock);
 	comm.SendActionCommand(ActionType::CLAMP_2_ON);
 
@@ -139,6 +139,9 @@ void GetRodandDock(StateCore *state_core)
 		comm.SendActionCommand(ActionType::PICK); // 把杆放平，复用一下Pick
 		Seq::Wait(1);
 		comm.SendActionCommand(ActionType::CLAMP_2_ON);
+
+
+    GetPathDog(farcon.KFS_int, guide_dog, true);
 
 		state_core->GetCurState()->Complete = true;
     }
@@ -175,18 +178,18 @@ int GetBlockHeight(int index_id)
   return 200;
 }
 
-void Action_Planning(StateCore *state_core)
-{
-  // 等待遥控器确认KFS数据已发好
-  Seq::WaitUntil([]() -> bool
-                 { return farcon.button_second_half[10 - 8 - 1] == 1; });
-  Zone2_Path.index = 0;
+// void Action_Planning(StateCore *state_core)
+// {
+//   // 等待遥控器确认KFS数据已发好
+//   Seq::WaitUntil([]() -> bool
+//                  { return farcon.button_second_half[10 - 8 - 1] == 1; });
+//   Zone2_Path.index = 0;
 
-  // 调用路径规划
-  GetShortestPath(farcon.KFS_values, Zone2_Path);
+//   // 调用路径规划
+//   GetShortestPath(farcon.KFS_values, Zone2_Path);
 
-    state_core->GetCurState()->Complete = true;
-}
+//     state_core->GetCurState()->Complete = true;
+// }
 
 /**
  * @brief Action_NavToBlock：沿Zone2_Path逐点移动
@@ -194,62 +197,58 @@ void Action_Planning(StateCore *state_core)
  */
 void Action_NavToBlock(StateCore *state_core)
 {
-  // // 如果刚从取块状态回来，推进index继续导航，
+ monit.LogInfo("State:Action_NavToBlock");
+  //   if (is_ready_to_pick || is_final_goal_reached)
+  //    return; // 如果已经触发取块，直接返回，等待状态切换,防止线程时序问题没有正确跳转
 
-    Zone2_Path.index++;
+  // 提取当前这一帧动作节点的打包数据
+  Vec2 target_pos = guide_dog[guide_dog_index].pos;
+  int target_xid = guide_dog[guide_dog_index].label;
+  float target_yaw = guide_dog[guide_dog_index].target_yaw;
+  bool is_corner = (target_xid == 2 || target_xid == 7 || target_xid == 11 || target_xid == 16);
+  Seq::Wait(1);
 
-  // 判断是否已走完全部路径点
-  if (Zone2_Path.index >= Zone2_Path.size)
+  //   // 移动底盘到目标点
+  chassis.MoveAt(target_pos);
+
+  // 姿态控制：如果是四个角点，调用旋转指令并强等待底盘就位
+  if (is_corner)
   {
-    is_final_goal_reached = true;
-    return;
-  }
+    // 强等待底盘横移就位
+    Seq::WaitUntil([]() -> bool
+                   { return (chassis._Walking() == 1); });
 
-  if (!is_final_goal_reached)
-  {
-    // 获取当前目标路径点
-    Vec2 target = Zone2_Path.points[Zone2_Path.index];
-    int target_xid = Zone2_Path.labels[Zone2_Path.index];
-    int edge = GetEdge(target_xid);
-    bool is_corner = (target_xid == 2 || target_xid == 7 ||
-                      target_xid == 11 || target_xid == 16);
+    // 调整yaw
+    chassis.RotateAt(target_yaw);
 
-    chassis.MoveAt(Vec2(target.x, target.y));
-    if (is_corner && target_xid != 0)
-    {
-      Seq::WaitUntil([]() -> bool
-                     { return (chassis._Walking() == 1); });
-      BarrelToMid(target_xid);
-      Seq::WaitUntil([]() -> bool
-                     { return (chassis._Rotating() == 1); });
-    }
-    // ── 已到达目标点，查have_block_xids判断是否需要取块 ──
-    bool is_kfs_point = false;
-    for (int i = 0; i < Zone2_Path.have_block_count; i++)
-    {
-      if (Zone2_Path.have_block_xids[i] == target_xid)
-      {
-        is_kfs_point = true;
-        break;
-      }
-    }
-
-    if (is_kfs_point)
-    {
-      target_height = GetBlockHeight(target_xid);
-      // 触发取块状态
-    }
-    else
-    {
-      // 普通通过点，直接前进
-      Zone2_Path.index++;
-    }
+    // 强等待旋转就位
+    Seq::WaitUntil([]() -> bool
+                   { return (chassis._Rotating() == 1); });
   }
   else
   {
-    return;
+    // 普通通过点，也只需要等底盘横移到达即可
+    Seq::WaitUntil([]() -> bool
+                   { return (chassis._Walking() == 1); });
   }
-      state_core->GetCurState()->Complete = true;
+
+  if (guide_dog[guide_dog_index].is_pick_point)
+  {
+    // 如果是有块的点：获取高度，准备通过 LinkTo 条件触发切入 Action_GetBlock
+    target_height = GetBlockHeight(target_xid);
+    is_ready_to_pick = true; // 马上跳转，保证状态块只跑一次
+                             //   return;
+  }
+  else if (guide_dog[guide_dog_index].is_at_end)
+  {
+    is_final_goal_reached = true;
+  }
+  else
+  {
+    // 如果是普通通过点：不切外部状态，自主自增索引，并自回环重新进入本状态
+    guide_dog_index++;
+    state_core->GetCurState()->Complete = true;
+  }
 }
 
 // 状态：取块
@@ -266,13 +265,13 @@ void ExploringCharmsGragh_Init(void)
 	StateBlock &s_chooserod = EC_flow.AddState("ChooseRod");
 	StateBlock &s_rodanddock = EC_flow.AddState("GetRodandDock");
 
-	StateBlock &s_plan = EC_flow.AddState("Planning");
+	// StateBlock &s_plan = EC_flow.AddState("Planning");
 	StateBlock &s_move = EC_flow.AddState("NavtoBlock");
 	StateBlock &s_pick = EC_flow.AddState("GetBlocking");
 
 	s_chooserod.StateAction = ChooseRod;
 	s_rodanddock.StateAction = GetRodandDock;
-	s_plan.StateAction = Action_Planning;
+	// s_plan.StateAction = Action_Planning;
 	s_move.StateAction = Action_NavToBlock;
 	s_pick.StateAction = Action_GetBlock;
 
@@ -280,9 +279,9 @@ void ExploringCharmsGragh_Init(void)
 	s_chooserod.LinkTo(&s_chooserod.Complete, s_rodanddock);
 	s_rodanddock.LinkTo(&is_assemble, s_chooserod);
 
-	s_rodanddock.LinkTo(&s_rodanddock.Complete, s_plan);
+	s_rodanddock.LinkTo(&s_rodanddock.Complete, s_move);
 
-	s_plan.LinkTo(&s_plan.Complete, s_move);
+	// s_plan.LinkTo(&s_plan.Complete, s_move);
 	s_move.LinkTo(&s_move.Complete, s_pick);
 	s_pick.LinkTo(&s_pick.Complete, s_move);
 

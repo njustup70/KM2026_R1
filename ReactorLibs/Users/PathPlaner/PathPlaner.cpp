@@ -607,6 +607,7 @@ static int yaw_to_index(float yaw) {
 }
 
 // 静态查找有效取块点
+__attribute__((optnone))
 static int get_valid_pickups(int merlin_id, PickupOption options_out[2]) {
     int count = 0;
     switch (merlin_id) {
@@ -641,6 +642,7 @@ static int get_index_in_array(const int* arr, int size, int val) {
 }
 
 // === BFS 核心寻路 (完全静态) ===
+__attribute__((optnone))
 static int find_shortest_path(int start_id, float start_yaw, int target_id, float target_yaw, InternalNode path_out[MAX_PATH]) {
     // 状态空间：18个过道 × 4个朝向 = 72 个状态，完全避免 map 的内存申请
     bool visited[18][4] = {false};
@@ -739,6 +741,7 @@ static int find_shortest_path(int start_id, float start_yaw, int target_id, floa
 }
 
 // === 生成完整路径 ===
+__attribute__((optnone))
 static int generate_full_route(int start_id, float start_yaw, 
                                const int* r1_blocks, int r1_count, 
                                const int* r2_path, int r2_path_len, 
@@ -815,6 +818,7 @@ static int generate_full_route(int start_id, float start_yaw,
 }
 
 // === 【修改】对外接口 ===
+__attribute__((optnone))
 void GetPathDog(int *meilin_blocks, PathNode *path_dog, int auto_dog_flag, int *priority_block) 
 {
     Vec2 X_Pos[X_COUNT];
