@@ -138,9 +138,10 @@ void GetRodandDock(StateCore *state_core)
     Seq::Wait(1);
     comm.SendActionCommand(ActionType::CLAMP_2_ON);
 
-    // GetPathDog(farcon.KFS_int, guide_dog, true);
+    monit.LogSpec("ready jump to area2");
 
     state_core->GetCurState()->Complete = true;
+    monit.LogSpec("ready to area2");
   }
   else
   {
@@ -177,20 +178,37 @@ int GetBlockHeight(int index_id)
 
 void Action_Planning(StateCore *state_core)
 {
+  monit.LogSpec("begin plan ");
+
   // 等待遥控器确认KFS数据已发好
   Seq::WaitUntil([]() -> bool
-                 { return farcon.button_second_half[9 - 8 - 1] == 1; });
-  comm.SendKFStoPC();
-    comm.SendKFStoPC();
-      comm.SendKFStoPC();
-        comm.SendKFStoPC();
-  Seq::WaitUntil([]() -> bool
-                 { return comm.is_got_dogpath_from_pc; });
+                 { return farcon.button_second_half[1] == 1; });
 
-  // // 调用路径规划
-  //   GetPathDog(farcon.KFS_int, guide_dog, true);
+  monit.LogSpec("button 9 ! ");
+
+  comm.SendKFStoPC();
+  monit.LogSpec("sendkfs x1 ! ");
+
+  comm.SendKFStoPC();
+  monit.LogSpec("sendkfs x2 ! ");
+
+  comm.SendKFStoPC();
+  monit.LogSpec("sendkfs x3 ! ");
+
+  comm.SendKFStoPC();
+  monit.LogSpec("sendkfs x4 ! ");
+
+  Seq::Wait(2.0f);
+
+  monit.LogSpec("is_got_dogpath_from_pc == %d",comm.is_got_dogpath_from_pc);
+
+//  Seq::WaitUntil([]() -> bool
+//                 { return comm.is_got_dogpath_from_pc; });
+  monit.LogSpec("get pc == 1 ! ");
+
 
   state_core->GetCurState()->Complete = true;
+  monit.LogSpec("over plan");
 }
 
 /**
@@ -199,7 +217,8 @@ void Action_Planning(StateCore *state_core)
  */
 void Action_NavToBlock(StateCore *state_core)
 {
-  while (manual_pick_flag == 0)
+  monit.LogSpec("const char *format, ...") ;
+	while (manual_pick_flag == 0)
   {
     monit.LogInfo("State:Action_NavToBlock");
     //   if (is_ready_to_pick || is_final_goal_reached)
@@ -298,8 +317,8 @@ void Action_ManualGetBlock(StateCore *state_core)
 // ================================初始化========================================================================
 void ExploringCharmsGragh_Init(void)
 {
-  StateBlock &s_chooserod = EC_flow.AddState("ChooseRod");
-  StateBlock &s_rodanddock = EC_flow.AddState("GetRodandDock");
+  // StateBlock &s_chooserod = EC_flow.AddState("ChooseRod");
+  // StateBlock &s_rodanddock = EC_flow.AddState("GetRodandDock");
 
   StateBlock &s_plan = EC_flow.AddState("Planning");
   StateBlock &s_move = EC_flow.AddState("NavtoBlock");
@@ -307,8 +326,8 @@ void ExploringCharmsGragh_Init(void)
   StateBlock &s_auto_pick = EC_flow.AddState("AutoGetBlocking");
   StateBlock &s_manual_pick = EC_flow.AddState("ManualGetBlocking");
 
-  s_chooserod.StateAction = ChooseRod;
-  s_rodanddock.StateAction = GetRodandDock;
+  // s_chooserod.StateAction = ChooseRod;
+  // s_rodanddock.StateAction = GetRodandDock;
 
   s_plan.StateAction = Action_Planning;
   s_move.StateAction = Action_NavToBlock;
@@ -317,9 +336,9 @@ void ExploringCharmsGragh_Init(void)
   s_manual_pick.StateAction = Action_ManualGetBlock;
 
   // 状态转移关系
-  s_chooserod.LinkTo(&s_chooserod.Complete, s_rodanddock);
-  s_rodanddock.LinkTo(&is_assemble, s_chooserod);
-  s_rodanddock.LinkTo(&s_rodanddock.Complete, s_plan);
+  // s_chooserod.LinkTo(&s_chooserod.Complete, s_rodanddock);
+  // s_rodanddock.LinkTo(&is_assemble, s_chooserod);
+  // s_rodanddock.LinkTo(&s_rodanddock.Complete, s_plan);
   s_plan.LinkTo(&s_plan.Complete, s_move);
 
   // 自动与手动
