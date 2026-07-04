@@ -31,7 +31,7 @@ bool is_rod1 = false;
 bool is_rod2 = false;
 bool is_rod3 = false;
 bool is_assemble = false;
-
+bool manual_pick_flag = 0;
 // 全局状态图对象
 StateGraph EC_flow{"ExploringCharmsGragh"};
 
@@ -192,79 +192,90 @@ int GetBlockHeight(int index_id)
  */
 void Action_NavToBlock(StateCore *state_core)
 {
-  monit.LogInfo("State:Action_NavToBlock");
-  //   if (is_ready_to_pick || is_final_goal_reached)
-  //    return; // 如果已经触发取块，直接返回，等待状态切换,防止线程时序问题没有正确跳转
-
-  // 提取当前这一帧动作节点的打包数据
-  Vec2 target_pos = guide_dog[guide_dog_index].pos;
-  int target_xid = guide_dog[guide_dog_index].label;
-  float target_yaw = guide_dog[guide_dog_index].target_yaw;
-  bool is_corner = (target_xid == 2 || target_xid == 7 || target_xid == 11 || target_xid == 16);
-  Seq::Wait(1);
-
-  //   // 移动底盘到目标点
-  chassis.MoveAt(target_pos);
-
-  // 姿态控制：如果是四个角点，调用旋转指令并强等待底盘就位
-  if (is_corner)
+  while (farcon.button_first_half[7] == 0)
   {
-    // 强等待底盘横移就位
-    Seq::WaitUntil([]() -> bool
-                   { return (chassis._Walking() == 1); });
+    monit.LogInfo("State:Action_NavToBlock");
+    //   if (is_ready_to_pick || is_final_goal_reached)
+    //    return; // 如果已经触发取块，直接返回，等待状态切换,防止线程时序问题没有正确跳转
 
-    // 调整yaw
-    chassis.RotateAt(target_yaw);
+    // 提取当前这一帧动作节点的打包数据
+    Vec2 target_pos = guide_dog[guide_dog_index].pos;
+    int target_xid = guide_dog[guide_dog_index].label;
+    float target_yaw = guide_dog[guide_dog_index].target_yaw;
+    bool is_corner = (target_xid == 2 || target_xid == 7 || target_xid == 11 || target_xid == 16);
+    Seq::Wait(1);
 
-    // 强等待旋转就位
-    Seq::WaitUntil([]() -> bool
-                   { return (chassis._Rotating() == 1); });
-  }
-  else
-  {
-    // 普通通过点，也只需要等底盘横移到达即可
-    Seq::WaitUntil([]() -> bool
-                   { return (chassis._Walking() == 1); });
-  }
+    //   // 移动底盘到目标点
+    chassis.MoveAt(target_pos);
 
-  if (guide_dog[guide_dog_index].is_pick_point)
-  {
-    // 如果是有块的点：获取高度，准备通过 LinkTo 条件触发切入 Action_GetBlock
-    target_height = GetBlockHeight(target_xid);
-    is_ready_to_pick = true; // 马上跳转，保证状态块只跑一次
-                             //   return;
+    // 姿态控制：如果是四个角点，调用旋转指令并强等待底盘就位
+    if (is_corner)
+    {
+      // 强等待底盘横移就位
+      Seq::WaitUntil([]() -> bool
+                     { return (chassis._Walking() == 1); });
+
+      // 调整yaw
+      chassis.RotateAt(target_yaw);
+
+      // 强等待旋转就位
+      Seq::WaitUntil([]() -> bool
+                     { return (chassis._Rotating() == 1); });
+    }
+    else
+    {
+      // 普通通过点，也只需要等底盘横移到达即可
+      Seq::WaitUntil([]() -> bool
+                     { return (chassis._Walking() == 1); });
+    }
+
+    if (guide_dog[guide_dog_index].is_pick_point)
+    {
+      // 如果是有块的点：获取高度，准备通过 LinkTo 条件触发切入 Action_GetBlock
+      target_height = GetBlockHeight(target_xid);
+      is_ready_to_pick = true; // 马上跳转，保证状态块只跑一次
+                               //   return;
+      return;
+    }
+    else if (guide_dog[guide_dog_index].is_at_end)
+    {
+      is_final_goal_reached = true;
+      return;
+    }
+    else
+    {
+      // 如果是普通通过点：不切外部状态，自主自增索引，并自回环重新进入本状态
+      guide_dog_index++;
+      state_core->GetCurState()->Complete = true;
+      return;
+    }
+    Seq::Wait(0.005);
   }
-  else if (guide_dog[guide_dog_index].is_at_end)
-  {
-    is_final_goal_reached = true;
-  }
-  else
-  {
-    // 如果是普通通过点：不切外部状态，自主自增索引，并自回环重新进入本状态
-    guide_dog_index++;
-    state_core->GetCurState()->Complete = true;
-  }
+  manual_pick_flag = 1;
+}
+
+void Action_AutoGetBlock(StateCore *state_core)
+{
+  r1block.Get_Block(target_height, 1); // TODO: 根据遥控器输入的高度调用不同的函数，目前测试用固定值
+  state_core->GetCurState()->Complete = true;
 }
 
 // 状态：取块
-void Action_GetBlock(StateCore *state_core)
+void Action_ManualGetBlock(StateCore *state_core)
 {
   while (1)
   {
     if (farcon.button_first_half[4] == 1)
     {
       target_height = 200;
-      break;
     }
     if (farcon.button_second_half[5] == 1)
     {
       target_height = 400;
-      break;
     }
     if (farcon.button_second_half[6] == 1)
     {
       target_height = 600;
-      break;
     }
 
     if (farcon.button_second_half[7] == 1)
@@ -283,24 +294,31 @@ void ExploringCharmsGragh_Init(void)
   StateBlock &s_chooserod = EC_flow.AddState("ChooseRod");
   StateBlock &s_rodanddock = EC_flow.AddState("GetRodandDock");
 
-  // StateBlock &s_plan = EC_flow.AddState("Planning");
-  // StateBlock &s_move = EC_flow.AddState("NavtoBlock");
-  StateBlock &s_pick = EC_flow.AddState("GetBlocking");
+  StateBlock &s_plan = EC_flow.AddState("Planning");
+  StateBlock &s_move = EC_flow.AddState("NavtoBlock");
+
+  StateBlock &s_auto_pick = EC_flow.AddState("AutoGetBlocking");
+
+  StateBlock &s_manual_pick = EC_flow.AddState("ManualGetBlocking");
 
   s_chooserod.StateAction = ChooseRod;
   s_rodanddock.StateAction = GetRodandDock;
   // s_plan.StateAction = Action_Planning;
-  // s_move.StateAction = Action_NavToBlock;
-  s_pick.StateAction = Action_GetBlock;
+  s_move.StateAction = Action_NavToBlock;
+  s_auto_pick.StateAction = Action_AutoGetBlock;
+  s_manual_pick.StateAction = Action_ManualGetBlock;
 
   // 状态转移关系
   s_chooserod.LinkTo(&s_chooserod.Complete, s_rodanddock);
   s_rodanddock.LinkTo(&is_assemble, s_chooserod);
-  s_pick.LinkTo(&s_pick.Complete, s_pick);
-  // s_rodanddock.LinkTo(&s_rodanddock.Complete, s_move);
+  s_rodanddock.LinkTo(&s_rodanddock.Complete, s_move);
+  s_plan.LinkTo(&s_plan.Complete, s_move);
 
-  // s_plan.LinkTo(&s_plan.Complete, s_move);
-  // s_move.LinkTo(&s_move.Complete, s_pick);
+  // 自动与手动
+  s_move.LinkTo(&s_move.Complete, s_auto_pick);
+  s_move.LinkTo(&manual_pick_flag, s_manual_pick);
+
+  s_manual_pick.LinkTo(&s_manual_pick.Complete, s_manual_pick);
   // s_pick.LinkTo(&s_pick.Complete, s_move);
 
   // // 注册图

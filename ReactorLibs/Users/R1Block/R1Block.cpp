@@ -622,8 +622,8 @@ int R1Block::trans_height(int block_height)
 // 手动复位取块装置
 void R1Block::Manual_Reset_to_All()
 {
-      Seq::WaitUntil([&]()
-                   { return farcon.button_first_half[4]== 1; }); // 检测到没有块在上面的时候
+  Seq::WaitUntil([&]()
+                 { return farcon.button_first_half[4] == 1; }); // 检测到没有块在上面的时候
   // 1.复位高度为0
   SmoothMoveLiftToTarget(trans_height(last_height), 0, 3);
   last_height = 0;
@@ -649,11 +649,25 @@ void R1Block::
 // suckmotor[1].SetSpd(test_suck_speed);
 #else
   static int get_finish_block = 0;
-
+  static int now_get_block = 0;
   height_blcok[0] = 0x02;
   height_blcok[1] = block_height >> 8;
   height_blcok[2] = (uint8_t)(block_height & 0xFF); // 低 8 位
   farcon.TransmitFarcon(height_blcok, 3);
+
+  if (block_exist[2] == 0 && block_exist[1] == 0 && block_exist[0] == 0)
+  {
+    now_get_block = 0;
+  }
+  else if (block_exist[2] == 1 && block_exist[1] == 0 && block_exist[0] == 0)
+  {
+    now_get_block = 1;
+  }
+  else if (block_exist[2] == 1 && block_exist[1] == 1 && block_exist[0] == 0)
+  {
+    now_get_block == 2;
+  }
+
   // 手动
   if (auto_flag == 0)
   {
@@ -698,7 +712,7 @@ void R1Block::
   // 可优化自动取块
 
   // 取第一个块
-  if (block_exist[2] == 0 && block_exist[1] == 0 && block_exist[0] == 0 && get_finish_block == 0)
+  if (now_get_block == 0)
   {
     Seq::WaitUntil([&]()
                    { return (block_exist[0] == 1); }); // 检测到最外面到了
@@ -710,32 +724,25 @@ void R1Block::
                    { return (block_exist[2] == 1); }); // 检测到最里面到了
     suckmotor[0].SetSpd(0);
     suckmotor[1].SetSpd(0);
-    if (block_exist[2] == 1 && block_exist[1] == 0 && block_exist[0] == 0)
-    {
-      get_finish_block = 1;
-    }
     Clamp_block(); // 夹紧
     Seq::Wait(1);
     return;
   }
   // 取第二个块
-  else if (block_exist[2] == 1 && block_exist[1] == 0 && block_exist[0] == 0 && get_finish_block == 1)
+  else if (now_get_block == 1)
   {
-    Seq::Wait(2);
+    Seq::WaitUntil([&]()
+                   { return (block_exist[0] == 1); }); // 检测到最外面到了
     SetTargetStretch(0, 0);
     Seq::Wait(2);
     suckmotor[0].SetSpd(0);
     suckmotor[1].SetSpd(0);
     Seq::Wait(1);
-    if (block_exist[2] == 1 && block_exist[1] == 1 && block_exist[0] == 0)
-    {
-      get_finish_block = 2;
-    }
     Seq::Wait(1);
     return;
   }
   // 取第三个块
-  else if (block_exist[2] == 1 && block_exist[1] == 1 && block_exist[0] == 0 && get_finish_block == 2)
+  else if (now_get_block == 2)
   {
     Seq::WaitUntil([&]()
                    { return (block_exist[0] == 1); }); // 检测到最外面到了
@@ -747,13 +754,20 @@ void R1Block::
     Clamp_block(); // 夹紧
     Seq::Wait(1);
 
-    SmoothMoveLiftToTarget(trans_height(last_height), trans_height(600), 3);
-
     if (block_exist[2] == 1 && block_exist[1] == 1 && block_exist[0] == 1)
     {
-      get_finish_block = 3;
+      SmoothMoveLiftToTarget(trans_height(last_height), trans_height(600), 3);
+      last_height = 600;
+      Seq::WaitUntil([&]()
+                     { return (llift_reached && rlift_reached); }); // 检测到抬升到对应位置
     }
-    last_height = 600;
+    else
+    {
+      SetTargetStretch(0, 0);
+      Seq::WaitUntil([&]()
+                     { return ((stretchmotor[0].IsReached() == 1) && (stretchmotor[1].IsReached() == 1)); }); // 检测到最外面到了
+    }
+
     Seq::Wait(2);
   }
 
