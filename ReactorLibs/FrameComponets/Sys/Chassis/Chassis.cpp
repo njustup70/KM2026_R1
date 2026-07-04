@@ -113,14 +113,7 @@ static inline float NormalizeAngle(float angle)
 
 void ChassisType::Update()
 {
-  static int update_count = 0;
-  update_count++;
-  if (update_count % 100 == 0)
-  {
-    APP::monit.LogInfo("xspd:%f,yspd:%f,zspd:%f", targ_speed.x, targ_speed.y, targ_speed.z);
 
-    // APP::monit.LogInfo("motor[0]:%f,motor[1]:%f,motor[2]:%f,motor[3]:%f", motors[0].GetSpeed(), motors[1].GetSpeed(), motors[2].GetSpeed(), motors[3].GetSpeed());
-  }
   // 安全退debug
   if (System.out_from_debugmode)
   {

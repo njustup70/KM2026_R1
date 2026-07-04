@@ -20,7 +20,7 @@ R1Block &APP::r1block = R1Block::GetInstance();
 extern bool is_prelay_finished;
 int debug_origin = 0;
 int target_height = 200;
-
+extern bool manual_pick_flag;
 // #define Test_device 1
 #define R2_dead 1
 // 伸缩电机最远4300000
@@ -298,7 +298,8 @@ void R1Block::Update()
   {
     _GetLiftOrigin();
   }
-
+  if (farcon.button_first_half[7] == 1)
+    manual_pick_flag = 1;
   // if (debug_origin == 1)
   // {
   //   if (!_stretch_origined)
@@ -665,7 +666,7 @@ void R1Block::
   }
   else if (block_exist[2] == 1 && block_exist[1] == 1 && block_exist[0] == 0)
   {
-    now_get_block == 2;
+    now_get_block = 2;
   }
 
   // 手动
@@ -754,7 +755,7 @@ void R1Block::
     Clamp_block(); // 夹紧
     Seq::Wait(1);
 
-    if (block_exist[2] == 1 && block_exist[1] == 1 && block_exist[0] == 1)
+    if (block_exist[2] == 1 && block_exist[1] == 1 )
     {
       SmoothMoveLiftToTarget(trans_height(last_height), trans_height(600), 3);
       last_height = 600;

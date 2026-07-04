@@ -136,7 +136,7 @@ void GetRodandDock(StateCore *state_core)
     Seq::Wait(1);
     comm.SendActionCommand(ActionType::CLAMP_2_ON);
 
-    GetPathDog(farcon.KFS_int, guide_dog, true);
+    // GetPathDog(farcon.KFS_int, guide_dog, true);
 
     state_core->GetCurState()->Complete = true;
   }
@@ -192,7 +192,7 @@ int GetBlockHeight(int index_id)
  */
 void Action_NavToBlock(StateCore *state_core)
 {
-  while (farcon.button_first_half[7] == 0)
+  while (  manual_pick_flag == 0)
   {
     monit.LogInfo("State:Action_NavToBlock");
     //   if (is_ready_to_pick || is_final_goal_reached)
@@ -213,20 +213,21 @@ void Action_NavToBlock(StateCore *state_core)
     {
       // 强等待底盘横移就位
       Seq::WaitUntil([]() -> bool
-                     { return (chassis._Walking() == 1); });
+                     { return (chassis._Walking() == 1||(manual_pick_flag==1)); });
 
       // 调整yaw
       chassis.RotateAt(target_yaw);
 
       // 强等待旋转就位
       Seq::WaitUntil([]() -> bool
-                     { return (chassis._Rotating() == 1); });
+                     { return (chassis._Rotating() == 1||(manual_pick_flag==1)); });
     }
     else
     {
       // 普通通过点，也只需要等底盘横移到达即可
       Seq::WaitUntil([]() -> bool
-                     { return (chassis._Walking() == 1); });
+                     { return (chassis._Walking() == 1||(manual_pick_flag==1)); });
+					 
     }
 
     if (guide_dog[guide_dog_index].is_pick_point)
@@ -251,7 +252,8 @@ void Action_NavToBlock(StateCore *state_core)
     }
     Seq::Wait(0.005);
   }
-  manual_pick_flag = 1;
+  monit.LogSpec("Out Auto GetBlock");
+
 }
 
 void Action_AutoGetBlock(StateCore *state_core)
@@ -269,21 +271,22 @@ void Action_ManualGetBlock(StateCore *state_core)
     {
       target_height = 200;
     }
-    if (farcon.button_second_half[5] == 1)
+    if (farcon.button_first_half[5] == 1)
     {
       target_height = 400;
     }
-    if (farcon.button_second_half[6] == 1)
+    if (farcon.button_first_half[6] == 1)
     {
       target_height = 600;
     }
 
-    if (farcon.button_second_half[7] == 1)
+    if (farcon.button_first_half[7] == 1)
     {
       break;
     }
     Seq::Wait(0.005f);
   }
+
   r1block.Get_Block(target_height, 0); // TODO: 根据遥控器输入的高度调用不同的函数，目前测试用固定值
   state_core->GetCurState()->Complete = true;
 }
@@ -294,29 +297,29 @@ void ExploringCharmsGragh_Init(void)
   StateBlock &s_chooserod = EC_flow.AddState("ChooseRod");
   StateBlock &s_rodanddock = EC_flow.AddState("GetRodandDock");
 
-  StateBlock &s_plan = EC_flow.AddState("Planning");
-  StateBlock &s_move = EC_flow.AddState("NavtoBlock");
+//   StateBlock &s_plan = EC_flow.AddState("Planning");
+//   StateBlock &s_move = EC_flow.AddState("NavtoBlock");
 
-  StateBlock &s_auto_pick = EC_flow.AddState("AutoGetBlocking");
+//   StateBlock &s_auto_pick = EC_flow.AddState("AutoGetBlocking");
 
   StateBlock &s_manual_pick = EC_flow.AddState("ManualGetBlocking");
 
   s_chooserod.StateAction = ChooseRod;
   s_rodanddock.StateAction = GetRodandDock;
   // s_plan.StateAction = Action_Planning;
-  s_move.StateAction = Action_NavToBlock;
-  s_auto_pick.StateAction = Action_AutoGetBlock;
+//   s_move.StateAction = Action_NavToBlock;
+//   s_auto_pick.StateAction = Action_AutoGetBlock;
   s_manual_pick.StateAction = Action_ManualGetBlock;
 
   // 状态转移关系
   s_chooserod.LinkTo(&s_chooserod.Complete, s_rodanddock);
   s_rodanddock.LinkTo(&is_assemble, s_chooserod);
-  s_rodanddock.LinkTo(&s_rodanddock.Complete, s_move);
-  s_plan.LinkTo(&s_plan.Complete, s_move);
+  s_rodanddock.LinkTo(&s_rodanddock.Complete, s_manual_pick);
+//   s_plan.LinkTo(&s_plan.Complete, s_move);
 
-  // 自动与手动
-  s_move.LinkTo(&s_move.Complete, s_auto_pick);
-  s_move.LinkTo(&manual_pick_flag, s_manual_pick);
+//   // 自动与手动
+//   s_move.LinkTo(&s_move.Complete, s_auto_pick);
+//   s_move.LinkTo(&manual_pick_flag, s_manual_pick);
 
   s_manual_pick.LinkTo(&s_manual_pick.Complete, s_manual_pick);
   // s_pick.LinkTo(&s_pick.Complete, s_move);
