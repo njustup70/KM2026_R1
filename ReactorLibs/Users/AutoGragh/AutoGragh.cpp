@@ -106,7 +106,7 @@ void Dock(StateCore *state_core)
   Seq::Wait(1);
   comm.SendActionCommand(ActionType::CLAMP_2_ON);
 
-	GetPathDog(farcon.KFS_int, guide_dog, true);
+	// GetPathDog(farcon.KFS_int, guide_dog, true);
 
 
   state_core->GetCurState()->Complete = true;

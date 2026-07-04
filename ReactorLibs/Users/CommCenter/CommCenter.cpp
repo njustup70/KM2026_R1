@@ -40,7 +40,7 @@ void CommCenter::Update()
 {
     pc.SendOdom(System.odometer.transform.x,System.odometer.transform.y,System.odometer.transform.z); 
     pc.SendSickData(MOD::sick.GetData().raw_frame);
-    
+
     //=========板间通讯还是不能降频发送a to c，遥控器反应会有点慢
     SendButtonData(); //实时发送，目前没发现payload被覆盖的情况
 
@@ -48,6 +48,8 @@ void CommCenter::Update()
     if (farcon.button_second_half[16 - 8 - 1] == 1 )
     {
         SendKFSdata(); //板间通讯
+        // SendKFStoPC(); //上位机
+
     }
 
     if (farcon.button_second_half[15 - 8 - 1] == 1)
@@ -176,7 +178,7 @@ void CommCenter::GuideDog(uint8_t func, const uint8_t* payload, uint8_t len, voi
 
 void CommCenter::SendKFStoPC()
 {
-    pc.SendKFSData(farcon.KFS_int,sizeof(farcon.KFS_int));
+    pc.SendKFSData(farcon.KFS_uint8,sizeof(farcon.KFS_uint8));
 }
 
 void CommCenter::SendKFSdata()

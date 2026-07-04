@@ -20,7 +20,7 @@ R1Block &APP::r1block = R1Block::GetInstance();
 extern bool is_prelay_finished;
 int debug_origin = 0;
 int target_height = 200;
-extern bool manual_pick_flag;
+ bool manual_pick_flag=0;
 // #define Test_device 1
 #define R2_dead 1
 // 伸缩电机最远4300000

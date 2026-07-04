@@ -66,14 +66,12 @@ void MainFrameCpp()
 static uint8_t enter_flag = 0;
 void ActionDege(StateCore *core)
 {
-  Seq::WaitUntil([]() -> bool 
-  { 
-      return MOD::farcon.button_second_half[9 - 8 - 1] == 1;
-  });
-  // MOVE::MoveToTargPos(Area1RodPath);
+  // 等待遥控器确认KFS数据已发好
+  Seq::WaitUntil([]() -> bool
+                 { return farcon.button_second_half[9 - 8 - 1] == 1; });
+  comm.SendKFStoPC();
+  Seq::WaitUntil([]() -> bool
+                 { return comm.is_got_dogpath_from_pc; });
 
-  
-  comm.SendActionCommand(ActionType::BOW);
-  Seq::Wait(0.5);
   state_core.GetCurState()->Complete = true;
 }
