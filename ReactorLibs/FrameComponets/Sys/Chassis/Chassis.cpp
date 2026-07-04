@@ -113,14 +113,14 @@ static inline float NormalizeAngle(float angle)
 
 void ChassisType::Update()
 {
-  static int update_count = 0;
-  update_count++;
-  if (update_count % 100 == 0)
-  {
-    APP::monit.LogInfo("xspd:%f,yspd:%f,zspd:%f", targ_speed.x, targ_speed.y, targ_speed.z);
+  // static int update_count = 0;
+  // update_count++;
+  // if (update_count % 100 == 0)
+  // {
+  //   APP::monit.LogInfo("xspd:%f,yspd:%f,zspd:%f", targ_speed.x, targ_speed.y, targ_speed.z);
 
-    // APP::monit.LogInfo("motor[0]:%f,motor[1]:%f,motor[2]:%f,motor[3]:%f", motors[0].GetSpeed(), motors[1].GetSpeed(), motors[2].GetSpeed(), motors[3].GetSpeed());
-  }
+  //   // APP::monit.LogInfo("motor[0]:%f,motor[1]:%f,motor[2]:%f,motor[3]:%f", motors[0].GetSpeed(), motors[1].GetSpeed(), motors[2].GetSpeed(), motors[3].GetSpeed());
+  // }
   // 安全退debug
   if (System.out_from_debugmode)
   {
@@ -148,7 +148,7 @@ void ChassisType::Update()
   }
   else if (farcon.toggle[1] == 1 && farcon.toggle[2] == 1)
   {
-    control_mode = LOCKYAW; // 锁定当前朝向，允许xy但不允许旋转
+    control_mode = FIELD_LOCKYAW; // 锁定当前朝向，允许xy但不允许旋转
   }
   else if (farcon.toggle[1] == 1 && farcon.toggle[3] == 1)
   {
@@ -202,9 +202,29 @@ void ChassisType::Update()
   if (control_mode == LOCKYAW)
   {
     // 读取遥控器数据到底盘控制变量
-    targ_speed.x = -farcon.jys_value[3] * 1.0f / 100.f * _max_velo; // 前后
-    targ_speed.y = -farcon.jys_value[2] * 1.0f / 100.f * _max_velo; // 左右
+    targ_speed.x = -farcon.jys_value[3] * 1.0f / 100.f * _max_velo * _farcon_decspeed; // 前后
+    targ_speed.y = -farcon.jys_value[2] * 1.0f / 100.f * _max_velo * _farcon_decspeed; // 左右
     Move(Vec2(targ_speed.x, targ_speed.y));
+    chassis.RotateAt(-1.57f);
+  }
+
+  if (control_mode == FIELD_LOCKYAW)
+  {
+    // 提取全局场地系的期望速度
+    Vec2 v_world;
+    v_world.x = -farcon.jys_value[3] * 1.0f / 100.f * _max_velo; // 前后
+    v_world.y = -farcon.jys_value[2] * 1.0f / 100.f * _max_velo; // 左右
+
+    // 进行世界坐标系到车体坐标系的逆映射
+    Vec2 v_body = v_world.Rotate(-System.position.z);
+
+    targ_speed.x = v_body.x;
+    targ_speed.y = v_body.y;
+    
+    // 下发XY轴执行速度
+    Move(Vec2(targ_speed.x, targ_speed.y));
+    
+    // 强制锁住全场朝向为 -1.57rad (-90度)
     chassis.RotateAt(-1.57f);
   }
 

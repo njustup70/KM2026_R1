@@ -225,6 +225,7 @@ class ChassisType : public Application
             FIELD_FARCON, //场地坐标系的遥控器控制
             UPHILL,
             LOCKYAW,
+            FIELD_LOCKYAW,
             OPEN,       // 开放控制（直接Move控制）
         }_ChasConMode;
 
