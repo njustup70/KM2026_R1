@@ -27,6 +27,7 @@
 
 
 #include "PathPlaner.hpp"
+#include "string.h"
 #define  ABS(x) (((x) > 0) ? (x) : -(x))
 
 #define UNIT 1.2f
@@ -570,13 +571,12 @@ bool PathPlanerSelfCheck()
 const float YAW_BOTTOM = 0.0f;
 const float YAW_LEFT   = -1.57f;
 const float YAW_RIGHT  = 1.57f;
-const float YAW_TOP    = 3.14f;
+const float YAW_TOP    = 3.54f;
 const float YAW_ANY    = 999.0f; 
 
 const int RING_AISLES[] = {7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 0, 1, 2, 3, 4, 5, 6};
 const int RING_SIZE = 18;
 
-// 内部定长数据结构
 struct InternalNode {
     int id;
     float yaw;
@@ -594,6 +594,32 @@ struct PickupOption {
     float yaw;
 };
 
+struct QNode { 
+    int id; 
+    float yaw; 
+};
+
+// ==========================================
+// 【核心修改】：全部抽离为全局变量，存放于 .bss 区
+// ==========================================
+
+// BFS 寻路用到的全局变量
+static bool  g_visited[18][4];
+static int   g_came_from_id[18][4];
+static float g_came_from_yaw[18][4];
+static QNode g_q[100];
+
+// generate_full_route 用到的全局变量
+static InternalNode g_segment[MAX_PATH];
+static InternalNode g_exit_seg[MAX_PATH];
+static TargetPriority g_targets[12];
+
+// GetPathDog 用到的全局变量
+static InternalNode g_best_path_sequence[MAX_PATH];
+static InternalNode g_temp_path[MAX_PATH];
+static int g_r1_blocks[12], g_r2_blocks[12], g_fake_blocks[1];
+
+
 // === 基础静态工具函数 ===
 static bool is_corner(int aisle_id) {
     return aisle_id == 7 || aisle_id == 11 || aisle_id == 2 || aisle_id == 16;
@@ -606,8 +632,6 @@ static int yaw_to_index(float yaw) {
     return 3;
 }
 
-// 静态查找有效取块点
-__attribute__((optnone))
 static int get_valid_pickups(int merlin_id, PickupOption options_out[2]) {
     int count = 0;
     switch (merlin_id) {
@@ -641,29 +665,25 @@ static int get_index_in_array(const int* arr, int size, int val) {
     return -1;
 }
 
-// === BFS 核心寻路 (完全静态) ===
-__attribute__((optnone))
+// === BFS 核心寻路 (零栈模式) ===
 static int find_shortest_path(int start_id, float start_yaw, int target_id, float target_yaw, InternalNode path_out[MAX_PATH]) {
-    // 状态空间：18个过道 × 4个朝向 = 72 个状态，完全避免 map 的内存申请
-    bool visited[18][4] = {false};
-    int came_from_id[18][4];
-    float came_from_yaw[18][4];
     
-    struct QNode { int id; float yaw; };
-    QNode q[100]; // 静态环形队列
+    // 【关键】：全局变量使用前必须彻底清零，防止上一次调用的脏数据干扰！
+    memset(g_visited, 0, sizeof(g_visited));
+    
     int head = 0, tail = 0;
 
     int start_yaw_idx = yaw_to_index(start_yaw);
-    visited[start_id][start_yaw_idx] = true;
-    came_from_id[start_id][start_yaw_idx] = -1;
+    g_visited[start_id][start_yaw_idx] = true;
+    g_came_from_id[start_id][start_yaw_idx] = -1;
     
-    q[tail++] = {start_id, start_yaw};
+    g_q[tail++] = {start_id, start_yaw};
     
     bool found = false;
     float final_yaw = target_yaw;
 
     while (head < tail) {
-        QNode curr = q[head++];
+        QNode curr = g_q[head++];
 
         if (curr.id == target_id && (target_yaw == YAW_ANY || ABS(curr.yaw - target_yaw) < 0.1f)) {
             found = true;
@@ -684,11 +704,11 @@ static int find_shortest_path(int start_id, float start_yaw, int target_id, floa
         for (int i = 0; i < 2; ++i) {
             int nxt = next_nodes[i];
             int c_y_idx = yaw_to_index(curr.yaw);
-            if (!visited[nxt][c_y_idx]) {
-                visited[nxt][c_y_idx] = true;
-                came_from_id[nxt][c_y_idx] = curr.id;
-                came_from_yaw[nxt][c_y_idx] = curr.yaw;
-                q[tail++] = {nxt, curr.yaw};
+            if (!g_visited[nxt][c_y_idx]) {
+                g_visited[nxt][c_y_idx] = true;
+                g_came_from_id[nxt][c_y_idx] = curr.id;
+                g_came_from_yaw[nxt][c_y_idx] = curr.yaw;
+                g_q[tail++] = {nxt, curr.yaw};
             }
         }
 
@@ -698,11 +718,11 @@ static int find_shortest_path(int start_id, float start_yaw, int target_id, floa
             for (int i = 0; i < 4; ++i) {
                 float n_yaw = all_yaws[i];
                 int n_y_idx = yaw_to_index(n_yaw);
-                if (!visited[curr.id][n_y_idx]) {
-                    visited[curr.id][n_y_idx] = true;
-                    came_from_id[curr.id][n_y_idx] = curr.id;
-                    came_from_yaw[curr.id][n_y_idx] = curr.yaw;
-                    q[tail++] = {curr.id, n_yaw};
+                if (!g_visited[curr.id][n_y_idx]) {
+                    g_visited[curr.id][n_y_idx] = true;
+                    g_came_from_id[curr.id][n_y_idx] = curr.id;
+                    g_came_from_yaw[curr.id][n_y_idx] = curr.yaw;
+                    g_q[tail++] = {curr.id, n_yaw};
                 }
             }
         }
@@ -716,13 +736,13 @@ static int find_shortest_path(int start_id, float start_yaw, int target_id, floa
             if (path_len < MAX_PATH) {
                 path_out[path_len++] = {curr_i, curr_y, false, -1};
             }
-            int next_i = came_from_id[curr_i][yaw_to_index(curr_y)];
-            float next_y = came_from_yaw[curr_i][yaw_to_index(curr_y)];
+            int next_i = g_came_from_id[curr_i][yaw_to_index(curr_y)];
+            float next_y = g_came_from_yaw[curr_i][yaw_to_index(curr_y)];
             curr_i = next_i;
             curr_y = next_y;
         }
 
-        // 静态数组反转
+        // 反转
         for (int i = 0; i < path_len / 2; ++i) {
             InternalNode temp = path_out[i];
             path_out[i] = path_out[path_len - 1 - i];
@@ -741,7 +761,6 @@ static int find_shortest_path(int start_id, float start_yaw, int target_id, floa
 }
 
 // === 生成完整路径 ===
-__attribute__((optnone))
 static int generate_full_route(int start_id, float start_yaw, 
                                const int* r1_blocks, int r1_count, 
                                const int* r2_path, int r2_path_len, 
@@ -751,7 +770,6 @@ static int generate_full_route(int start_id, float start_yaw,
     int full_len = 0;
     full_path[full_len++] = {start_id, start_yaw, false, -1};
 
-    TargetPriority targets[12];
     for (int i = 0; i < r1_count; ++i) {
         int b = r1_blocks[i];
         int prio = 999;
@@ -764,16 +782,16 @@ static int generate_full_route(int start_id, float start_yaw,
                 if (priority_block[p] == b) { prio = p; break; }
             }
         }
-        targets[i] = {b, prio};
+        g_targets[i] = {b, prio};
     }
 
-    // 冒泡排序，按优先级排序 (数量最多只有12个，极快)
+    // 冒泡排序
     for (int i = 0; i < r1_count - 1; ++i) {
         for (int j = 0; j < r1_count - 1 - i; ++j) {
-            if (targets[j].priority > targets[j+1].priority) {
-                TargetPriority temp = targets[j];
-                targets[j] = targets[j+1];
-                targets[j+1] = temp;
+            if (g_targets[j].priority > g_targets[j+1].priority) {
+                TargetPriority temp = g_targets[j];
+                g_targets[j] = g_targets[j+1];
+                g_targets[j+1] = temp;
             }
         }
     }
@@ -783,54 +801,49 @@ static int generate_full_route(int start_id, float start_yaw,
 
     for (int i = 0; i < r1_count; ++i) {
         PickupOption options[2];
-        int opt_count = get_valid_pickups(targets[i].id, options);
+        int opt_count = get_valid_pickups(g_targets[i].id, options);
         if (opt_count == 0) continue;
 
         int target_aisle = options[0].aisle;
         float target_yaw = options[0].yaw;
 
-        InternalNode segment[MAX_PATH];
-        int seg_len = find_shortest_path(curr_id, curr_yaw, target_aisle, target_yaw, segment);
+        int seg_len = find_shortest_path(curr_id, curr_yaw, target_aisle, target_yaw, g_segment);
         
         if (seg_len == 0 && curr_id == target_aisle && ABS(curr_yaw - target_yaw) < 0.1f) {
             full_path[full_len - 1].is_pick = true;
-            full_path[full_len - 1].target_block = targets[i].id;
+            full_path[full_len - 1].target_block = g_targets[i].id;
         } else if (seg_len > 0) {
-            segment[seg_len - 1].is_pick = true;
-            segment[seg_len - 1].target_block = targets[i].id;
+            g_segment[seg_len - 1].is_pick = true;
+            g_segment[seg_len - 1].target_block = g_targets[i].id;
             
             for (int k = 0; k < seg_len; ++k) {
-                if (full_len < MAX_PATH) full_path[full_len++] = segment[k];
+                if (full_len < MAX_PATH) full_path[full_len++] = g_segment[k];
             }
-            curr_id = segment[seg_len - 1].id;
-            curr_yaw = segment[seg_len - 1].yaw;
+            curr_id = g_segment[seg_len - 1].id;
+            curr_yaw = g_segment[seg_len - 1].yaw;
         }
     }
 
     // 前往出口
-    InternalNode exit_seg[MAX_PATH];
-    int exit_len = find_shortest_path(curr_id, curr_yaw, exit_id, YAW_ANY, exit_seg);
+    int exit_len = find_shortest_path(curr_id, curr_yaw, exit_id, YAW_ANY, g_exit_seg);
     for (int i = 0; i < exit_len; ++i) {
-        if (full_len < MAX_PATH) full_path[full_len++] = exit_seg[i];
+        if (full_len < MAX_PATH) full_path[full_len++] = g_exit_seg[i];
     }
 
     return full_len;
 }
 
-// === 【修改】对外接口 ===
-__attribute__((optnone))
-void GetPathDog(int *meilin_blocks, PathNode *path_dog, int auto_dog_flag, int *priority_block) 
-{
+// === 对外接口 ===
+void GetPathDog(int *meilin_blocks, PathNode *path_dog, int auto_dog_flag, int *priority_block) {
     Vec2 X_Pos[X_COUNT];
     BuildXPoints(X_Pos);
 
-    int r1_blocks[12], r2_blocks[12], fake_blocks[1];
     int r1_count = 0, r2_count = 0, fake_count = 0;
 
     for (int i = 0; i < 12; ++i) {
-        if (meilin_blocks[i] == 1) r1_blocks[r1_count++] = i;
-        else if (meilin_blocks[i] == 2) r2_blocks[r2_count++] = i;
-        else if (meilin_blocks[i] == 3 && fake_count < 1) fake_blocks[fake_count++] = i;
+        if (meilin_blocks[i] == 1) g_r1_blocks[r1_count++] = i;
+        else if (meilin_blocks[i] == 2) g_r2_blocks[r2_count++] = i;
+        else if (meilin_blocks[i] == 3 && fake_count < 1) g_fake_blocks[fake_count++] = i;
     }
 
     int candidate_paths[3][4] = {
@@ -846,7 +859,7 @@ void GetPathDog(int *meilin_blocks, PathNode *path_dog, int auto_dog_flag, int *
     for (int p = 0; p < 3; ++p) {
         bool has_fake = false;
         for (int i = 0; i < 4; ++i) {
-            if (fake_count > 0 && candidate_paths[p][i] == fake_blocks[0]) {
+            if (fake_count > 0 && candidate_paths[p][i] == g_fake_blocks[0]) {
                 has_fake = true; break;
             }
         }
@@ -854,7 +867,7 @@ void GetPathDog(int *meilin_blocks, PathNode *path_dog, int auto_dog_flag, int *
 
         int r2_hit = 0;
         for (int i = 0; i < 4; ++i) {
-            if (array_contains(r2_blocks, r2_count, candidate_paths[p][i])) r2_hit++;
+            if (array_contains(g_r2_blocks, r2_count, candidate_paths[p][i])) r2_hit++;
         }
 
         if (r2_hit > max_r2_hit) {
@@ -872,21 +885,19 @@ void GetPathDog(int *meilin_blocks, PathNode *path_dog, int auto_dog_flag, int *
     int start_candidates[] = {2, 0, 16};
     int exit_node = 11;
     
-    InternalNode best_path_sequence[MAX_PATH];
     int best_seq_len = 0;
     int min_steps = 999999;
 
     for (int i = 0; i < 3; ++i) {
-        InternalNode temp_path[MAX_PATH];
         int temp_len = generate_full_route(start_candidates[i], YAW_BOTTOM, 
-                                           r1_blocks, r1_count, 
+                                           g_r1_blocks, r1_count, 
                                            best_r2_path, best_r2_len, 
-                                           exit_node, auto_dog_flag, priority_block, temp_path);
+                                           exit_node, auto_dog_flag, priority_block, g_temp_path);
         
         if (temp_len > 0 && temp_len < min_steps) {
             min_steps = temp_len;
             best_seq_len = temp_len;
-            for (int k = 0; k < temp_len; ++k) best_path_sequence[k] = temp_path[k];
+            for (int k = 0; k < temp_len; ++k) g_best_path_sequence[k] = g_temp_path[k];
         }
     }
 
@@ -895,26 +906,24 @@ void GetPathDog(int *meilin_blocks, PathNode *path_dog, int auto_dog_flag, int *
         return;
     }
 
-    // --- 滤除冗余点逻辑优化 (与之前一致，只针对静态数组适配) ---
     int out_index = 0;
     for (int i = 0; i < best_seq_len; ++i) {
         bool is_start = (i == 0);
         bool is_end = (i == best_seq_len - 1);
-        bool is_pick = best_path_sequence[i].is_pick;
-        bool is_corner_node = is_corner(best_path_sequence[i].id);
+        bool is_pick = g_best_path_sequence[i].is_pick;
+        bool is_corner_node = is_corner(g_best_path_sequence[i].id);
 
         if (is_start || is_end || is_pick || is_corner_node) {
             
-            // 跳过原地旋转的冗余中间点
-            if (i + 1 < best_seq_len && best_path_sequence[i].id == best_path_sequence[i+1].id) {
+            if (i + 1 < best_seq_len && g_best_path_sequence[i].id == g_best_path_sequence[i+1].id) {
                 continue; 
             }
 
             if (out_index >= MAX_PATH) break;
 
             PathNode pn;
-            pn.label = best_path_sequence[i].id;
-            pn.target_yaw = best_path_sequence[i].yaw;
+            pn.label = g_best_path_sequence[i].id;
+            pn.target_yaw = g_best_path_sequence[i].yaw;
             pn.pos = X_Pos[pn.label]; 
             pn.is_pick_point = is_pick;
             pn.is_at_end = is_end;
