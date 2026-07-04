@@ -4,6 +4,8 @@
 #include <stdint.h>
 
 #define MAX_PATH 36
+#define MAX_PATH_DOG 18  // 专门给 guide_dog 导航用的最大长度 18
+#define X_COUNT 18       // 统一公开 18点的数量宏
 #define MAX_PICK_COUNT 12
 
 // 单个取块动作的规划结果。
@@ -119,6 +121,10 @@ struct PathContainer
 void GetShortestPath(uint8_t KFS_values[12], uint8_t r2_column, PathContainer& path);
 void GetShortestPath(uint8_t KFS_values[12], PathContainer& path);
 void GetPathDog(int *meilin_blocks, PathNode *path_dog, int auto_dog_flag, int *priority_block = nullptr); 
+void BuildXPoints(Vec2 X[X_COUNT]);      // 导出此函数，方便在初始化或者回调中调用
 
 extern PathContainer Zone2_Path;
-extern PathNode guide_dog[MAX_PATH];
+
+extern PathNode guide_dog[MAX_PATH_DOG]; // 规范为 18 的定长数组
+extern Vec2 X_points[X_COUNT];           // 统一公开的18点全局坐标数组
+extern Vec2 S_point;                     // 基准参考点

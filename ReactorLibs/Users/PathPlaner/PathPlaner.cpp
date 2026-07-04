@@ -32,14 +32,15 @@
 #define UNIT 1.2f
 
 PathContainer Zone2_Path;
-PathNode guide_dog[MAX_PATH];
+PathNode guide_dog[MAX_PATH_DOG];
+Vec2 X_points[X_COUNT];
 
-static const int X_COUNT = 18;
 static const int BLOCK_COUNT = 12;
 static const int END_XID = 11;
 static const float INF_COST = 3.4e38f;
 static const float ROTATE_COST = 0.05f;
 static const int ENTRY_XIDS[5] = {2, 1, 0, 17, 16};
+
 
 Vec2 S_point(2.565f, 2.9575f);
 Vec2 D_point(8.565f, 0.5575f);
@@ -82,7 +83,7 @@ struct SearchContext
     RouteResult best;
 };
 
-static void BuildXPoints(Vec2 X[X_COUNT])
+void BuildXPoints(Vec2 X[X_COUNT])
 {
     // 1. 原本的相对/原始坐标保持不变
     X[0]  = Vec2(0, 0);

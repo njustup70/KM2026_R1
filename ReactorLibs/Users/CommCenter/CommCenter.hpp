@@ -4,6 +4,7 @@
 #include "HostPC.hpp"
 #include "Sick.hpp"
 #include "optical_comm.hpp"
+#include "PathPlaner.hpp"
 
 enum class ActionType : uint8_t 
 {
@@ -49,6 +50,7 @@ private:
     // 静态回调函数，负责对接 HostPC 的接口
     static void OnSlamPosReceived(uint8_t func, const uint8_t* payload, uint8_t len, void* ctx);
     static void SlamJYSuccessed(uint8_t func, const uint8_t* payload, uint8_t len, void* ctx);
+    static void GuideDog(uint8_t func, const uint8_t* payload, uint8_t len, void* ctx);
     bool _use_slam_data = true; 
 private:  
     // 静态回调函数和发送的任务，负责对接 InterBoardComm 的接口
@@ -70,11 +72,15 @@ public:
     bool rodmotor_OK = false;
     bool rodair_state = false;
 
-// public:
-//     uint8_t KFS_values[12];
+public:
+    void SendKFStoPC();
+    bool is_got_dogpath_from_pc = false;
+
 };
 
 namespace APP
 {
     extern CommCenter& comm;
 };
+
+extern uint8_t node_count;

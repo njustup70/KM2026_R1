@@ -67,6 +67,7 @@ void ChooseRod(StateCore *state_core)
 			is_rod3 = true;
 			break;
 		}
+    Seq::Wait(0.005f);
 	}
 
 	state_core->GetCurState()->Complete = true;
@@ -94,6 +95,8 @@ void GetRodandDock(StateCore *state_core)
 	while(Hardware::miniyellow_aim_rod.Read() != 0)
 	{
 		chassis.Move(Vec3(0,-0.1,0));
+    Seq::Wait(0.005f);
+
 	};
 	chassis.Move(0);
 
@@ -140,10 +143,15 @@ void GetRodandDock(StateCore *state_core)
 		Seq::Wait(1);
 		comm.SendActionCommand(ActionType::CLAMP_2_ON);
 
+    monit.LogInfo("begin dog ");
 
     GetPathDog(farcon.KFS_int, guide_dog, true);
+    monit.LogInfo("run dog ");
+
 
 		state_core->GetCurState()->Complete = true;
+    monit.LogInfo("State change from GetRodandDock to NavtoBlock");
+
     }
     else
     {
@@ -178,18 +186,21 @@ int GetBlockHeight(int index_id)
   return 200;
 }
 
-// void Action_Planning(StateCore *state_core)
-// {
-//   // 等待遥控器确认KFS数据已发好
-//   Seq::WaitUntil([]() -> bool
-//                  { return farcon.button_second_half[10 - 8 - 1] == 1; });
-//   Zone2_Path.index = 0;
+void Action_Planning(StateCore *state_core)
+{
+  // 等待遥控器确认KFS数据已发好
+  Seq::WaitUntil([]() -> bool
+                 { return farcon.button_second_half[9 - 8 - 1] == 1; });
+  comm.SendKFStoPC();
+	Seq::WaitUntil([]() -> bool
+				{ return comm.is_got_dogpath_from_pc; });
+  
 
-//   // 调用路径规划
-//   GetShortestPath(farcon.KFS_values, Zone2_Path);
+  // // 调用路径规划
+  //   GetPathDog(farcon.KFS_int, guide_dog, true);
 
-//     state_core->GetCurState()->Complete = true;
-// }
+    state_core->GetCurState()->Complete = true;
+}
 
 /**
  * @brief Action_NavToBlock：沿Zone2_Path逐点移动
@@ -206,9 +217,8 @@ void Action_NavToBlock(StateCore *state_core)
   int target_xid = guide_dog[guide_dog_index].label;
   float target_yaw = guide_dog[guide_dog_index].target_yaw;
   bool is_corner = (target_xid == 2 || target_xid == 7 || target_xid == 11 || target_xid == 16);
-  Seq::Wait(1);
 
-  //   // 移动底盘到目标点
+  // 移动底盘到目标点
   chassis.MoveAt(target_pos);
 
   // 姿态控制：如果是四个角点，调用旋转指令并强等待底盘就位
@@ -254,8 +264,13 @@ void Action_NavToBlock(StateCore *state_core)
 // 状态：取块
 void Action_GetBlock(StateCore *state_core)
 {
-  // r1block.Get_Block(target_height, 1); // TODO: 根据遥控器输入的高度调用不同的函数，目前测试用固定值
-  // state_core->GetCurState()->Complete = true;
+   monit.LogInfo("State:Action_GetBlock");
+  r1block.Get_Block(target_height, 1);
+
+  guide_dog_index++;
+  is_ready_to_pick = false;
+
+  state_core->GetCurState()->Complete = true;
 }
 
 
@@ -265,13 +280,13 @@ void ExploringCharmsGragh_Init(void)
 	StateBlock &s_chooserod = EC_flow.AddState("ChooseRod");
 	StateBlock &s_rodanddock = EC_flow.AddState("GetRodandDock");
 
-	// StateBlock &s_plan = EC_flow.AddState("Planning");
+	StateBlock &s_plan = EC_flow.AddState("Planning");
 	StateBlock &s_move = EC_flow.AddState("NavtoBlock");
 	StateBlock &s_pick = EC_flow.AddState("GetBlocking");
 
 	s_chooserod.StateAction = ChooseRod;
 	s_rodanddock.StateAction = GetRodandDock;
-	// s_plan.StateAction = Action_Planning;
+	s_plan.StateAction = Action_Planning;
 	s_move.StateAction = Action_NavToBlock;
 	s_pick.StateAction = Action_GetBlock;
 
@@ -279,9 +294,9 @@ void ExploringCharmsGragh_Init(void)
 	s_chooserod.LinkTo(&s_chooserod.Complete, s_rodanddock);
 	s_rodanddock.LinkTo(&is_assemble, s_chooserod);
 
-	s_rodanddock.LinkTo(&s_rodanddock.Complete, s_move);
+	s_rodanddock.LinkTo(&s_rodanddock.Complete, s_plan);
 
-	// s_plan.LinkTo(&s_plan.Complete, s_move);
+	s_plan.LinkTo(&s_plan.Complete, s_move);
 	s_move.LinkTo(&s_move.Complete, s_pick);
 	s_pick.LinkTo(&s_pick.Complete, s_move);
 

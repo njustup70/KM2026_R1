@@ -6,6 +6,10 @@ using namespace APP;
 using MOD::board_can;
 using MOD::farcon;
 
+uint8_t node_count = 0;
+extern const int X_count;
+
+
 CommCenter& APP::comm = CommCenter::GetInstance(); 
 void AckCBoardCallback(uint8_t task_id, const uint8_t *payload, uint8_t payload_len, void *user_ctx);
 
@@ -18,6 +22,9 @@ void CommCenter::Start()
     pc.Regist(0xA0, OnSlamPosReceived, this);
     // 注册 SLAM 纠正完成指令回调（0xB2）
     pc.Regist(0xB2, SlamJYSuccessed, this);
+
+    //注册接收二区路径序列
+    pc.Regist(0xBA,GuideDog,this);
 
 
     /**---- Sick ----**/ 
@@ -90,6 +97,88 @@ void CommCenter::SlamJYSuccessed(uint8_t func, const uint8_t* payload, uint8_t l
     System.SetPositionSource(self->slam_pos);
     
 }
+
+void CommCenter::GuideDog(uint8_t func, const uint8_t* payload, uint8_t len, void* ctx)
+{
+    auto* self = static_cast<CommCenter*>(ctx);
+    if (!self) return;
+
+    // 1. 安全检查：确保 payload 不为空且至少包含总数
+    if (!payload || len < 1) return;
+
+    // 2. 获取节点总数 n
+    node_count = payload[0];
+    if (node_count > MAX_PATH) {
+        node_count = MAX_PATH; // 防止数组越界
+    }
+
+    // 3. 检查剩余 payload 长度是否足够解析这些节点 (每个节点 2 字节)
+    if (len < 1 + node_count * 2) {
+        // 数据长度不足，协议错误
+        return;
+    }
+    // 4. 确保 X_points 坐标已经初始化
+    BuildXPoints(X_points); 
+
+    // 5. 循环解析每个节点
+    for (int i = 0; i < node_count; ++i) 
+    {
+        // 计算当前节点在 payload 中的数据指针偏移
+        // payload[0] 是数量，i*2 是前面节点的字节数
+        const uint8_t* node_data = &payload[1 + i * 2];
+
+        uint8_t byte1 = node_data[0]; // 第一个字节
+        uint8_t byte2 = node_data[1]; // 第二个字节
+
+        // ---- 解析 label (第二个字节的 bit 3~7) ----
+        // 图中显示 bit 3~7 为 labels(0~17)，右移 3 位获取其值
+        int label_val = (byte2 >> 3) & 0x1F; 
+        guide_dog[i].label = label_val;
+
+        // ---- 解析 pos (根据 label 从 X_points 中获取坐标) ----
+        if (label_val >= 0 && label_val < X_COUNT) 
+        {
+            guide_dog[i].pos = X_points[label_val];
+        } 
+        else 
+        {
+            guide_dog[i].pos = Vec2(0, 0); // 异常边界处理
+        }
+
+        // ---- 解析 target_yaw (第一个字节的 bit 4~5) ----
+        uint8_t yaw_bits = (byte1 >> 4) & 0x03;
+        if (yaw_bits == 0x00) {
+            guide_dog[i].target_yaw = 0.0f;
+        } else if (yaw_bits == 0x01) {
+            guide_dog[i].target_yaw = 1.57f;
+        } else if (yaw_bits == 0x02) {
+            guide_dog[i].target_yaw = -1.57f;
+        } else if (yaw_bits == 0x03) {
+            guide_dog[i].target_yaw = 3.14f;
+        }
+
+        // ---- 解析 is_pick_point (第一个字节的 bit 6) ----
+        guide_dog[i].is_pick_point = ((byte1 >> 6) & 0x01) == 1;
+
+        // ---- 解析 is_at_end (第一个字节的 bit 7) ----
+        guide_dog[i].is_at_end = ((byte1 >> 7) & 0x01) == 1;
+    }
+
+    // (可选) 如果收到的路径点少于 MAX_PATH，将后面多余的路径点进行复位清除
+    for (int i = node_count; i < MAX_PATH; ++i) 
+    {
+        guide_dog[i] = PathNode(); // 使用默认构造函数清空
+    }
+
+    comm.is_got_dogpath_from_pc = true;
+
+}
+
+void CommCenter::SendKFStoPC()
+{
+    pc.SendKFSData(farcon.KFS_int,sizeof(farcon.KFS_int));
+}
+
 void CommCenter::SendKFSdata()
 {
     uint8_t payload[8];
