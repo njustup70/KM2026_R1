@@ -602,6 +602,9 @@ int R1Block::trans_height(int block_height)
   int temp_block = block_height;
   switch (temp_block)
   {
+    case 0:
+      return 0;
+      break;
     case 200:
       return blockheight_2_liftmotortargetpos[0];
       break;
@@ -615,6 +618,22 @@ int R1Block::trans_height(int block_height)
       return 0.0f; // 默认值或错误处理
       break;
   }
+}
+// 手动复位取块装置
+void R1Block::Manual_Reset_to_All()
+{
+      Seq::WaitUntil([&]()
+                   { return farcon.button_first_half[4]== 1; }); // 检测到没有块在上面的时候
+  // 1.复位高度为0
+  SmoothMoveLiftToTarget(trans_height(last_height), 0, 3);
+  last_height = 0;
+  Seq::WaitUntil([&]()
+                 { return (llift_reached && rlift_reached); }); // 检测到抬升到对应位置
+  // 2，复位伸缩电机为初始位置
+
+  // 3.吮吸电机停止
+  suckmotor[0].SetSpd(0);
+  suckmotor[1].SetSpd(0);
 }
 
 void R1Block::
@@ -638,14 +657,17 @@ void R1Block::
   // 手动
   if (auto_flag == 0)
   {
-    lift_target_pos = trans_height(block_height);
-    Seq::WaitUntil([&]()
-                   { return (farcon.button_first_half[6] == 1); }); // 检测到到位置了
-    SmoothMoveLiftToTarget(trans_height(last_height), lift_target_pos, 3);
-    last_height = block_height;
-    Seq::WaitUntil([&]()
-                   { return (farcon.button_first_half[5] == 1); }); // 检测到到位置了
-    suck_flag = 1;
+    if (last_height != block_height)
+    {
+      lift_target_pos = trans_height(block_height);
+      SmoothMoveLiftToTarget(trans_height(last_height), lift_target_pos, 3);
+      last_height = block_height;
+      Seq::WaitUntil([&]()
+                     { return (llift_reached && rlift_reached); }); // 检测到抬升到对应位置
+    }
+    chassis.Move({0.2, 0}, 2);
+    Seq::Wait(2);
+    // suck_flag = 1;
   }
   else if (auto_flag == 1)
   {
@@ -695,7 +717,7 @@ void R1Block::
     Clamp_block(); // 夹紧
     Seq::Wait(1);
     return;
-  } 
+  }
   // 取第二个块
   else if (block_exist[2] == 1 && block_exist[1] == 0 && block_exist[0] == 0 && get_finish_block == 1)
   {

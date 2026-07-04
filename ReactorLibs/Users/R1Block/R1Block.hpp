@@ -187,6 +187,7 @@ public:
   void Clamp_block();
   void Loosen_block();
   void Get_Block(int block_height, int auto_flag = 0);
+  void Manual_Reset_to_All();
   void PreLayBLock();
 
   void ReleaseBlock(int auto_flag = 0);
