@@ -202,8 +202,8 @@ void ChassisType::Update()
   if (control_mode == LOCKYAW)
   {
     // 读取遥控器数据到底盘控制变量
-    targ_speed.x = -farcon.jys_value[3] * 1.0f / 100.f * _max_velo * _farcon_decspeed; // 前后
-    targ_speed.y = -farcon.jys_value[2] * 1.0f / 100.f * _max_velo * _farcon_decspeed; // 左右
+    targ_speed.x = -farcon.jys_value[3] * 1.0f / 100.f * _max_velo * _farcon_decaccqurate; // 前后
+    targ_speed.y = -farcon.jys_value[2] * 1.0f / 100.f * _max_velo * _farcon_decaccqurate; // 左右
     Move(Vec2(targ_speed.x, targ_speed.y));
     chassis.RotateAt(-1.57f);
   }
@@ -212,8 +212,8 @@ void ChassisType::Update()
   {
     // 提取全局场地系的期望速度
     Vec2 v_world;
-    v_world.x = -farcon.jys_value[3] * 1.0f / 100.f * _max_velo; // 前后
-    v_world.y = -farcon.jys_value[2] * 1.0f / 100.f * _max_velo; // 左右
+    v_world.x = -farcon.jys_value[3] * 1.0f / 100.f * _max_velo * _farcon_decaccqurate; // 前后
+    v_world.y = -farcon.jys_value[2] * 1.0f / 100.f * _max_velo * _farcon_decaccqurate; // 左右
 
     // 进行世界坐标系到车体坐标系的逆映射
     Vec2 v_body = v_world.Rotate(-System.position.z);
