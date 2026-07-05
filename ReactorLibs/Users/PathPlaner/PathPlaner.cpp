@@ -37,7 +37,7 @@ Vec2 X_points[X_COUNT];
 Vec2 S_point(2.565f, 2.9575f);
 Vec2 D_point(8.565f, 0.5575f);
 
-PathNode Guide_dog[MAX_PATH];
+//PathNode Guide_dog[MAX_PATH];
 
 void BuildXPoints(Vec2 X[X_COUNT])
 {

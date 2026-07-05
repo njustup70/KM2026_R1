@@ -152,9 +152,9 @@ void CommCenter::ProcessGuideDogData()
   // monit.LogSpec("GetNode");
   // 获取节点总数
   uint8_t node_count = payload[0];
-  if (node_count > MAX_PATH)
+  if (node_count > MAX_PATH_DOG)
   {
-    node_count = MAX_PATH;
+    node_count = MAX_PATH_DOG;
   }
 
   // 检查剩余 payload 长度
@@ -213,7 +213,7 @@ void CommCenter::ProcessGuideDogData()
 
 int start_idx = (node_count < 0) ? 0 : node_count;
 
-for (int i = start_idx; i < MAX_PATH; ++i)
+for (int i = start_idx; i < MAX_PATH_DOG; ++i)
 {
     // 直接进行内存拷贝赋值，避免产生局部临时对象
     // 如果这里依然卡死，100% 证明 guide_dog[i] 的内存地址是非法的！
