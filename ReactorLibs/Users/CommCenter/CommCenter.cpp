@@ -76,7 +76,7 @@ void CommCenter::ChooseHalve()
   payload[1] = 0x78;
   payload[2] = 0x00;
   payload[3] = 0xFF;
-  pc.SendRawData(payload, sizeof(payload));
+//  pc.SendRawData(payload, sizeof(payload));
 
 #elif Halve == Blue_Halve
   payload[0] = 0xFF;
@@ -100,7 +100,7 @@ void CommCenter::ChoosePowerOnPos()
   payload[1] = 0x78;
   payload[2] = 0x01;
   payload[3] = 0xFF;
-  pc.SendRawData(payload, sizeof(payload));
+//  pc.SendRawData(payload, sizeof(payload));
 #endif
 }
 void CommCenter::RestartSLAM()
@@ -110,7 +110,7 @@ void CommCenter::RestartSLAM()
   payload[1] = 0x13;
   payload[2] = 0x13;
   payload[3] = 0xFF;
-  pc.SendRawData(payload, sizeof(payload));
+//  pc.SendRawData(payload, sizeof(payload));
 }
 
 /** -------------------  工控机的接收回调函数   ------------------------- **/

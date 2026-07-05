@@ -168,7 +168,7 @@ int GetBlockHeight(int index_id)
   {
     return 200; // 200高度
   }
-  else if (index_id == 4 || index_id == 15)
+  else if (index_id == 4 )
   {
     return 600; // 600高度
   }
@@ -330,8 +330,8 @@ void Action_OverWait(StateCore *state_core)
 // ================================初始化========================================================================
 void ExploringCharmsGragh_Init(void)
 {
-  StateBlock &s_chooserod = EC_flow.AddState("ChooseRod");
-  StateBlock &s_rodanddock = EC_flow.AddState("GetRodandDock");
+  // StateBlock &s_chooserod = EC_flow.AddState("ChooseRod");
+  // StateBlock &s_rodanddock = EC_flow.AddState("GetRodandDock");
 
   StateBlock &s_plan = EC_flow.AddState("Planning");
   StateBlock &s_move = EC_flow.AddState("NavtoBlock");
@@ -341,8 +341,8 @@ void ExploringCharmsGragh_Init(void)
     StateBlock &s_overwait = EC_flow.AddState("OverWait");
 
 
-  s_chooserod.StateAction = ChooseRod;
-  s_rodanddock.StateAction = GetRodandDock;
+  // s_chooserod.StateAction = ChooseRod;
+  // s_rodanddock.StateAction = GetRodandDock;
 
   s_plan.StateAction = Action_Planning;
   s_move.StateAction = Action_NavToBlock;
@@ -352,10 +352,10 @@ void ExploringCharmsGragh_Init(void)
     s_overwait.StateAction = Action_OverWait;
 
 
-  // 状态转移关系
-  s_chooserod.LinkTo(&s_chooserod.Complete, s_rodanddock);
-  s_rodanddock.LinkTo(&is_assemble, s_chooserod);
-  s_rodanddock.LinkTo(&s_rodanddock.Complete, s_plan);
+  // // 状态转移关系
+  // s_chooserod.LinkTo(&s_chooserod.Complete, s_rodanddock);
+  // s_rodanddock.LinkTo(&is_assemble, s_chooserod);
+  // s_rodanddock.LinkTo(&s_rodanddock.Complete, s_plan);
   s_plan.LinkTo(&s_plan.Complete, s_move);
 
   // 自动与手动

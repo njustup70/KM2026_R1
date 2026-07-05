@@ -711,23 +711,18 @@ void R1Block::
   Seq::WaitUntil([&]()
                  { return ((stretchmotor[0].IsReached() == 1) && (stretchmotor[1].IsReached() == 1)); }); // 检测到最外面到了
   Seq::Wait(1);
-  // 实际取块
-  Clamp_block(); // 夹紧
   suckmotor[0].SetSpd(-suck_speed);
   suckmotor[1].SetSpd(suck_speed);
+  // 实际取块
+  Clamp_block(); // 夹紧
+
   // 可优化自动取块
 
   // 取第一个块
   if (now_get_block == 0)
   {
-    Seq::WaitUntil([&]()
-                   { return (block_exist[0] == 1); }); // 检测到最外面到了
-    SetTargetStretch(stretch_distance[0], stretch_distance[0]);
-    Seq::WaitUntil([&]()
-                   { return (block_exist[1] == 1); }); // 检测到中间到了
-    SetTargetStretch(0, 0);
-    Seq::WaitUntil([&]()
-                   { return (block_exist[2] == 1); }); // 检测到最里面到了
+    SmoothMoveStretchToTarget(stretch_distance[1], 0, 3, 10);
+
     suckmotor[0].SetSpd(0);
     suckmotor[1].SetSpd(0);
     Clamp_block(); // 夹紧
@@ -737,10 +732,8 @@ void R1Block::
   // 取第二个块
   else if (now_get_block == 1)
   {
-    Seq::WaitUntil([&]()
-                   { return (block_exist[0] == 1); }); // 检测到最外面到了
-    SetTargetStretch(0, 0);
-    Seq::Wait(2);
+    SmoothMoveStretchToTarget(stretch_distance[1], 0, 3, 10);
+
     suckmotor[0].SetSpd(0);
     suckmotor[1].SetSpd(0);
     Seq::Wait(1);
@@ -750,14 +743,10 @@ void R1Block::
   // 取第三个块
   else if (now_get_block == 2)
   {
-    Seq::WaitUntil([&]()
-                   { return (block_exist[0] == 1); }); // 检测到最外面到了
-    SetTargetStretch(release_strectch_distance[1], release_strectch_distance[1]);
-    Seq::WaitUntil([&]()
-                   { return ((stretchmotor[0].IsReached() == 1) && (stretchmotor[1].IsReached() == 1)); }); // 检测到最外面到了
+    SmoothMoveStretchToTarget(stretch_distance[1], stretch_distance[0], 3, 10);
+
     suckmotor[0].SetSpd(0);
     suckmotor[1].SetSpd(0);
-    Clamp_block(); // 夹紧
     Seq::Wait(1);
 
     if (block_exist[2] == 1 && block_exist[1] == 1)
@@ -1027,7 +1016,6 @@ void R1Block::AnyToMiddleGrid_Blue()
 
   chassis.MoveAt({10.75, 1.15});
 }
-
 
 // 包括吐块和出洞
 void R1Block::PutBlock()
