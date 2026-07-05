@@ -3,7 +3,7 @@
 #include "std_math.hpp"
 #include <stdint.h>
 
-#define MAX_PATH_DOG 42  // 专门给 guide_dog 导航用的最大长度 18/必须小于 等于23
+#define MAX_PATH_DOG 18  // 专门给 guide_dog 导航用的最大长度 18/必须小于 等于23
 #define X_COUNT 18       // 统一公开 18点的数量宏
 #define MAX_PICK_COUNT 12
 
