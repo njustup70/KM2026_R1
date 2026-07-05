@@ -9,6 +9,7 @@
 using APP::chassis;
 using MOD::farcon;
 using MOD::sick;
+
 extern bool is_pick_done;
 R1Block &APP::r1block = R1Block::GetInstance();
 

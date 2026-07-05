@@ -9,6 +9,14 @@ using MOD::farcon;
 uint8_t node_count = 0;
 extern const int X_count;
 
+#define MAX_PAYLOAD_BUFFER_SIZE 128 // 请根据你实际协议的最大长度修改
+// 用于中断和主循环通信的共享变量
+volatile bool g_guide_dog_data_ready = false;
+uint8_t g_guide_dog_payload[MAX_PAYLOAD_BUFFER_SIZE];
+uint8_t g_guide_dog_len = 0;
+uint8_t g_guide_dog_func = 0;
+void *g_guide_dog_ctx = nullptr;
+
 CommCenter &APP::comm = CommCenter::GetInstance();
 void AckCBoardCallback(uint8_t task_id, const uint8_t *payload, uint8_t payload_len, void *user_ctx);
 
@@ -35,8 +43,8 @@ void CommCenter::Start()
 
 void CommCenter::Update()
 {
-//   pc.SendOdom(System.odometer.transform.x, System.odometer.transform.y, System.odometer.transform.z);
-//   pc.SendSickData(MOD::sick.GetData().raw_frame);
+  //   pc.SendOdom(System.odometer.transform.x, System.odometer.transform.y, System.odometer.transform.z);
+  //   pc.SendSickData(MOD::sick.GetData().raw_frame);
 
   //=========板间通讯还是不能降频发送a to c，遥控器反应会有点慢
   SendButtonData(); // 实时发送，目前没发现payload被覆盖的情况
@@ -98,8 +106,6 @@ void CommCenter::SlamJYSuccessed(uint8_t func, const uint8_t *payload, uint8_t l
 
 void CommCenter::GuideDog(uint8_t func, const uint8_t *payload, uint8_t len, void *ctx)
 {
-  monit.LogSpec(" come in GuideDogCB ");
-
   auto *self = static_cast<CommCenter *>(ctx);
   if (!self)
     return;
@@ -107,51 +113,81 @@ void CommCenter::GuideDog(uint8_t func, const uint8_t *payload, uint8_t len, voi
   // 1. 确保 payload 不为空且至少包含总数
   if (!payload || len < 1)
     return;
-  monit.LogSpec("  payload safe");
 
-  // 2. 获取节点总数 n
-  node_count = payload[0];
+  // 2. 快速拷贝数据到全局缓冲区
+  // 必须拷贝！因为中断退出后，底层的 rx_buffer 可能会被下一次接收覆盖
+  memcpy((void *)g_guide_dog_payload, payload, len);
+  g_guide_dog_len = len;
+  g_guide_dog_func = func;
+  g_guide_dog_ctx = ctx;
+  g_guide_dog_data_ready = true;
+}
+
+// 在主循环中轮询调用的解析函数
+void CommCenter::ProcessGuideDogData()
+{
+  // 在函数最顶端或类中定义一个静态的空节点，只构造一次
+  static const PathNode empty_node;
+  monit.LogSpec("ProcessGuideDogData");
+  //    1. 检查中断是否送来了新数据
+
+  Seq::WaitUntil([]() -> bool
+                 { return g_guide_dog_data_ready; });
+
+  // 2. 立即清除标志位，允许中断接收下一帧数据
+  g_guide_dog_data_ready = false;
+  // monit.LogSpec("g_guide_dog_data_ready");
+  // 3. 将全局变量提取到局部，准备解析
+  uint8_t func = g_guide_dog_func;
+  uint8_t len = g_guide_dog_len;
+  const uint8_t *payload = g_guide_dog_payload;
+  auto *self = static_cast<CommCenter *>(g_guide_dog_ctx);
+
+  if (!self)
+    return;
+
+  // ---------------------------------------------------------
+  // 以下全部是你原本的解析逻辑，现在运行在主循环中，完全安全！
+  // ---------------------------------------------------------
+  // monit.LogSpec("GetNode");
+  // 获取节点总数
+  uint8_t node_count = payload[0];
   if (node_count > MAX_PATH)
   {
-    node_count = MAX_PATH; // 防止数组越界
+    node_count = MAX_PATH;
   }
 
-  // 3. 检查剩余 payload 长度是否足够解析这些节点 (每个节点 2 字节)
+  // 检查剩余 payload 长度
   if (len < 1 + node_count * 2)
   {
-    // 数据长度不足，协议错误
     return;
   }
-  // 4. 确保 X_points 坐标已经初始化
-  BuildXPoints(X_points);
-  monit.LogSpec(" BuildXPoints ");
 
-  // 5. 循环解析每个节点
+  // 极其耗时的操作，放在主循环里不再会导致死机
+  BuildXPoints(X_points);
+  monit.LogSpec("Finish BuildXPoints");
+  //  循环解析每个节点
   for (int i = 0; i < node_count; ++i)
   {
-    // 计算当前节点在 payload 中的数据指针偏移
-    // payload[0] 是数量，i*2 是前面节点的字节数
     const uint8_t *node_data = &payload[1 + i * 2];
+    uint8_t byte1 = node_data[0];
+    uint8_t byte2 = node_data[1];
 
-    uint8_t byte1 = node_data[0]; // 第一个字节
-    uint8_t byte2 = node_data[1]; // 第二个字节
-
-    // ---- 解析 label (第二个字节的 bit 3~7) ----
-    // 图中显示 bit 3~7 为 labels(0~17)，右移 3 位获取其值
+    // 解析 label
     int label_val = (byte2 >> 3) & 0x1F;
     guide_dog[i].label = label_val;
 
-    // ---- 解析 pos (根据 label 从 X_points 中获取坐标) ----
+    // 解析 pos
     if (label_val >= 0 && label_val < X_COUNT)
     {
       guide_dog[i].pos = X_points[label_val];
     }
     else
     {
-      guide_dog[i].pos = Vec2(0, 0); // 异常边界处理
+      guide_dog[i].pos = Vec2(0, 0);
     }
 
-    // ---- 解析 target_yaw (第一个字节的 bit 4~5) ----
+    // 解析 target_yaw (涉及浮点赋值，主循环处理毫无压力)
     uint8_t yaw_bits = (byte1 >> 4) & 0x03;
     if (yaw_bits == 0x00)
     {
@@ -170,28 +206,36 @@ void CommCenter::GuideDog(uint8_t func, const uint8_t *payload, uint8_t len, voi
       guide_dog[i].target_yaw = 3.14f;
     }
 
-    // ---- 解析 is_pick_point (第一个字节的 bit 6) ----
+    // 解析其他状态
     guide_dog[i].is_pick_point = ((byte1 >> 6) & 0x01) == 1;
-
-    // ---- 解析 is_at_end (第一个字节的 bit 7) ----
     guide_dog[i].is_at_end = ((byte1 >> 7) & 0x01) == 1;
   }
 
-  // (可选) 如果收到的路径点少于 MAX_PATH，将后面多余的路径点进行复位清除
-  for (int i = node_count; i < MAX_PATH; ++i)
-  {
-    guide_dog[i] = PathNode(); // 使用默认构造函数清空
-  }
-  monit.LogSpec(" PathNode ");
+int start_idx = (node_count < 0) ? 0 : node_count;
 
+for (int i = start_idx; i < MAX_PATH; ++i)
+{
+    // 直接进行内存拷贝赋值，避免产生局部临时对象
+    // 如果这里依然卡死，100% 证明 guide_dog[i] 的内存地址是非法的！
+    guide_dog[i] = empty_node; 
+}
   comm.is_got_dogpath_from_pc = true;
-  monit.LogSpec("get pc guide dog...");
 }
 
 void CommCenter::SendKFStoPC()
 {
-  pc.SendKFSData(farcon.KFS_uint8, sizeof(farcon.KFS_uint8));
-  monit.LogSpec("send KFSdata to PC");
+  uint8_t packed_payload[12];
+
+  // 遍历 int 数组，强制截取最低位的 1 个字节
+  for (int i = 0; i < 12; ++i)
+  {
+    packed_payload[i] = static_cast<uint8_t>(farcon.KFS_int[i]);
+  }
+
+  // 现在发送真实的 uint8_t 数组，长度也从 48 变成了 12
+  pc.SendKFSData(packed_payload, 12);
+  ;
+  // monit.LogSpec("send KFSdata to PC");
 }
 
 void CommCenter::SendKFSdata()

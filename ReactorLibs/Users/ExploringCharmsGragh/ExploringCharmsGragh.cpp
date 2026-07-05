@@ -32,6 +32,8 @@ bool is_rod2 = false;
 bool is_rod3 = false;
 bool is_assemble = false;
 extern bool manual_pick_flag;
+
+extern volatile bool g_guide_dog_data_ready;
 // 全局状态图对象
 StateGraph EC_flow{"ExploringCharmsGragh"};
 
@@ -200,12 +202,14 @@ void Action_Planning(StateCore *state_core)
 
   Seq::Wait(2.0f);
 
-  monit.LogSpec("is_got_dogpath_from_pc == %d",comm.is_got_dogpath_from_pc);
+  // monit.LogSpec("is_got_dogpath_from_pc == %d", comm.is_got_dogpath_from_pc);
+  
+	comm.ProcessGuideDogData();
 
-//  Seq::WaitUntil([]() -> bool
-//                 { return comm.is_got_dogpath_from_pc; });
+  // Seq::WaitUntil([]() -> bool
+  //                { return comm.is_got_dogpath_from_pc; });
+
   monit.LogSpec("get pc == 1 ! ");
-
 
   state_core->GetCurState()->Complete = true;
   monit.LogSpec("over plan");
@@ -217,8 +221,8 @@ void Action_Planning(StateCore *state_core)
  */
 void Action_NavToBlock(StateCore *state_core)
 {
-  monit.LogSpec("const char *format, ...") ;
-	while (manual_pick_flag == 0)
+  monit.LogSpec("const char *format, ...");
+  while (manual_pick_flag == 0)
   {
     monit.LogInfo("State:Action_NavToBlock");
     //   if (is_ready_to_pick || is_final_goal_reached)

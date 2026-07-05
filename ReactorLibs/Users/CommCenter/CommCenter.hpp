@@ -74,6 +74,7 @@ public:
 
 public:
     void SendKFStoPC();
+    void ProcessGuideDogData();
     bool is_got_dogpath_from_pc = false;
 
 };
