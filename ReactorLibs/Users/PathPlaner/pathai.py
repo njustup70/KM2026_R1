@@ -4,6 +4,7 @@ import matplotlib.lines as mlines
 from collections import deque
 import tkinter as tk
 from tkinter import messagebox
+import itertools # 新增：用于全排列计算
 
 # === 常量与环境配置 ===
 YAW_BOTTOM = 0.0    
@@ -101,29 +102,13 @@ def find_shortest_path(start_id, start_yaw, target_id, target_yaw=None):
             path.pop(0) 
     return path
 
-def generate_full_route(start_id, start_yaw, r1_blocks, r2_path, exit_id, auto_dog_flag, priority_block):
+# 【修改点 1】修改路径生成逻辑，现在它不再自己排序，而是严格按照传入的 ordered_targets 顺序生成路径
+def generate_full_route(start_id, start_yaw, ordered_targets, exit_id):
     full_path = [{'id': start_id, 'yaw': start_yaw, 'is_pick': False, 'is_at_point': False, 'target_block': None}]
-    
-    # 优先级判定 (同步 C++ 逻辑)
-    def get_priority(block_id):
-        if auto_dog_flag == 1:
-            # 自动模式
-            if block_id in r2_path:
-                return r2_path.index(block_id) 
-            return 999 
-        else:
-            # 手动模式
-            if block_id in priority_block:
-                return priority_block.index(block_id)
-            return 999
-
-    targets = [{'id': b, 'priority': get_priority(b)} for b in r1_blocks]
-    targets.sort(key=lambda x: x['priority'])
-
     curr_id, curr_yaw = start_id, start_yaw
 
-    for tgt in targets:
-        options = get_valid_pickups(tgt['id'])
+    for tgt_id in ordered_targets:
+        options = get_valid_pickups(tgt_id)
         if not options: continue
         
         target_aisle, target_yaw = options[0]
@@ -132,11 +117,11 @@ def generate_full_route(start_id, start_yaw, r1_blocks, r2_path, exit_id, auto_d
         if not segment and curr_id == target_aisle and abs(curr_yaw - target_yaw) < 0.1:
             full_path[-1]['is_pick'] = True
             full_path[-1]['is_at_point'] = True  
-            full_path[-1]['target_block'] = tgt['id']
+            full_path[-1]['target_block'] = tgt_id
         elif segment:
             segment[-1]['is_pick'] = True
             segment[-1]['is_at_point'] = True  
-            segment[-1]['target_block'] = tgt['id']
+            segment[-1]['target_block'] = tgt_id
             full_path.extend(segment)
             curr_id, curr_yaw = segment[-1]['id'], segment[-1]['yaw']
             
@@ -147,18 +132,45 @@ def generate_full_route(start_id, start_yaw, r1_blocks, r2_path, exit_id, auto_d
             
     return full_path
 
+# 【修改点 2】引入全排列机制，并带上优先级约束
 def find_optimal_mission(start_candidates, r1_blocks, r2_path, exit_id, auto_dog_flag, priority_block):
     best_path = None
     best_start = None
     min_steps = float('inf')
     
+    # 辅助函数：计算每个块的优先级得分（数值越小越靠前）
+    def get_p(b):
+        if auto_dog_flag == 1:
+            return r2_path.index(b) if b in r2_path else 999
+        else:
+            return priority_block.index(b) if b in priority_block else 999
+
+    # 1. 生成方块序列的所有全排列
+    all_perms = list(itertools.permutations(r1_blocks))
+    valid_perms = []
+    
+    # 2. 筛选合法排列：保证优先级高的（得分小的）一定排在优先级低的（得分大的）前面
+    for perm in all_perms:
+        priorities = [get_p(b) for b in perm]
+        # 如果当前序列满足“优先级得分不下降（即高优先级在前）”，则视为合法序列
+        if all(priorities[i] <= priorities[i+1] for i in range(len(priorities)-1)):
+            valid_perms.append(perm)
+
+    # 兜底保护：如果由于配置冲突导致没有合法序列，回退到遍历所有全排列
+    if not valid_perms:
+        valid_perms = all_perms
+    
+    # 3. 对所有合法序列、所有可能的起点进行全量模拟跑图，比对真实路径总长度！
     for s_id in start_candidates:
-        path = generate_full_route(s_id, YAW_BOTTOM, r1_blocks, r2_path, exit_id, auto_dog_flag, priority_block)
-        path_length = len(path)
-        if path_length < min_steps:
-            min_steps = path_length
-            best_path = path
-            best_start = s_id
+        for perm in valid_perms:
+            path = generate_full_route(s_id, YAW_BOTTOM, perm, exit_id)
+            if path:
+                path_length = len(path)
+                # 记录真正的历史最优解（总步数最少）
+                if path_length < min_steps:
+                    min_steps = path_length
+                    best_path = path
+                    best_start = s_id
             
     return best_start, best_path
 
@@ -233,7 +245,7 @@ class RoboconSetupUI:
     def __init__(self, root):
         self.root = root
         self.root.title("ROBOCON UP70 - 赛前场控配置")
-        self.root.geometry("400x600") # 调整了窗口高度以适应新选项
+        self.root.geometry("400x600")
         
         self.r1_blocks = []
         self.r2_blocks = []
@@ -241,14 +253,13 @@ class RoboconSetupUI:
         self.r2_path = []
         self.auto_dog_flag = 1
         self.priority_block = []
-        self.field_side = "Red" # 默认红半场
+        self.field_side = "Red" 
         self.ready = False
         
         self.block_states = {i: 0 for i in range(12)}
         self.colors = {0: "#ffffff", 1: "#ff9999", 2: "#99ccff", 3: "#e0e0e0"}
         self.labels = {0: "空", 1: "R1", 2: "R2", 3: "Fake"}
         
-        # --- 新增：比赛半场选择 ---
         tk.Label(root, text="比赛半场选择:", font=("Arial", 11, "bold")).pack(pady=(10, 5))
         self.field_side_var = tk.StringVar(value="Red")
         field_frame = tk.Frame(root)
@@ -305,7 +316,7 @@ class RoboconSetupUI:
         self.r2_blocks = [k for k, v in self.block_states.items() if v == 2]
         self.fake_block = [k for k, v in self.block_states.items() if v == 3]
         
-        self.field_side = self.field_side_var.get() # 获取红蓝半场选择
+        self.field_side = self.field_side_var.get() 
         
         if len(self.fake_block) > 1:
             messagebox.showerror("配置错误", "Fake块数量不能超过1个！")
@@ -327,7 +338,6 @@ class RoboconSetupUI:
             else:
                 self.priority_block = []
         
-        # R2 最佳路线自动判定
         candidate_paths = [
             [9, 6, 3, 0],   
             [10, 7, 4, 1],  
@@ -366,7 +376,6 @@ if __name__ == "__main__":
         
     start_candidates = [2, 0, 16]
     
-    # --- 新增：根据界面选择动态设置终点 ---
     if app.field_side == "Blue":
         exit_node = 7
     else:
@@ -401,7 +410,6 @@ if __name__ == "__main__":
         
         filtered_nodes = []
         
-        # 核心去重逻辑：保留中偏后的节点，继承 is_pick
         for i, step in enumerate(best_path_sequence):
             is_start = (i == 0)
             is_end = (i == len(best_path_sequence) - 1)
@@ -410,8 +418,6 @@ if __name__ == "__main__":
             
             if is_start or is_end or is_pick or is_corner_node:
                 
-                # 向后看一眼：如果下一个节点的物理坐标（id）一模一样，说明仅仅是原地旋转
-                # 舍弃当前节点，并把取块状态继承给下一个节点防止丢失
                 if i + 1 < len(best_path_sequence) and best_path_sequence[i]['id'] == best_path_sequence[i+1]['id']:
                     best_path_sequence[i+1]['is_pick'] = best_path_sequence[i+1].get('is_pick', False) or is_pick
                     best_path_sequence[i+1]['is_at_point'] = best_path_sequence[i+1].get('is_at_point', False) or step.get('is_at_point', False)
@@ -421,7 +427,6 @@ if __name__ == "__main__":
                 
                 filtered_nodes.append(step)
                 
-        # 打印底层真正接收到的点
         for step in filtered_nodes:
             if step.get('is_pick'):
                 action = f"** 抓取方块 {step['target_block']} **"
@@ -434,7 +439,6 @@ if __name__ == "__main__":
             
             print(f"过道: {step['id']:2d} | Yaw: {step['yaw']:5.2f} | is_at_point: {step.get('is_at_point', False)} | 动作: {action}")
                 
-        # 绘图还是传入完整序列，保证箭头连贯性
         draw_scene(r1_blocks, r2_blocks, fake_block, r2_path, exit_node, best_path_sequence, auto_dog_flag)
     else:
         print("未能生成有效路径，请检查方块配置是否合理！")
