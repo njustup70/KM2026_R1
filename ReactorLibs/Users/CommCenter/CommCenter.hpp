@@ -77,6 +77,12 @@ public:
     void ProcessGuideDogData();
     bool is_got_dogpath_from_pc = false;
 
+public:
+    //to PC:about Halve Red or Blue
+    void ChooseHalve();
+    void ChoosePowerOnPos();
+    void RestartSLAM();
+
 };
 
 namespace APP

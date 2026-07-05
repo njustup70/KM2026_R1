@@ -1,6 +1,7 @@
 #include "CommCenter.hpp"
 #include "Chassis.hpp"
 #include "farcon.hpp"
+#include "ModeSelector.hpp"
 
 using namespace APP;
 using MOD::board_can;
@@ -43,8 +44,12 @@ void CommCenter::Start()
 
 void CommCenter::Update()
 {
+  static float cooldown_tick = 0;
+  if (DWT_GetTimeline_Sec() - cooldown_tick > 0.01)
+  {
     pc.SendOdom(System.odometer.transform.x, System.odometer.transform.y, System.odometer.transform.z);
-    pc.SendSickData(MOD::sick.GetData().raw_frame);
+  }
+  // pc.SendSickData(MOD::sick.GetData().raw_frame);
 
   //=========板间通讯还是不能降频发送a to c，遥控器反应会有点慢
   SendButtonData(); // 实时发送，目前没发现payload被覆盖的情况
@@ -65,6 +70,52 @@ void CommCenter::Update()
   {
     SendKFStoPC();
   }
+}
+
+/**==========================发给工控机========================= */
+void CommCenter::ChooseHalve()
+{
+  uint8_t payload[4] = {0};
+#if Halve == Red_Halve
+  payload[0] = 0xFF;
+  payload[1] = 0x78;
+  payload[2] = 0x00;
+  payload[3] = 0xFF;
+  pc.SendRawData(payload, sizeof(payload));
+
+#elif Halve == Blue_Halve
+  payload[0] = 0xFF;
+  payload[1] = 0x78;
+  payload[2] = 0x01;
+  payload[3] = 0xFF;
+  pc.SendRawData(payload, sizeof(payload));
+#endif
+}
+void CommCenter::ChoosePowerOnPos()
+{
+  uint8_t payload[4] = {0};
+#if Current_Mode == Mode_Hidden_Treasures
+  payload[0] = 0xFF;
+  payload[1] = 0x69;
+  payload[2] = 0x03;
+  payload[3] = 0xFF;
+  pc.SendRawData(payload, sizeof(payload));
+#else
+  payload[0] = 0xFF;
+  payload[1] = 0x78;
+  payload[2] = 0x01;
+  payload[3] = 0xFF;
+  pc.SendRawData(payload, sizeof(payload));
+#endif
+}
+void CommCenter::RestartSLAM()
+{
+  uint8_t payload[4] = {0};
+  payload[0] = 0xFF;
+  payload[1] = 0x13;
+  payload[2] = 0x13;
+  payload[3] = 0xFF;
+  pc.SendRawData(payload, sizeof(payload));
 }
 
 /** -------------------  工控机的接收回调函数   ------------------------- **/
@@ -163,8 +214,13 @@ void CommCenter::ProcessGuideDogData()
     return;
   }
 
-  // 极其耗时的操作，放在主循环里不再会导致死机
-  BuildXPoints(X_points);
+// 极其耗时的操作，放在主循环里不再会导致死机
+#if Halve == Red_Halve
+  BuildXPoints_Red(X_points);
+
+#elif Halve == Blue_Halve
+  BuildXPoints_Blue(X_points);
+#endif
   monit.LogSpec("Finish BuildXPoints");
   //  循环解析每个节点
   for (int i = 0; i < node_count; ++i)
@@ -211,14 +267,14 @@ void CommCenter::ProcessGuideDogData()
     guide_dog[i].is_at_end = ((byte1 >> 7) & 0x01) == 1;
   }
 
-int start_idx = (node_count < 0) ? 0 : node_count;
+  int start_idx = (node_count < 0) ? 0 : node_count;
 
-for (int i = start_idx; i < MAX_PATH_DOG; ++i)
-{
+  for (int i = start_idx; i < MAX_PATH_DOG; ++i)
+  {
     // 直接进行内存拷贝赋值，避免产生局部临时对象
     // 如果这里依然卡死，100% 证明 guide_dog[i] 的内存地址是非法的！
-    guide_dog[i] = empty_node; 
-}
+    guide_dog[i] = empty_node;
+  }
   comm.is_got_dogpath_from_pc = true;
 }
 
@@ -234,7 +290,7 @@ void CommCenter::SendKFStoPC()
 
   // 现在发送真实的 uint8_t 数组，长度也从 48 变成了 12
   pc.SendKFSData(packed_payload, 12);
-  ;
+
   // monit.LogSpec("send KFSdata to PC");
 }
 
