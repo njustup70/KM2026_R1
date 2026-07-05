@@ -6,7 +6,8 @@
 #include "System.hpp"
 #include "StateCore.hpp"
 
+#if Current_Mode == Mode_Hidden_Treasures && Halve == Red_Halve
 // 初始化接口
 void HiddenTreasuresGragh_Init(void);
-
+#endif
 #endif

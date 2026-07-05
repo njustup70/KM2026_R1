@@ -975,6 +975,18 @@ void R1Block::AnyToMiddleGrid()
   chassis.MoveAt({10.75, 4.85});
 }
 
+// 后面可以接FromMiddleToAny
+void R1Block::AnyToMiddleGrid_Blue()
+{
+  // 需要测试参数
+  chassis.RotateAt(-1.57);
+  Seq::WaitUntil([&]()
+                 { return (chassis._Rotating() == 1); });
+
+  chassis.MoveAt({10.75, 1.15});
+}
+
+
 // 包括吐块和出洞
 void R1Block::PutBlock()
 {

@@ -194,6 +194,7 @@ public:
   void PrePut();
   void FromMiddleToAny();
   void AnyToMiddleGrid();
+  void AnyToMiddleGrid_Blue();
   void PutBlock();
   void GetGroundBlock();
 
