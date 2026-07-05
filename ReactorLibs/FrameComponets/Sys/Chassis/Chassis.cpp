@@ -4,6 +4,8 @@
 #include "farcon.hpp"
 #include "System.hpp"
 
+#include "ModeSelector.hpp" //拉屎...
+
 ChassisType &APP::chassis = ChassisType::GetInstance();
 using APP::chassis;
 using MOD::farcon;
@@ -136,7 +138,7 @@ void ChassisType::Update()
   {
     _ApplyPidTuner();
   }
- 
+
   // 遥控器控制逻辑
   if (farcon.toggle[1] == 1 && farcon.toggle[2] == 0 && farcon.toggle[3] == 0)
   {
@@ -205,7 +207,11 @@ void ChassisType::Update()
     targ_speed.x = -farcon.jys_value[3] * 1.0f / 100.f * _max_velo * _farcon_decaccqurate; // 前后
     targ_speed.y = -farcon.jys_value[2] * 1.0f / 100.f * _max_velo * _farcon_decaccqurate; // 左右
     Move(Vec2(targ_speed.x, targ_speed.y));
+#if Halve == Red_Halve
     chassis.RotateAt(-1.57f);
+#elif Halve == Blue_Halve
+    chassis.RotateAt(1.57f);
+#endif
   }
 
   if (control_mode == FIELD_LOCKYAW)
@@ -220,10 +226,10 @@ void ChassisType::Update()
 
     targ_speed.x = v_body.x;
     targ_speed.y = v_body.y;
-    
+
     // 下发XY轴执行速度
     Move(Vec2(targ_speed.x, targ_speed.y));
-    
+
     // 强制锁住全场朝向为 -1.57rad (-90度)
     chassis.RotateAt(-1.57f);
   }
