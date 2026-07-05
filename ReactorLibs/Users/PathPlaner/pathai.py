@@ -233,7 +233,7 @@ class RoboconSetupUI:
     def __init__(self, root):
         self.root = root
         self.root.title("ROBOCON UP70 - 赛前场控配置")
-        self.root.geometry("400x530") 
+        self.root.geometry("400x600") # 调整了窗口高度以适应新选项
         
         self.r1_blocks = []
         self.r2_blocks = []
@@ -241,11 +241,20 @@ class RoboconSetupUI:
         self.r2_path = []
         self.auto_dog_flag = 1
         self.priority_block = []
+        self.field_side = "Red" # 默认红半场
         self.ready = False
         
         self.block_states = {i: 0 for i in range(12)}
         self.colors = {0: "#ffffff", 1: "#ff9999", 2: "#99ccff", 3: "#e0e0e0"}
         self.labels = {0: "空", 1: "R1", 2: "R2", 3: "Fake"}
+        
+        # --- 新增：比赛半场选择 ---
+        tk.Label(root, text="比赛半场选择:", font=("Arial", 11, "bold")).pack(pady=(10, 5))
+        self.field_side_var = tk.StringVar(value="Red")
+        field_frame = tk.Frame(root)
+        field_frame.pack()
+        tk.Radiobutton(field_frame, text="红半场 (终点11)", variable=self.field_side_var, value="Red").pack(side=tk.LEFT, padx=10)
+        tk.Radiobutton(field_frame, text="蓝半场 (终点7)", variable=self.field_side_var, value="Blue").pack(side=tk.LEFT, padx=10)
         
         tk.Label(root, text="点击对应方块切换属性", font=("Arial", 14, "bold")).pack(pady=10)
         
@@ -295,6 +304,8 @@ class RoboconSetupUI:
         self.r1_blocks = [k for k, v in self.block_states.items() if v == 1]
         self.r2_blocks = [k for k, v in self.block_states.items() if v == 2]
         self.fake_block = [k for k, v in self.block_states.items() if v == 3]
+        
+        self.field_side = self.field_side_var.get() # 获取红蓝半场选择
         
         if len(self.fake_block) > 1:
             messagebox.showerror("配置错误", "Fake块数量不能超过1个！")
@@ -354,7 +365,12 @@ if __name__ == "__main__":
         exit()
         
     start_candidates = [2, 0, 16]
-    exit_node = 11
+    
+    # --- 新增：根据界面选择动态设置终点 ---
+    if app.field_side == "Blue":
+        exit_node = 7
+    else:
+        exit_node = 11
     
     r1_blocks = app.r1_blocks
     r2_blocks = app.r2_blocks
@@ -364,6 +380,8 @@ if __name__ == "__main__":
     priority_block = app.priority_block
     
     print("\n--- 读取配置与战术判定 ---")
+    print(f"阵营选择: {'红半场' if app.field_side == 'Red' else '蓝半场'}")
+    print(f"终点过道: {exit_node}")
     print(f"R1 块: {r1_blocks}")
     print(f"R2 块: {r2_blocks}")
     print(f"假 块: {fake_block}")
