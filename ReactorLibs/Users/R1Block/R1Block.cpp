@@ -116,7 +116,7 @@ void R1Block::_GetLiftOrigin()
   if (!_lift_l_origined || !_lift_r_origined)
   {
     if (runed_tick > 60)
-      shared_probe_code += 200;
+      shared_probe_code += 300;
     else if (runed_tick > 30)
       shared_probe_code += 65;
     else
@@ -825,6 +825,7 @@ void R1Block::ReleaseBlock(int auto_flag)
     chassis.MoveRelative({float(Block_Sick_lf[1] - 0.3), 0});
     Seq::WaitUntil([&]()
                    { return (chassis._Walking() == 1); }); // 往后走一步，退洞
+
     Seq::WaitUntil([&]()
                    { return (farcon.button_first_half[6] == 1); }); // 往后走一步，退洞
   }
@@ -947,6 +948,177 @@ void R1Block::ReleaseBlock(int auto_flag)
 
   //	      SetTargetState(release_strectch_distance[1], release_strectch_distance[1], 0.0f, 0.0f, realse_block_height, realse_block_height);
   // 初始化吐块流程参数
+}
+////*****************技能赛***********//
+
+void R1Block::PrePut()
+{
+  Seq::WaitUntil([&]()
+                 { return (_lift_origined == 1); }); // 往后走一步，退洞
+  Seq::WaitUntil([&]()
+                 { return (farcon.button_first_half[6] == 1); }); // 往后走一步，退洞
+
+  Clamp_block();
+  Seq::Wait(1);
+  // 从 0 平滑移动到目标位置，总耗时 4.0 秒，切分 100 步完成
+  SmoothMoveLiftToTarget(0, realse_block_height, 3, 100);
+  Seq::Wait(1);
+}
+void R1Block::FromMiddleToAny()
+{
+  static int put_dposition = 1;
+
+  while (farcon.button_middle[2][1] != 1)
+  {
+    if (farcon.button_middle[3][0] == 1)
+    {
+      put_dposition = 0;
+    }
+    else if (farcon.button_middle[3][2] == 1)
+    {
+      put_dposition = 2;
+    }
+    else if (farcon.button_middle[3][1] == 1)
+    {
+      put_dposition = 1;
+    }
+    Seq::Wait(0.01);
+  }
+  // 放左边块
+  if (put_dposition == 0)
+  {
+    chassis.MoveRelative({0, 0.54});
+    Seq::WaitUntil([&]()
+                   { return (chassis._Walking() == 1); }); // 走到第一个块
+  }
+  // 放右边块
+  else if (put_dposition == 2)
+  {
+    chassis.MoveRelative({0, -0.54});
+    Seq::WaitUntil([&]()
+                   { return (chassis._Walking() == 1); }); // 走到第三个块
+  }
+  // 放中间块
+  else if (put_dposition == 1)
+  {
+  }
+  chassis.MoveRelative({0.5, 0});
+  Seq::WaitUntil([&]()
+                 { return (chassis._Walking() == 1); }); // 往前走一步
+}
+// 后面可以接FromMiddleToAny
+void R1Block::AnyToMiddleGrid()
+{
+  // 需要测试参数
+  chassis.RotateAt(1.57);
+  Seq::WaitUntil([&]()
+                 { return (chassis._Rotating() == 1); });
+
+  chassis.MoveAt({10.75, 4.85});
+}
+
+// 后面可以接FromMiddleToAny
+void R1Block::AnyToMiddleGrid_Blue()
+{
+  // 需要测试参数
+  chassis.RotateAt(-1.57);
+  Seq::WaitUntil([&]()
+                 { return (chassis._Rotating() == 1); });
+
+  chassis.MoveAt({10.75, 1.15});
+}
+
+
+// 包括吐块和出洞
+void R1Block::PutBlock()
+{
+  // ************************开始吐块**********************//
+  // SetTargetState(release_strectch_distance[1], release_strectch_distance[1], 0.0f, 0.0f, realse_block_height, realse_block_height);
+  Clamp_block();
+  suckmotor[0].SetSpd(suck_speed);
+  suckmotor[1].SetSpd(-suck_speed);
+
+  Seq::WaitUntil([&]()
+                 { return block_exist[2] == 0; }); // 检测到没有块在上面的时候
+  SetTargetStretch(release_strectch_distance[0], release_strectch_distance[0]);
+  Seq::WaitUntil([&]()
+                 { return block_exist[0] == 1; }); // 检测到没有块在上面的时候
+  Seq::WaitUntil([&]()
+                 { return block_exist[0] == 0; }); // 检测到没有块在上面的时候
+  suckmotor[0].SetSpd(0);
+  suckmotor[1].SetSpd(0);
+  Loosen_block(); // 松
+  Seq::Wait(1);
+  SetTargetStretch(0, 0);
+  Seq::WaitUntil([&]()
+                 { return ((stretchmotor[0].IsReached() == 1) && (stretchmotor[1].IsReached() == 1)); }); // 检测到最外面到了
+
+  chassis.MoveRelative({-0.5, 0});
+  Seq::WaitUntil([&]()
+                 { return (chassis._Walking() == 1); }); // 出洞                                                                                                 // 吐完块
+}
+
+void R1Block::GetGroundBlock()
+{
+  // 取块动作等待
+  Seq::WaitUntil([&]()
+                 { return (farcon.button_first_half[5] == 1); });
+
+  SmoothMoveLiftToTarget(realse_block_height, 0, 3, 100); // 差一个高度变化
+  Seq::WaitUntil([&]()
+                 { return ((liftmotor[0].IsReached() == 1) && (liftmotor[1].IsReached() == 1)); }); // 检测到最外面到了
+
+  Loosen_block();
+  Seq::Wait(1);
+  if (block_detect[0] == 1)
+  {
+    // Vec2 rel_xy = {0, 0.02};
+    Spd = Vec2{0, 0.05};
+    aim_right = 0;
+    Seq::WaitUntil([&]()
+                   { return block_detect[1] == 1; });
+    Spd = Vec2{0, -0.05};
+    Seq::Wait(0.5);
+    chassis.Move({0, 0});
+
+    aim_right = 1;
+  }
+  else if (block_detect[1] == 1)
+  {
+    // Vec2 rel_xy = {0, -0.02};
+    Spd = Vec2{0, -0.05};
+    aim_right = 0;
+    Seq::WaitUntil([&]()
+                   { return block_detect[0] == 1; });
+    Spd = Vec2{0, 0.05};
+    Seq::Wait(0.5);
+    chassis.Move({0, 0});
+    aim_right = 1;
+  }
+  chassis.Move({0, 0});
+
+  suckmotor[0].SetSpd(-0.8 * suck_speed);
+  suckmotor[1].SetSpd(0.8 * suck_speed);
+  Seq::Wait(1);
+
+  SetTargetStretch(stretch_distance[1], stretch_distance[1]);
+  Seq::WaitUntil([&]()
+                 { return ((stretchmotor[0].IsReached() == 1) && (stretchmotor[1].IsReached() == 1)); }); // 检测到最外面到了
+  Seq::Wait(1);
+
+  Clamp_block(); // 夹紧
+  Seq::Wait(1);
+  SmoothMoveStretchToTarget(stretch_distance[1], 0, 2, 10);
+
+  Seq::WaitUntil([&]()
+                 { return (block_exist[2] == 1); }); // 检测到最里面到了
+
+  suckmotor[0].SetSpd(0);
+  suckmotor[1].SetSpd(0);
+
+  // 取完块
+
+  SmoothMoveLiftToTarget(0, realse_block_height, 3, 100); // 差一个高度变化
 }
 
 void R1Block::Action_LiftToHeight(float height)

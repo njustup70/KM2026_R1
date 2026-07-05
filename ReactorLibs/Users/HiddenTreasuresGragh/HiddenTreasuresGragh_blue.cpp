@@ -1,12 +1,12 @@
 /**
  * @file HiddenTreasuresGraph.cpp
- * @brief RC26赛季技能挑战赛--九宫藏宝
+ * @brief RC26赛季技能挑战赛--九宫藏宝蓝场
  */
 #include "ModeSelector.hpp"
 
-#if Current_Mode == Mode_Hidden_Treasures&& Halve == Red_Halve
+#if Current_Mode == Mode_Hidden_Treasures&& Halve == Blue_Halve
 
-#include "HiddenTreasuresGragh.hpp"
+#include "HiddenTreasuresGragh_blue.hpp"
 #include "PathPlaner.hpp"
 #include "System.hpp"
 #include "Chassis.hpp"
@@ -26,17 +26,16 @@ using namespace MOD;
 using namespace MOVE;
 
 // 引用路径
-#include "HiddenTreasures_path1.hpp"
-
+#include "blue_dragon_hid_in.hpp"
 // 全局状态图对象
-StateGraph HT_flow{"HiddenTreasuresGragh"};
+StateGraph HT_flow{"HiddenTreasuresGragh_blue"};
 
 //**************************************三区状态块*******************************************************//
 // 重试区域自动规划路径跑到九宫格前面中间
 void Action_PrePut(StateCore *core)
 {
   r1block.PrePut();
-  MOVE::MoveToTargPos(HiddenInPath); // 从重试点到正中间
+  MOVE::MoveToTargPos(Hidden_Blue_InPath); // 从重试点到正中间
 
   state_core.GetCurState()->Complete = true;
 }
@@ -58,7 +57,7 @@ void Action_InPlantoGetGroundBlock(StateCore *state_core)
   Seq::WaitUntil([&]()
                  { return (farcon.button_first_half[5] == 1); });
 
-  chassis.MoveAt({10.9, 2.60});
+  chassis.MoveAt({10.9, 3.4});
   Seq::WaitUntil([&]()
                  { return (chassis._Walking() == 1); });
 
@@ -67,7 +66,7 @@ void Action_InPlantoGetGroundBlock(StateCore *state_core)
 }
 
 // 到对应格子前面
-void Action_freetogrid(StateCore *state_core)
+void Action_FreeToGrid(StateCore *state_core)
 {
   static int freeput_pos = 1;
 
@@ -88,25 +87,25 @@ void Action_freetogrid(StateCore *state_core)
     Seq::Wait(0.01);
   }
 
-  chassis.RotateAt(1.57);
+  chassis.RotateAt(-1.57);
   Seq::WaitUntil([&]()
                  { return (chassis._Rotating() == 1); });
 
   if (freeput_pos == 0)
   {
-    chassis.MoveAt({10.21, 4.85});
+    chassis.MoveAt({10.21, 1.15});
     Seq::WaitUntil([&]()
                    { return (chassis._Walking() == 1); });
   }
   else if (freeput_pos == 2)
   {
-    chassis.MoveAt({11.29, 4.85});
+    chassis.MoveAt({11.29, 1.15});
     Seq::WaitUntil([&]()
                    { return (chassis._Walking() == 1); });
   }
   else if (freeput_pos == 1)
   {
-        chassis.MoveAt({10.75, 4.85});
+        chassis.MoveAt({10.75, 1.15});
     Seq::WaitUntil([&]()
                    { return (chassis._Walking() == 1); });
   }
@@ -129,10 +128,12 @@ void Action_FreeGetBlock(StateCore *state_core)
 }
 
 // ================================初始化========================================================================
-void HiddenTreasuresGragh_Init(void)
+void HiddenTreasuresGragh_Blue_Init(void)
 {
-      monit.LogWarning("this is Red HiddenTreasures!");
   // 按照正常的规划
+
+    monit.LogWarning("this is Blue HiddenTreasures!");
+
   StateBlock &s_put_pre = HT_flow.AddState("PrePutBlock");
   StateBlock &s_planput = HT_flow.AddState("PutBlock"); // 不同的
   StateBlock &s_planpickground = HT_flow.AddState("GetGroundBlock");
@@ -147,7 +148,7 @@ void HiddenTreasuresGragh_Init(void)
   s_planpickground.StateAction = Action_InPlantoGetGroundBlock;
 
   // 自由搏击
-  s_free_togrid.StateAction = Action_freetogrid;
+  s_free_togrid.StateAction = Action_FreeToGrid;
   s_free_put.StateAction = Action_FreePut;
   s_free_pick.StateAction = Action_FreeGetBlock;
 
