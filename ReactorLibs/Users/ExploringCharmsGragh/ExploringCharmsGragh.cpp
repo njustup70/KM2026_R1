@@ -202,12 +202,12 @@ void Action_Planning(StateCore *state_core)
 
   Seq::Wait(2.0f);
 
-  // monit.LogSpec("is_got_dogpath_from_pc == %d", comm.is_got_dogpath_from_pc);
+  monit.LogSpec("is_got_dogpath_from_pc == %d", comm.is_got_dogpath_from_pc);
   
 	comm.ProcessGuideDogData();
 
-  // Seq::WaitUntil([]() -> bool
-  //                { return comm.is_got_dogpath_from_pc; });
+  Seq::WaitUntil([]() -> bool
+                 { return comm.is_got_dogpath_from_pc; });
 
   monit.LogSpec("get pc == 1 ! ");
 

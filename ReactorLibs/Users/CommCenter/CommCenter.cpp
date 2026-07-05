@@ -136,7 +136,7 @@ void CommCenter::ProcessGuideDogData()
 
   // 2. 立即清除标志位，允许中断接收下一帧数据
   g_guide_dog_data_ready = false;
-  // monit.LogSpec("g_guide_dog_data_ready");
+  monit.LogSpec("g_guide_dog_data_ready");
   // 3. 将全局变量提取到局部，准备解析
   uint8_t func = g_guide_dog_func;
   uint8_t len = g_guide_dog_len;
