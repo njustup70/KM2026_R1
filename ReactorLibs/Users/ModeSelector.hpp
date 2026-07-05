@@ -3,6 +3,9 @@
 #define Mode_Exploring_the_Charms 2
 #define Mode_Hidden_Treasures    3 
 
+#define Red_Halve 1
+#define Blue_Halve 2
+
 // ============请选取你的厕所(比赛模式) :)================
 // 修改宏定义
 // 0 = Test_Degenerate 简并模式测试用 
@@ -11,7 +14,7 @@
 // 3 = Hidden_Treasures九宫藏宝
 
 #define Current_Mode Mode_Exploring_the_Charms
-
+#define Halve Blue_Halve
 // =====================================================
 
 //用于代码运行时的逻辑切换
