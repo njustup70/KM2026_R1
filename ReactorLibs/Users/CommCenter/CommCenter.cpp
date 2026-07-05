@@ -65,11 +65,6 @@ void CommCenter::Update()
     // _use_slam_data = false;
     // System.SetPositionSource(System.odometer.transform);
   }
-
-  if (farcon.button_second_half[14 - 8 - 1] == 1)
-  {
-    SendKFStoPC();
-  }
 }
 
 /**==========================发给工控机========================= */
