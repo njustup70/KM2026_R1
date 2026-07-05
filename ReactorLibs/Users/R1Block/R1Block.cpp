@@ -715,14 +715,14 @@ void R1Block::
   suckmotor[1].SetSpd(suck_speed);
   // 实际取块
   Clamp_block(); // 夹紧
-
+  Seq::Wait(2);
   // 可优化自动取块
 
   // 取第一个块
   if (now_get_block == 0)
   {
-    SmoothMoveStretchToTarget(stretch_distance[1], 0, 3, 10);
-
+    SmoothMoveStretchToTarget(stretch_distance[1], 0, 2, 10);
+    Seq::Wait(2);
     suckmotor[0].SetSpd(0);
     suckmotor[1].SetSpd(0);
     Clamp_block(); // 夹紧
@@ -732,8 +732,8 @@ void R1Block::
   // 取第二个块
   else if (now_get_block == 1)
   {
-    SmoothMoveStretchToTarget(stretch_distance[1], 0, 3, 10);
-
+    SmoothMoveStretchToTarget(stretch_distance[1], 0, 2, 10);
+    Seq::Wait(2);
     suckmotor[0].SetSpd(0);
     suckmotor[1].SetSpd(0);
     Seq::Wait(1);
@@ -743,8 +743,8 @@ void R1Block::
   // 取第三个块
   else if (now_get_block == 2)
   {
-    SmoothMoveStretchToTarget(stretch_distance[1], stretch_distance[0], 3, 10);
-
+    SmoothMoveStretchToTarget(stretch_distance[1], stretch_distance[0], 2, 10);
+    Seq::Wait(2);
     suckmotor[0].SetSpd(0);
     suckmotor[1].SetSpd(0);
     Seq::Wait(1);

@@ -151,7 +151,7 @@ void Action_Planning(StateCore *state_core)
   //   int block_priority[3] = {-1, -1, -1};
   // 调用路径规划
   //   GetPathDog(meilin_block,guide_dog,1);
-//  GetPathDog(farcon.KFS_int, guide_dog, true);
+  GetPathDog(farcon.KFS_int, guide_dog, true);
   // GetPathDog(&kfs_point, guide_dog, true,&block_priority[0]);
 
   state_core->GetCurState()->Complete = true;
