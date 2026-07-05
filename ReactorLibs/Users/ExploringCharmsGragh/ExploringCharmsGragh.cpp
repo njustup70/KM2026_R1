@@ -103,7 +103,7 @@ void GetRodandDock(StateCore *state_core)
 
   // 左右位置定了可以伸出Bow了
   comm.SendActionCommand(ActionType::BOW);
-  monit.LogInfo("Bow At:(%.3f,%.3f)", comm.slam_pos.x, comm .slam_pos.y);
+  monit.LogInfo("Bow At:(%.3f,%.3f)", comm.slam_pos.x, comm.slam_pos.y);
 
   Seq::Wait(1);
   // Seq::WaitUntil([]() -> bool
@@ -168,7 +168,7 @@ int GetBlockHeight(int index_id)
   {
     return 200; // 200高度
   }
-  else if (index_id == 4 )
+  else if (index_id == 4)
   {
     return 600; // 600高度
   }
@@ -204,8 +204,8 @@ void Action_Planning(StateCore *state_core)
   Seq::Wait(2.0f);
 
   monit.LogSpec("is_got_dogpath_from_pc == %d", comm.is_got_dogpath_from_pc);
-  
-	comm.ProcessGuideDogData();
+
+  comm.ProcessGuideDogData();
 
   Seq::WaitUntil([]() -> bool
                  { return comm.is_got_dogpath_from_pc; });
@@ -322,7 +322,6 @@ void Action_ManualGetBlock(StateCore *state_core)
   state_core->GetCurState()->Complete = true;
 }
 
-
 void Action_OverWait(StateCore *state_core)
 {
 }
@@ -330,32 +329,30 @@ void Action_OverWait(StateCore *state_core)
 // ================================初始化========================================================================
 void ExploringCharmsGragh_Init(void)
 {
-  // StateBlock &s_chooserod = EC_flow.AddState("ChooseRod");
-  // StateBlock &s_rodanddock = EC_flow.AddState("GetRodandDock");
+  StateBlock &s_chooserod = EC_flow.AddState("ChooseRod");
+  StateBlock &s_rodanddock = EC_flow.AddState("GetRodandDock");
 
   StateBlock &s_plan = EC_flow.AddState("Planning");
   StateBlock &s_move = EC_flow.AddState("NavtoBlock");
 
   StateBlock &s_auto_pick = EC_flow.AddState("AutoGetBlocking");
   StateBlock &s_manual_pick = EC_flow.AddState("ManualGetBlocking");
-    StateBlock &s_overwait = EC_flow.AddState("OverWait");
+  StateBlock &s_overwait = EC_flow.AddState("OverWait");
 
-
-  // s_chooserod.StateAction = ChooseRod;
-  // s_rodanddock.StateAction = GetRodandDock;
+  s_chooserod.StateAction = ChooseRod;
+  s_rodanddock.StateAction = GetRodandDock;
 
   s_plan.StateAction = Action_Planning;
   s_move.StateAction = Action_NavToBlock;
 
   s_auto_pick.StateAction = Action_AutoGetBlock;
   s_manual_pick.StateAction = Action_ManualGetBlock;
-    s_overwait.StateAction = Action_OverWait;
-
+  s_overwait.StateAction = Action_OverWait;
 
   // // 状态转移关系
-  // s_chooserod.LinkTo(&s_chooserod.Complete, s_rodanddock);
-  // s_rodanddock.LinkTo(&is_assemble, s_chooserod);
-  // s_rodanddock.LinkTo(&s_rodanddock.Complete, s_plan);
+  s_chooserod.LinkTo(&s_chooserod.Complete, s_rodanddock);
+  s_rodanddock.LinkTo(&is_assemble, s_chooserod);
+  s_rodanddock.LinkTo(&s_rodanddock.Complete, s_plan);
   s_plan.LinkTo(&s_plan.Complete, s_move);
 
   // 自动与手动
@@ -364,8 +361,7 @@ void ExploringCharmsGragh_Init(void)
   s_move.LinkTo(&s_move.Complete, s_move);
   s_move.LinkTo(&manual_pick_flag, s_manual_pick);
   s_auto_pick.LinkTo(&s_auto_pick.Complete, s_move);
-    s_move.LinkTo(&is_final_goal_reached, s_overwait);
-
+  s_move.LinkTo(&is_final_goal_reached, s_overwait);
 
   s_manual_pick.LinkTo(&s_manual_pick.Complete, s_manual_pick);
 

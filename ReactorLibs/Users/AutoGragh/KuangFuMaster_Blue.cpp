@@ -4,9 +4,9 @@
  * @brief RC26赛季武林探秘的电控状态机逻辑实现:半自动模式
  */
 #include "ModeSelector.hpp"
-#if Current_Mode == Mode_KungFu_Master && Halve == Red_Halve // AutoGraph武林探秘
+#if Current_Mode == Mode_KungFu_Master && Halve == Blue_Halve // AutoGraph武林探秘
 
-#include "AutoGragh.hpp"
+#include "KuangFuMaster_Blue.hpp"
 #include "PathPlaner.hpp"
 #include "System.hpp"
 #include "Chassis.hpp"
@@ -250,7 +250,7 @@ void Action_LayBlock(StateCore *state_core)
 }
 
 // ================================初始化========================================================================
-void AutoGragh_Init(void)
+void KuangFuMaster_Blue_Init(void)
 {
   // 1.添加状态块
   //  StateBlock& s_choosearea = auto_flow.AddState("Choose Area");
