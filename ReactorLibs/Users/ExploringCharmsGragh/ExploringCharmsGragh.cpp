@@ -19,7 +19,7 @@
 #include "rod1.hpp"
 #include "rod2.hpp"
 #include "rod3.hpp"
-#include "a1_todock2.hpp"
+#include "a1_todock.hpp"
 #include "a1_toassemble.hpp"
 
 using namespace APP;
@@ -77,6 +77,7 @@ void ChooseRod(StateCore *state_core)
 
 void GetRodandDock(StateCore *state_core)
 {
+  is_dock_done = false;
   if (is_rod1)
   {
     MOVE::MoveToTargPos(Rod1);
@@ -98,12 +99,13 @@ void GetRodandDock(StateCore *state_core)
   while (Hardware::miniyellow_aim_rod.Read() != 0)
   {
     chassis.Move(Vec3(0, -0.1, 0));
+    Seq::Wait(0.005f);
   };
   chassis.Move(0);
 
   // 左右位置定了可以伸出Bow了
   comm.SendActionCommand(ActionType::BOW);
-  monit.LogInfo("Bow At:(%.3f,%.3f)", comm.slam_pos.x, comm .slam_pos.y);
+  monit.LogInfo("Bow At:(%.3f,%.3f)", comm.slam_pos.x, comm.slam_pos.y);
 
   Seq::Wait(1);
   // Seq::WaitUntil([]() -> bool
@@ -123,8 +125,21 @@ void GetRodandDock(StateCore *state_core)
 
   // 对接
   // 等待人类判断对接完成，发送光通信指令
-  Seq::WaitUntil([]() -> bool
-                 { return farcon.button_second_half[16 - 8 - 1] == 1; });
+  // Seq::WaitUntil([]() -> bool
+  //                { return farcon.button_second_half[16 - 8 - 1] == 1; });
+  while (!is_dock_done)
+  {
+    if (farcon.button_first_half[5 - 1])
+      comm.SendActionCommand(ActionType::SpearUp);
+    if (farcon.button_first_half[6 - 1])
+      comm.SendActionCommand(ActionType::SpearDown);
+    if (farcon.button_first_half[7 - 1])
+      comm.SendActionCommand(ActionType::SpearLeft);
+    if (farcon.button_first_half[8 - 1])
+      comm.SendActionCommand(ActionType::SpearRight);
+    if (farcon.button_second_half[9 - 8 - 1])
+      comm.SendActionCommand(ActionType::GiveUpDock);
+  }
 
   comm.SendActionCommand(ActionType::CLAMP_2_OFF);
   Seq::WaitUntil([]() -> bool
@@ -168,7 +183,7 @@ int GetBlockHeight(int index_id)
   {
     return 200; // 200高度
   }
-  else if (index_id == 4 || index_id == 15)
+  else if (index_id == 4)
   {
     return 600; // 600高度
   }
@@ -187,16 +202,11 @@ void Action_Planning(StateCore *state_core)
   Seq::WaitUntil([]() -> bool
                  { return farcon.button_second_half[0] == 1; });
 
-  monit.LogSpec("button 9 ! ");
+  comm.SendKFStoPC();
 
   comm.SendKFStoPC();
-  monit.LogSpec("sendkfs x1 ! ");
 
   comm.SendKFStoPC();
-  monit.LogSpec("sendkfs x2 ! ");
-
-  comm.SendKFStoPC();
-  monit.LogSpec("sendkfs x3 ! ");
 
   comm.SendKFStoPC();
   monit.LogSpec("sendkfs x4 ! ");
@@ -204,8 +214,8 @@ void Action_Planning(StateCore *state_core)
   Seq::Wait(2.0f);
 
   monit.LogSpec("is_got_dogpath_from_pc == %d", comm.is_got_dogpath_from_pc);
-  
-	comm.ProcessGuideDogData();
+
+  comm.ProcessGuideDogData();
 
   Seq::WaitUntil([]() -> bool
                  { return comm.is_got_dogpath_from_pc; });
@@ -322,7 +332,6 @@ void Action_ManualGetBlock(StateCore *state_core)
   state_core->GetCurState()->Complete = true;
 }
 
-
 void Action_OverWait(StateCore *state_core)
 {
 }
@@ -338,8 +347,7 @@ void ExploringCharmsGragh_Init(void)
 
   StateBlock &s_auto_pick = EC_flow.AddState("AutoGetBlocking");
   StateBlock &s_manual_pick = EC_flow.AddState("ManualGetBlocking");
-    StateBlock &s_overwait = EC_flow.AddState("OverWait");
-
+  StateBlock &s_overwait = EC_flow.AddState("OverWait");
 
   s_chooserod.StateAction = ChooseRod;
   s_rodanddock.StateAction = GetRodandDock;
@@ -349,8 +357,7 @@ void ExploringCharmsGragh_Init(void)
 
   s_auto_pick.StateAction = Action_AutoGetBlock;
   s_manual_pick.StateAction = Action_ManualGetBlock;
-    s_overwait.StateAction = Action_OverWait;
-
+  s_overwait.StateAction = Action_OverWait;
 
   // 状态转移关系
   s_chooserod.LinkTo(&s_chooserod.Complete, s_rodanddock);
@@ -364,8 +371,7 @@ void ExploringCharmsGragh_Init(void)
   s_move.LinkTo(&s_move.Complete, s_move);
   s_move.LinkTo(&manual_pick_flag, s_manual_pick);
   s_auto_pick.LinkTo(&s_auto_pick.Complete, s_move);
-    s_move.LinkTo(&is_final_goal_reached, s_overwait);
-
+  s_move.LinkTo(&is_final_goal_reached, s_overwait);
 
   s_manual_pick.LinkTo(&s_manual_pick.Complete, s_manual_pick);
 

@@ -8,14 +8,21 @@
 
 enum class ActionType : uint8_t 
 {
-    IDLE = 0,
-    BOW = 1,                //对应C板的rod库方法
-    CLAMP = 2,
-    PICK = 3,
-    CLAMP_2_ON = 4,
+    IDLE = 0,     
+    BOW = 1,     
+    CLAMP = 2,     
+    PICK = 3,     
+    CLAMP_2_ON = 4, 
     CLAMP_2_OFF = 5,
     AWAYFROMDOCK = 6,
 
+    //由a板发送指令触发光通信，a板按button -> a板状态机里检测按键
+    //这样设计使得六个光通信按键在其他区可以被释放，不至于c板一直在等按键，按键全流程都被占用
+    SpearUp = 7,
+    SpearDown = 8,
+    SpearLeft = 9,
+    SpearRight = 10,
+    GiveUpDock = 11,
 };
 
 void R1CBoardCallback(uint8_t task_id, const uint8_t *payload, uint8_t payload_len, void *user_ctx);
