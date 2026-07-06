@@ -365,13 +365,13 @@ void AckCBoardCallback(uint8_t task_id, const uint8_t *payload, uint8_t payload_
   // 处理气路有关的
   else if (payload[0] == 1)
   {
-    if (payload[1] == 1)
-    {
-      comm.rodair_state = true;
-    }
-    else
-    {
-      comm.rodair_state = false;
-    }
+//    if (payload[1] == 1)
+//    {
+//      comm.rodair_state = true;
+//    }
+//    else
+//    {
+//      comm.rodair_state = false;
+//    }
   }
 }
