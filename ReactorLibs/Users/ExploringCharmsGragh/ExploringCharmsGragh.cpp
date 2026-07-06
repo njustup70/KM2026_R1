@@ -359,7 +359,7 @@ void ExploringCharmsGragh_Init(void)
   s_manual_pick.StateAction = Action_ManualGetBlock;
   s_overwait.StateAction = Action_OverWait;
 
-  // 状态转移关系
+  // // 状态转移关系
   s_chooserod.LinkTo(&s_chooserod.Complete, s_rodanddock);
   s_rodanddock.LinkTo(&is_assemble, s_chooserod);
   s_rodanddock.LinkTo(&s_rodanddock.Complete, s_plan);
