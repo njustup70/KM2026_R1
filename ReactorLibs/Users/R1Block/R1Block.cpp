@@ -807,35 +807,9 @@ void R1Block::ReleaseBlock(int auto_flag)
 {
   appstate = STATE_RELEASEBLOCK;
 
-  // 舵机位置设置
   // R2死了
 #ifdef R2_dead
-  ///////////进洞自动操作
-  // if (auto_flag == 1)
-  // {
-  //   // 向右边走一步对准洞
-  //   Seq::WaitUntil([&]()
-  //                  { return (farcon.button_first_half[6] == 1); });
-  //   Seq::WaitUntil([&]()
-  //                  { return ((Block_Sick_lf[0] <= 0.5) && (Block_Sick_lf[0] >= 0.2)); });
 
-  //   chassis.MoveRelative({0, -float(0.245 - Block_Sick_lf[0])});
-  //   Seq::WaitUntil([&]()
-  //                  { return (chassis._Walking() == 1); }); // 往后走一步，退洞
-  //   // 向前走一步进洞
-  //   Seq::WaitUntil([&]()
-  //                  { return (farcon.button_first_half[6] == 1); }); // 往后走一步，退洞
-  //   Seq::WaitUntil([&]()
-  //                  { return ((Block_Sick_lf[1] <= 1) && (Block_Sick_lf[1] >= 0.2)); });
-  //   chassis.MoveRelative({float(Block_Sick_lf[1] - 0.3), 0});
-  //   Seq::WaitUntil([&]()
-  //                  { return (chassis._Walking() == 1); }); // 往后走一步，退洞
-
-  //   Seq::WaitUntil([&]()
-  //                  { return (farcon.button_first_half[6] == 1); }); // 往后走一步，退洞
-  // }
-  // suckmotor[0].SetSpd(0);
-  // suckmotor[1].SetSpd(0);
   static int now_put_block = 0;
   if (block_exist[2] == 1 && block_exist[1] == 1 && block_exist[0] == 1)
   {

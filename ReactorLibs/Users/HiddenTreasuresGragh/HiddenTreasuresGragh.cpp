@@ -17,9 +17,6 @@
 #include "Logic.hpp"
 
 // 更改PATHS
-#include "a1_torod.hpp"
-#include "a1_todock.hpp"
-#include "R1_area3.hpp"
 
 using namespace APP;
 using namespace MOD;
