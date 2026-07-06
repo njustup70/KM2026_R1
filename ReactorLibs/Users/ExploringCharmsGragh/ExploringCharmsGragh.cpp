@@ -149,14 +149,16 @@ void GoFetchRod(StateCore *state_core)
   }
 
   // 先往前怼到杆架子
-  chassis.Move(Vec3(0.15, 0, 0), 1);
+  chassis.Move(Vec3(0.075, 0, 0), 1);
   // 锁 yaw 角
-  chassis.RotateAt(3.14); 
+  chassis.RotateAt(3.14);
+
+  Seq::Wait(1.0f);
 
   // 再左右微调，小小黄上拉，0为识别到杆了
   while (Hardware::miniyellow_aim_rod.Read() != 0)
   {
-    chassis.Move(Vec3(0, -0.05, 0));
+    chassis.Move(Vec3(0.035, -0.035, 0));
     Seq::Wait(0.005f);
   };
 
@@ -231,6 +233,13 @@ void GoFetchRod(StateCore *state_core)
 
     // 机械臂收回
     comm.SendActionCommand(ActionType::PICK);
+
+    // 遥控器确认
+    while (MOD::farcon.button_first_half[0] != 1)
+    {
+      ResponseFarcon();
+      Seq::Wait(0.005f);
+    }
 
     rod_id++;
   }
@@ -428,7 +437,7 @@ static void ResponseFarcon()
   // 放弃对接
   if (farcon.button_second_half[0]) comm.SendActionCommand(ActionType::GiveUpDock);
   // 发送对接完成
-  if (farcon.button_second_half[4]) comm.SendActionCommand(ActionType::DockOK);     // ------这里需要新增发送对接完成
+  if (farcon.button_first_half[4]) comm.SendActionCommand(ActionType::DockOK);     // ------这里需要新增发送对接完成
 }
 
 
