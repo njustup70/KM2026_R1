@@ -19,7 +19,7 @@
 #include "rod1.hpp"
 #include "rod2.hpp"
 #include "rod3.hpp"
-#include "a1_todock2.hpp"
+#include "a1_todock.hpp"
 #include "a1_toassemble.hpp"
 
 using namespace APP;
@@ -77,6 +77,7 @@ void ChooseRod(StateCore *state_core)
 
 void GetRodandDock(StateCore *state_core)
 {
+  is_dock_done = false;
   if (is_rod1)
   {
     MOVE::MoveToTargPos(Rod1);
@@ -98,6 +99,7 @@ void GetRodandDock(StateCore *state_core)
   while (Hardware::miniyellow_aim_rod.Read() != 0)
   {
     chassis.Move(Vec3(0, -0.1, 0));
+    Seq::Wait(0.005f);
   };
   chassis.Move(0);
 
@@ -123,8 +125,21 @@ void GetRodandDock(StateCore *state_core)
 
   // 对接
   // 等待人类判断对接完成，发送光通信指令
-  Seq::WaitUntil([]() -> bool
-                 { return farcon.button_second_half[16 - 8 - 1] == 1; });
+  // Seq::WaitUntil([]() -> bool
+  //                { return farcon.button_second_half[16 - 8 - 1] == 1; });
+  while (!is_dock_done)
+  {
+    if (farcon.button_first_half[5 - 1])
+      comm.SendActionCommand(ActionType::SpearUp);
+    if (farcon.button_first_half[6 - 1])
+      comm.SendActionCommand(ActionType::SpearDown);
+    if (farcon.button_first_half[7 - 1])
+      comm.SendActionCommand(ActionType::SpearLeft);
+    if (farcon.button_first_half[8 - 1])
+      comm.SendActionCommand(ActionType::SpearRight);
+    if (farcon.button_second_half[9 - 8 - 1])
+      comm.SendActionCommand(ActionType::GiveUpDock);
+  }
 
   comm.SendActionCommand(ActionType::CLAMP_2_OFF);
   Seq::WaitUntil([]() -> bool
@@ -187,16 +202,11 @@ void Action_Planning(StateCore *state_core)
   Seq::WaitUntil([]() -> bool
                  { return farcon.button_second_half[0] == 1; });
 
-  monit.LogSpec("button 9 ! ");
+  comm.SendKFStoPC();
 
   comm.SendKFStoPC();
-  monit.LogSpec("sendkfs x1 ! ");
 
   comm.SendKFStoPC();
-  monit.LogSpec("sendkfs x2 ! ");
-
-  comm.SendKFStoPC();
-  monit.LogSpec("sendkfs x3 ! ");
 
   comm.SendKFStoPC();
   monit.LogSpec("sendkfs x4 ! ");
