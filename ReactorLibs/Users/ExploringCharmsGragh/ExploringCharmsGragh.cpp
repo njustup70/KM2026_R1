@@ -185,12 +185,15 @@ void GoFetchRod(StateCore *state_core)
   MOVE::MoveToTargPos(Area1ToDock);
 
   // 锁定Yaw角，并转手动（本图是红场图）
-  chassis.RotateAt(-1.571f);
+  chassis.LockYaw(-1.571f);
   while (MOD::farcon.button_first_half[0] != 1)
   {
     ResponseFarcon();
     Seq::Wait(0.005f);
   }
+  chassis.UnlockRotate();
+  comm.SendActionCommand(ActionType::CLAMP_2_OFF);
+  Seq::Wait(1);
 
   // 抬起机械臂
   comm.SendActionCommand(ActionType::AWAYFROMDOCK);
@@ -442,6 +445,8 @@ static void ResponseFarcon(float velo_k)
   // 发送对接完成
   if (farcon.button_first_half[4])
     comm.SendActionCommand(ActionType::DockOK); // ------这里需要新增发送对接完成
+  // 发送对接完成
+
 }
 
 #endif
