@@ -17,7 +17,8 @@ struct PathNode
     bool is_at_end=false;
 };
 
-void BuildXPoints(Vec2 X[X_COUNT]);      // 导出此函数，方便在初始化或者回调中调用
+void BuildXPoints_Red(Vec2 X[X_COUNT]);      // 导出此函数，方便在初始化或者回调中调用
+void BuildXPoints_Blue(Vec2 X[X_COUNT]); 
 
 extern PathNode guide_dog[MAX_PATH_DOG]; // 规范为 18 的定长数组
 extern Vec2 X_points[X_COUNT];           // 统一公开的18点全局坐标数组

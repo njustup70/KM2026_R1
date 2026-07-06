@@ -4,6 +4,8 @@
 #include "farcon.hpp"
 #include "System.hpp"
 
+#include "ModeSelector.hpp" //拉屎...
+
 ChassisType &APP::chassis = ChassisType::GetInstance();
 using APP::chassis;
 using MOD::farcon;
@@ -136,7 +138,7 @@ void ChassisType::Update()
   {
     _ApplyPidTuner();
   }
- 
+
   // 遥控器控制逻辑
   if (farcon.toggle[1] == 1 && farcon.toggle[2] == 0 && farcon.toggle[3] == 0)
   {
@@ -150,10 +152,10 @@ void ChassisType::Update()
   {
     control_mode = FIELD_LOCKYAW; // 锁定当前朝向，允许xy但不允许旋转
   }
-  else if (farcon.toggle[1] == 1 && farcon.toggle[3] == 1)
-  {
-    control_mode = UPHILL;
-  }
+  // else if (farcon.toggle[1] == 1 && farcon.toggle[3] == 1)
+  // {
+  //   control_mode = UPHILL;
+  // }
   else
   {
     control_mode = OPEN;
@@ -205,7 +207,11 @@ void ChassisType::Update()
     targ_speed.x = -farcon.jys_value[3] * 1.0f / 100.f * _max_velo * _farcon_decaccqurate; // 前后
     targ_speed.y = -farcon.jys_value[2] * 1.0f / 100.f * _max_velo * _farcon_decaccqurate; // 左右
     Move(Vec2(targ_speed.x, targ_speed.y));
+#if Halve == Red_Halve
     chassis.RotateAt(-1.57f);
+#elif Halve == Blue_Halve
+    chassis.RotateAt(1.57f);
+#endif
   }
 
   if (control_mode == FIELD_LOCKYAW)
@@ -220,22 +226,22 @@ void ChassisType::Update()
 
     targ_speed.x = v_body.x;
     targ_speed.y = v_body.y;
-    
+
     // 下发XY轴执行速度
     Move(Vec2(targ_speed.x, targ_speed.y));
-    
+
     // 强制锁住全场朝向为 -1.57rad (-90度)
     chassis.RotateAt(-1.57f);
   }
 
-  if (control_mode == UPHILL)
-  {
-    // 读取遥控器数据到底盘控制变量
-    targ_speed.x = -farcon.jys_value[3] * 1.0f / 100.f * _max_velo; // 前后
-    targ_speed.y = -farcon.jys_value[2] * 1.0f / 100.f * _max_velo; // 左右
-    Move(Vec2(targ_speed.x, targ_speed.y));
-    chassis.RotateAt(0.0f);
-  }
+  // if (control_mode == UPHILL)
+  // {
+  //   // 读取遥控器数据到底盘控制变量
+  //   targ_speed.x = -farcon.jys_value[3] * 1.0f / 100.f * _max_velo; // 前后
+  //   targ_speed.y = -farcon.jys_value[2] * 1.0f / 100.f * _max_velo; // 左右
+  //   Move(Vec2(targ_speed.x, targ_speed.y));
+  //   chassis.RotateAt(0.0f);
+  // }
 
   bool walking_complete = false; // 这个变量只在这一帧有用
   bool rotaing_complete = false;
@@ -272,16 +278,6 @@ void ChassisType::Update()
 
   // 安全锁倒计时
   _safe_lock_tick -= 5;
-
-  // 安全退debug
-  if (System.out_from_debugmode)
-  {
-    for (int i = 0; i < 4; i++)
-    {
-      motors[i].Neutral();
-      motors[i].driver.Disable();
-    }
-  }
 }
 
 void ChassisType::_UpdateChasOdom()
@@ -394,67 +390,67 @@ inline void ChassisType::_SendSpdToMotor()
 void ChassisType::_CalculateOmniMotorSpd()
 {
   // 用于上坡的同步环
-  if (control_mode == UPHILL)
-  {
-    // 1. 计算原本理论上的各个电机目标速度 (底盘线速度)
-    _motor_spd[0] = (-targ_speed.x + targ_speed.y) / (BSP_SQRT2) + targ_speed.z * ROTATE_RADIUS;
-    _motor_spd[1] = (targ_speed.x + targ_speed.y) / (BSP_SQRT2) + targ_speed.z * ROTATE_RADIUS;
-    _motor_spd[2] = (-targ_speed.x - targ_speed.y) / (BSP_SQRT2) + targ_speed.z * ROTATE_RADIUS;
-    _motor_spd[3] = (targ_speed.x - targ_speed.y) / (BSP_SQRT2) + targ_speed.z * ROTATE_RADIUS;
+  // if (control_mode == UPHILL)
+  // {
+  //   // 1. 计算原本理论上的各个电机目标速度 (底盘线速度)
+  //   _motor_spd[0] = (-targ_speed.x + targ_speed.y) / (BSP_SQRT2) + targ_speed.z * ROTATE_RADIUS;
+  //   _motor_spd[1] = (targ_speed.x + targ_speed.y) / (BSP_SQRT2) + targ_speed.z * ROTATE_RADIUS;
+  //   _motor_spd[2] = (-targ_speed.x - targ_speed.y) / (BSP_SQRT2) + targ_speed.z * ROTATE_RADIUS;
+  //   _motor_spd[3] = (targ_speed.x - targ_speed.y) / (BSP_SQRT2) + targ_speed.z * ROTATE_RADIUS;
 
-    // ======= 升级版：交叉耦合速度强同步环 (Cross-Coupling Synchronization) =======
+  //   // ======= 升级版：交叉耦合速度强同步环 (Cross-Coupling Synchronization) =======
 
-    // 1.1 计算当前 4 个电机实际速度(RPM)的绝对值平均数
-    float sum_real_rpm = 0.0f;
-    for (int i = 0; i < 4; i++)
-    {
-      sum_real_rpm += fabs((float)motors[i].driver.measure.speed_rpm);
-    }
-    float avg_real_rpm = sum_real_rpm / 4.0f; // 全车平均实际转速
+  //   // 1.1 计算当前 4 个电机实际速度(RPM)的绝对值平均数
+  //   float sum_real_rpm = 0.0f;
+  //   for (int i = 0; i < 4; i++)
+  //   {
+  //     sum_real_rpm += fabs((float)motors[i].driver.measure.speed_rpm);
+  //   }
+  //   float avg_real_rpm = sum_real_rpm / 4.0f; // 全车平均实际转速
 
-    // 1.2 引入交叉耦合控制系数 (这里只在上坡/重载时触发硬同步，平地大速度时不要干扰ADRC)
-    // 同步环增益 K_sync 可根据实车效果微调，建议范围 0.15f ~ 0.45f
-    const float K_sync = 0.35f;
+  //   // 1.2 引入交叉耦合控制系数 (这里只在上坡/重载时触发硬同步，平地大速度时不要干扰ADRC)
+  //   // 同步环增益 K_sync 可根据实车效果微调，建议范围 0.15f ~ 0.45f
+  //   const float K_sync = 0.35f;
 
-    // ======= 2. 逐个电机注入“差值补偿”，强行拉齐实际输出速度 =======
-    for (int i = 0; i < 4; i++)
-    {
-      motors[i].mode = MotorDJIMode::SpeedC;
+  //   // ======= 2. 逐个电机注入“差值补偿”，强行拉齐实际输出速度 =======
+  //   for (int i = 0; i < 4; i++)
+  //   {
+  //     motors[i].mode = MotorDJIMode::SpeedC;
 
-      // 基础目标 RPM
-      float base_target_rpm = (_motor_spd[i] * 60.0f) / (PI * WHEEL_DIAMETER) * motors[i].driver.redu_ratio;
+  //     // 基础目标 RPM
+  //     float base_target_rpm = (_motor_spd[i] * 60.0f) / (PI * WHEEL_DIAMETER) * motors[i].driver.redu_ratio;
 
-      // 当前电机的实际转速
-      float current_real_rpm = (float)motors[i].driver.measure.speed_rpm;
+  //     // 当前电机的实际转速
+  //     float current_real_rpm = (float)motors[i].driver.measure.speed_rpm;
 
-      // 大概给一个阈值
-      if (fabs(base_target_rpm) > 100.0f)
-      {
-        // 计算当前电机与全车平均实际速度的同步误差
-        // 注意：要带上目标速度的符号(方向)
-        float sign = (base_target_rpm >= 0.0f) ? 1.0f : -1.0f;
+  //     // 大概给一个阈值
+  //     if (fabs(base_target_rpm) > 100.0f)
+  //     {
+  //       // 计算当前电机与全车平均实际速度的同步误差
+  //       // 注意：要带上目标速度的符号(方向)
+  //       float sign = (base_target_rpm >= 0.0f) ? 1.0f : -1.0f;
 
-        // 同步差值 = (期望方向的平均转速) - (当前电机的实际转速)
-        float sync_error = (avg_real_rpm * sign) - current_real_rpm;
+  //       // 同步差值 = (期望方向的平均转速) - (当前电机的实际转速)
+  //       float sync_error = (avg_real_rpm * sign) - current_real_rpm;
 
-        // 将同步误差直接叠加到目标转速上
-        // 如果比大家都慢(卡死了)，sync_error 会很大且与目标同号，base_target_rpm 就会被强行拉大，逼迫 ADRC 输出极限电流
-        // 如果比大家都快(打滑了)，sync_error 会反向，base_target_rpm 就会被压低，强行刹车拉慢
-        base_target_rpm += K_sync * sync_error;
-      }
+  //       // 将同步误差直接叠加到目标转速上
+  //       // 如果比大家都慢(卡死了)，sync_error 会很大且与目标同号，base_target_rpm 就会被强行拉大，逼迫 ADRC 输出极限电流
+  //       // 如果比大家都快(打滑了)，sync_error 会反向，base_target_rpm 就会被压低，强行刹车拉慢
+  //       base_target_rpm += K_sync * sync_error;
+  //     }
 
-      // 最终限幅，防止计算过激超出电机的物理极限
-      if (base_target_rpm > 7000.0f)
-        base_target_rpm = 7000.0f;
-      if (base_target_rpm < -7000.0f)
-        base_target_rpm = -7000.0f;
+  //     // 最终限幅，防止计算过激超出电机的物理极限
+  //     if (base_target_rpm > 7000.0f)
+  //       base_target_rpm = 7000.0f;
+  //     if (base_target_rpm < -7000.0f)
+  //       base_target_rpm = -7000.0f;
 
-      // 正式写入电机
-      motors[i].SetSpd(base_target_rpm);
-    }
-  }
-  else
-  {
+  //     // 正式写入电机
+  //     motors[i].SetSpd(base_target_rpm);
+  //   }
+  // }
+  // else
+  // {
     // 计算x, y, w合成分量
     _motor_spd[0] = (-targ_speed.x + targ_speed.y) / (BSP_SQRT2) + targ_speed.z * ROTATE_RADIUS;
     _motor_spd[1] = (targ_speed.x + targ_speed.y) / (BSP_SQRT2) + targ_speed.z * ROTATE_RADIUS;
@@ -471,7 +467,7 @@ void ChassisType::_CalculateOmniMotorSpd()
       motors[i].mode = MotorDJIMode::SpeedC;
       motors[i].SetSpd((_motor_spd[i] * 60.0f) / (PI * WHEEL_DIAMETER) * motors[i].driver.redu_ratio); // 速度转换为RPM，注意要乘以减速比
     }
-  }
+  // }
 }
 
 float my_copysign(float x, float y)

@@ -7,9 +7,9 @@
 #include "Sick.hpp"
 #include "bsp_log.hpp"
 using APP::chassis;
+using APP::monit;
 using MOD::farcon;
 using MOD::sick;
-
 extern bool is_pick_done;
 R1Block &APP::r1block = R1Block::GetInstance();
 
@@ -21,7 +21,7 @@ R1Block &APP::r1block = R1Block::GetInstance();
 extern bool is_prelay_finished;
 int debug_origin = 0;
 int target_height = 200;
- bool manual_pick_flag=0;
+bool manual_pick_flag = 0;
 // #define Test_device 1
 #define R2_dead 1
 // 伸缩电机最远4300000
@@ -573,13 +573,16 @@ void R1Block::Loosen_block()
 
 void R1Block::Aim_Block()
 {
-  if (block_detect[0] == 1)
+  if (block_detect[0] == 1 && block_detect[1] == 1)
+  {
+  }
+  else if (block_detect[0] == 1)
   {
     Spd = Vec2{0, 0.05};
     aim_right = 0;
     Seq::WaitUntil([&]()
                    { return block_detect[1] == 1; }); // 检测到没有块在上面的时候
-    Spd = Vec2{0, -0.05};
+    Spd = Vec2{0, -0.04};
     Seq::Wait(1);
     chassis.Move({0, 0});
     aim_right = 1;
@@ -590,7 +593,7 @@ void R1Block::Aim_Block()
     aim_right = 0;
     Seq::WaitUntil([&]()
                    { return block_detect[0] == 1; }); // 检测到没有块在上面的时候
-    Spd = Vec2{0, 0.05};
+    Spd = Vec2{0, 0.04};
     Seq::Wait(1);
     chassis.Move({0, 0});
 
@@ -687,6 +690,7 @@ void R1Block::
   }
   else if (auto_flag == 1)
   {
+    monit.LogSpec("GetBlock:: autoflag==1");
     if (last_height != block_height)
     {
       lift_target_pos = trans_height(block_height);
@@ -698,7 +702,7 @@ void R1Block::
     chassis.Move({0.2, 0}, 2);
     Seq::Wait(2);
   }
-
+  monit.LogSpec("lift auto finished");
   Loosen_block();
 
   Seq::Wait(1); // 安全保护
@@ -756,7 +760,7 @@ void R1Block::
     Clamp_block(); // 夹紧
     Seq::Wait(1);
 
-    if (block_exist[2] == 1 && block_exist[1] == 1 )
+    if (block_exist[2] == 1 && block_exist[1] == 1)
     {
       SmoothMoveLiftToTarget(trans_height(last_height), trans_height(600), 3);
       last_height = 600;

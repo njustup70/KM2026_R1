@@ -11,6 +11,7 @@
 #include "Autogragh.hpp"
 #include "HiddenTreasuresGragh.hpp"
 #include "ExploringCharmsGragh.hpp"
+#include "ExploringCharmsGragh_Blue.hpp"
 #include "ModeSelector.hpp"
  #include "PathPlaner.hpp"
 using namespace APP;
@@ -51,8 +52,11 @@ void MainFrameCpp()
       AutoGragh_Init(); 
 
   // 3.崇武探幽
-  #elif Current_Mode == Mode_Exploring_the_Charms
+  #elif Current_Mode == Mode_Exploring_the_Charms && Halve == Red_Halve
       ExploringCharmsGragh_Init(); 
+  
+  #elif Current_Mode == Mode_Exploring_the_Charms && Halve == Blue_Halve
+      ExploringCharmsGragh_Blue_Init(); 
 
   // 4.九宫藏宝
   #elif Current_Mode == Mode_Hidden_Treasures

@@ -39,7 +39,7 @@ Vec2 D_point(8.565f, 0.5575f);
 
 //PathNode Guide_dog[MAX_PATH];
 
-void BuildXPoints(Vec2 X[X_COUNT])
+void BuildXPoints_Red(Vec2 X[X_COUNT])
 {
     // 增加一个静态标志位，确保整个单片机生命周期内只计算一次
     static bool is_initialized = false;
@@ -61,6 +61,47 @@ void BuildXPoints(Vec2 X[X_COUNT])
     X[9]  = Vec2(UNIT * 5.0f, UNIT * 0.0f);
     X[10] = Vec2(UNIT * 5.0f, -UNIT * 1.0f);
     X[11] = Vec2(6.2f, -2.3575f);
+    X[12] = Vec2(UNIT * 4.0f, -2.4575f);
+    X[13] = Vec2(UNIT * 3.0f, -2.4575f);
+    X[14] = Vec2(UNIT * 2.0f, -2.4575f);
+    X[15] = Vec2(UNIT * 1.0f, -2.4575f);
+    X[16] = Vec2(-0.115f, -2.35f);
+    X[17] = Vec2(0, -UNIT * 1.0f);
+
+    const Vec2 S_point(2.565f, 2.9575f);
+
+    for (int i = 0; i < X_COUNT; i++)
+    {
+        X[i].x += S_point.x;
+        X[i].y += S_point.y;
+    }
+
+    // 标记为已初始化，以后再调用直接 return，零开销
+    is_initialized = true; 
+}
+
+void BuildXPoints_Blue(Vec2 X[X_COUNT])
+{
+    // 增加一个静态标志位，确保整个单片机生命周期内只计算一次
+    static bool is_initialized = false;
+    if (is_initialized)
+    {
+        return; 
+    }
+
+    // 1. 原本的相对/原始坐标保持不变
+    X[0]  = Vec2(0, 0);
+    X[1]  = Vec2(0, UNIT * 1.0f);
+    X[2]  = Vec2(-0.08f, 2.4865f);
+    X[3]  = Vec2(UNIT * 1.0f, 2.4925f);
+    X[4]  = Vec2(UNIT * 2.0f, 2.4925f);
+    X[5]  = Vec2(UNIT * 3.0f, 2.4925f);
+    X[6]  = Vec2(UNIT * 4.0f, 2.4925f);
+    X[7]  = Vec2(UNIT * 5.0f, UNIT * 2.0f);
+    X[8]  = Vec2(UNIT * 5.0f, UNIT * 1.0f);
+    X[9]  = Vec2(UNIT * 5.0f, UNIT * 0.0f);
+    X[10] = Vec2(UNIT * 5.0f, -UNIT * 1.0f);
+    X[11] = Vec2(5.8f, -2.3575f);
     X[12] = Vec2(UNIT * 4.0f, -2.4575f);
     X[13] = Vec2(UNIT * 3.0f, -2.4575f);
     X[14] = Vec2(UNIT * 2.0f, -2.4575f);

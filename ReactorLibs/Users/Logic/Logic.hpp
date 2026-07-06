@@ -11,6 +11,7 @@ extern bool is_final_goal_reached;
 extern int target_height;
 extern bool is_ready_to_pick;
 extern int guide_dog_index;
+extern bool is_dock_done;
 
 class TaskLogic: public Application
 {
