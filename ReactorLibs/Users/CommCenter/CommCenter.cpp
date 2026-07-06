@@ -47,6 +47,7 @@ void CommCenter::Update()
   static float cooldown_tick = 0;
   if (DWT_GetTimeline_Sec() - cooldown_tick > 0.01)
   {
+    cooldown_tick = DWT_GetTimeline_Sec();
     pc.SendOdom(System.odometer.transform.x, System.odometer.transform.y, System.odometer.transform.z);
   }
   // pc.SendSickData(MOD::sick.GetData().raw_frame);

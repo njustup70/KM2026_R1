@@ -23,6 +23,13 @@ enum class ActionType : uint8_t
     SpearLeft = 9,
     SpearRight = 10,
     GiveUpDock = 11,
+
+    //戳块
+    PokeF1 = 12,
+    PokeF2 = 13,
+    
+    LooseClaw = 14,
+
 };
 
 void R1CBoardCallback(uint8_t task_id, const uint8_t *payload, uint8_t payload_len, void *user_ctx);
