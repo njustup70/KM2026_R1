@@ -602,6 +602,12 @@ void R1Block::Aim_Block()
   chassis.Move({0, 0});
 }
 
+/**
+ * @brief 将梅林的取块高度转换为提升电机目标位置
+ * 
+ * @param block_height 梅林的高度
+ * @return int 电机实际对应的 Pos Code
+ */
 int R1Block::trans_height(int block_height)
 {
   int temp_block = block_height;
@@ -624,6 +630,7 @@ int R1Block::trans_height(int block_height)
       break;
   }
 }
+
 // 手动复位取块装置
 void R1Block::Manual_Reset_to_All()
 {
@@ -641,25 +648,34 @@ void R1Block::Manual_Reset_to_All()
   suckmotor[1].SetSpd(0);
 }
 
-void R1Block::
-    Get_Block(int block_height, int auto_flag)
+/**
+ * @brief R1 取块
+ * 
+ * @param block_height 
+ * @param auto_flag 
+ */
+void R1Block::Get_Block(int block_height, int auto_flag)
 {
   appstate = STATE_GETBLOCK;
-  // // 这里是测试用的，实际使用时请注释
-  //
+  // 这里是测试用的，实际使用时请注释
+
 #ifdef Test_device
   // SetTargetHeight(test_debug_height, test_debug_height);
   // SetTargetStretch(test_stretch_left, test_stretch_right);
 // suckmotor[0].SetSpd(-test_suck_speed);
 // suckmotor[1].SetSpd(test_suck_speed);
 #else
-  static int get_finish_block = 0;
+
+  // 当前的取块数量
   static int now_get_block = 0;
+
+  // 发送给遥控器的反馈数据帧
   height_blcok[0] = 0x02;
   height_blcok[1] = block_height >> 8;
   height_blcok[2] = (uint8_t)(block_height & 0xFF); // 低 8 位
   farcon.TransmitFarcon(height_blcok, 3);
 
+  // 利用小黄来判定块的数量，而不是直接累积
   if (block_exist[2] == 0 && block_exist[1] == 0 && block_exist[0] == 0)
   {
     now_get_block = 0;
@@ -673,51 +689,65 @@ void R1Block::
     now_get_block = 2;
   }
 
-  // 手动
-  if (auto_flag == 0)
+  // 如果中间的取块机构高度没变化，就不需要抬升
+  if (last_height != block_height)
   {
-    if (last_height != block_height)
-    {
-      lift_target_pos = trans_height(block_height);
-      SmoothMoveLiftToTarget(trans_height(last_height), lift_target_pos, 3);
-      last_height = block_height;
-      Seq::WaitUntil([&]()
-                     { return (llift_reached && rlift_reached); }); // 检测到抬升到对应位置
-    }
-    chassis.Move({0.2, 0}, 2);
-    Seq::Wait(2);
-    // suck_flag = 1;
+    // 获取对应高度的电机PosCode
+    lift_target_pos = trans_height(block_height);
+
+    // 抬升至对应位置
+    SmoothMoveLiftToTarget(trans_height(last_height), lift_target_pos, 3);
+
+    // 更新历史量
+    last_height = block_height;
+
+    // 等到抬升完成
+    Seq::WaitUntil([&]()
+                    { return (llift_reached && rlift_reached); }); // 检测到抬升到对应位置
   }
-  else if (auto_flag == 1)
-  {
-    monit.LogSpec("GetBlock:: autoflag==1");
-    if (last_height != block_height)
-    {
-      lift_target_pos = trans_height(block_height);
-      SmoothMoveLiftToTarget(trans_height(last_height), lift_target_pos, 3);
-      last_height = block_height;
-      Seq::WaitUntil([&]()
-                     { return (llift_reached && rlift_reached); }); // 检测到抬升到对应位置
-    }
-    chassis.Move({0.2, 0}, 2);
-    Seq::Wait(2);
-  }
-  monit.LogSpec("lift auto finished");
+
+  // 此时，确认高度正确
+  chassis.Move({0.2, 0}, 2);
+
+  // 等待 2 秒，确保块被吸住
+  Seq::Wait(2);
+  
+  // 完成抬升
+  monit.LogSpec("lift finished");
+
+  // 松开夹爪
   Loosen_block();
 
-  Seq::Wait(1); // 安全保护
-  Aim_Block();
-  SetTargetStretch(stretch_distance[1], stretch_distance[1]);
-  Seq::WaitUntil([&]()
-                 { return ((stretchmotor[0].IsReached() == 1) && (stretchmotor[1].IsReached() == 1)); }); // 检测到最外面到了
+  // 等待动作完成
   Seq::Wait(1);
+
+  // 自动对准
+  Aim_Block();
+
+  // 请求人工确认
+  while (farcon.button_first_half[0] != 1)
+  {
+    Seq::Wait(0.005);
+  }
+
+  // 等待对准完成，伸出双爪，取块
+  SetTargetStretch(stretch_distance[1], stretch_distance[1]);
+
+  // 确认两爪到位，检测到最外面到了
+  Seq::WaitUntil([&](){
+    return ((stretchmotor[0].IsReached() == 1) && (stretchmotor[1].IsReached() == 1));
+  }); 
+  Seq::Wait(1);
+
+  // 开始吸入块
   suckmotor[0].SetSpd(-suck_speed);
   suckmotor[1].SetSpd(suck_speed);
-  // 实际取块
-  Clamp_block(); // 夹紧
-  Seq::Wait(2);
-  // 可优化自动取块
 
+  // 实际取块，夹紧
+  Clamp_block();
+  Seq::Wait(2);
+
+  // 可优化的自动取块
   // 取第一个块
   if (now_get_block == 0)
   {
@@ -754,8 +784,6 @@ void R1Block::
                    { return (llift_reached && rlift_reached); }); // 检测到抬升到对应位置
     Seq::Wait(2);
   }
-
-  // 记录上次高度
 
 #endif
 }
@@ -900,7 +928,6 @@ void R1Block::ReleaseBlock(int auto_flag)
                    { return (chassis._Walking() == 1); }); // 往后走一步，退洞
     SetTargetState(0.0f, 0.0f, 0.0f, 0.0f, 0, 0);
   }
-
 
 #else
   Clamp_block(); // 夹紧

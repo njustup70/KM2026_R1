@@ -31,7 +31,9 @@
 
 #define UNIT 1.2f
 
+/// @brief 工控机发来的节点序列
 PathNode guide_dog[MAX_PATH_DOG];
+
 Vec2 X_points[X_COUNT];
 
 Vec2 S_point(2.565f, 2.9575f);

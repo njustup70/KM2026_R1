@@ -9,12 +9,14 @@
 enum class ActionType : uint8_t 
 {
     IDLE = 0,     
-    BOW = 1,     
-    CLAMP = 2,     
-    PICK = 3,     
-    CLAMP_2_ON = 4, 
-    CLAMP_2_OFF = 5,
-    AWAYFROMDOCK = 6,
+    BOW = 1,     // 机械臂伸出取杆
+    CLAMP = 2,     // 丝杠锁紧
+    PICK = 3,     // 机械臂收回放平
+
+    CLAMP_2_ON = 4,     // 夹紧前方夹爪
+    CLAMP_2_OFF = 5,    // 松开前方夹爪
+
+    AWAYFROMDOCK = 6,   // 对接结束的微微抬杆
 
     //由a板发送指令触发光通信，a板按button -> a板状态机里检测按键
     //这样设计使得六个光通信按键在其他区可以被释放，不至于c板一直在等按键，按键全流程都被占用
@@ -23,6 +25,7 @@ enum class ActionType : uint8_t
     SpearLeft = 9,
     SpearRight = 10,
     GiveUpDock = 11,
+    DockOK = 20,
 
     //戳块
     PokeF1 = 12,
@@ -83,8 +86,9 @@ public:
 public:
     // app层业务逻辑相关的变量
     Vec3 slam_pos;
+    
+    /// @brief 取杆电机完成动作标志位
     bool rodmotor_OK = false;
-    bool rodair_state = false;
 
 public:
     void SendKFStoPC();

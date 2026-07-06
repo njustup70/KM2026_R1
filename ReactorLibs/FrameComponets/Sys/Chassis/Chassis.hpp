@@ -144,7 +144,7 @@ class ChassisType : public Application
 
         /*<     底盘速度与加速度限制    >*/
         /// @param 最大加速度，单位m/s^2
-        float _max_accel =2.0f;       
+        float _max_accel = 2.0f;       
         /// @param 最大线速度，单位m/s
         float _max_velo = 1.0f;
         /// @param 最大角速度，单位rad/s
@@ -293,6 +293,9 @@ class ChassisType : public Application
 
         void LockPosition();
         void UnlockPosition();
+
+        void UnlockWalk();
+        void UnlockRotate();
 
         //跟通讯相关 CommCenter
         friend class CommCenter;

@@ -113,16 +113,29 @@ static inline float NormalizeAngle(float angle)
   return angle;
 }
 
+void ChassisType::UnlockPosition()
+{
+  _walking = false;
+  _rotating = false;
+}
+
+/**
+ * @brief 解除地点闭环
+ */
+void ChassisType::UnlockWalk()
+{
+  _walking = false;
+}
+/**
+ * @brief 解除角度闭环
+ */
+void ChassisType::UnlockRotate()
+{
+  _rotating = false;
+}
+
 void ChassisType::Update()
 {
-  // static int update_count = 0;
-  // update_count++;
-  // if (update_count % 100 == 0)
-  // {
-  //   APP::monit.LogInfo("xspd:%f,yspd:%f,zspd:%f", targ_speed.x, targ_speed.y, targ_speed.z);
-
-  //   // APP::monit.LogInfo("motor[0]:%f,motor[1]:%f,motor[2]:%f,motor[3]:%f", motors[0].GetSpeed(), motors[1].GetSpeed(), motors[2].GetSpeed(), motors[3].GetSpeed());
-  // }
   // 安全退debug
   if (System.out_from_debugmode)
   {
@@ -139,110 +152,6 @@ void ChassisType::Update()
     _ApplyPidTuner();
   }
 
-  // 遥控器控制逻辑
-  if (farcon.toggle[1] == 1 && farcon.toggle[2] == 0 && farcon.toggle[3] == 0)
-  {
-    control_mode = FIELD_FARCON;
-  }
-  else if (farcon.toggle[1] == 0 && farcon.toggle[2] == 0 && farcon.toggle[3] == 0)
-  {
-    control_mode = API; // 可启用自动规划路径并自动巡航 见Logic.cpp
-  }
-  else if (farcon.toggle[1] == 1 && farcon.toggle[2] == 1)
-  {
-    control_mode = FIELD_LOCKYAW; // 锁定当前朝向，允许xy但不允许旋转
-  }
-  // else if (farcon.toggle[1] == 1 && farcon.toggle[3] == 1)
-  // {
-  //   control_mode = UPHILL;
-  // }
-  else
-  {
-    control_mode = OPEN;
-  }
-
-  // if(farcon.toggle[3] == 1)
-  // {
-  //     // _is_yaw_locked = true;   // 锁定当前朝向
-  //     chassis.RotateAt(-1.57);
-  // }
-  // else
-  // {
-  //     _is_yaw_locked = false;
-  // }
-
-  if (control_mode == FARCON)
-  {
-    // 读取遥控器数据到底盘控制变量，乘系数为了使手控时精度高一点，但不影响自动挡较快的移动速度
-    _walking = false;
-    _rotating = false;
-    targ_speed.x = -farcon.jys_value[3] * 1.0f / 100.f * _max_velo * _farcon_decspeed;     // 前后
-    targ_speed.y = -farcon.jys_value[2] * 1.0f / 100.f * _max_velo * _farcon_decspeed;     // 左右
-    targ_speed.z = -farcon.jys_value[0] * 1.0f / 100.f * _max_omega * _farcon_decyawspeed; // 旋转
-    Move(targ_speed);
-  }
-
-  if (control_mode == FIELD_FARCON)
-  {
-    _walking = false;
-    _rotating = false;
-
-    Vec2 v_world;
-    v_world.x = -farcon.jys_value[3] * 1.0f / 100.f * _max_velo * _farcon_decspeed; // 摇杆向前 -> 场地X正
-    v_world.y = -farcon.jys_value[2] * 1.0f / 100.f * _max_velo * _farcon_decspeed; // 摇杆向左 -> 场地Y正
-
-    Vec2 v_body = v_world.Rotate(-System.position.z);
-
-    targ_speed.x = v_body.x;
-    targ_speed.y = v_body.y;
-    targ_speed.z = -farcon.jys_value[0] * 1.0f / 100.f * _max_omega * _farcon_decyawspeed; // 自转属于局部坐标
-
-    Move(targ_speed);
-  }
-
-  // 当前锁yaw模式用于对接，所以yaw是固定值
-  if (control_mode == LOCKYAW)
-  {
-    // 读取遥控器数据到底盘控制变量
-    targ_speed.x = -farcon.jys_value[3] * 1.0f / 100.f * _max_velo * _farcon_decaccqurate; // 前后
-    targ_speed.y = -farcon.jys_value[2] * 1.0f / 100.f * _max_velo * _farcon_decaccqurate; // 左右
-    Move(Vec2(targ_speed.x, targ_speed.y));
-#if Halve == Red_Halve
-    chassis.RotateAt(-1.57f);
-#elif Halve == Blue_Halve
-    chassis.RotateAt(1.57f);
-#endif
-  }
-
-  if (control_mode == FIELD_LOCKYAW)
-  {
-    // 提取全局场地系的期望速度
-    Vec2 v_world;
-    v_world.x = -farcon.jys_value[3] * 1.0f / 100.f * _max_velo * _farcon_decaccqurate; // 前后
-    v_world.y = -farcon.jys_value[2] * 1.0f / 100.f * _max_velo * _farcon_decaccqurate; // 左右
-
-    // 进行世界坐标系到车体坐标系的逆映射
-    Vec2 v_body = v_world.Rotate(-System.position.z);
-
-    targ_speed.x = v_body.x;
-    targ_speed.y = v_body.y;
-
-    // 下发XY轴执行速度
-    Move(Vec2(targ_speed.x, targ_speed.y));
-
-    // 强制锁住全场朝向为 -1.57rad (-90度)
-    chassis.RotateAt(-1.57f);
-  }
-
-  // if (control_mode == UPHILL)
-  // {
-  //   // 读取遥控器数据到底盘控制变量
-  //   targ_speed.x = -farcon.jys_value[3] * 1.0f / 100.f * _max_velo; // 前后
-  //   targ_speed.y = -farcon.jys_value[2] * 1.0f / 100.f * _max_velo; // 左右
-  //   Move(Vec2(targ_speed.x, targ_speed.y));
-  //   chassis.RotateAt(0.0f);
-  // }
-
   bool walking_complete = false; // 这个变量只在这一帧有用
   bool rotaing_complete = false;
 
@@ -252,21 +161,10 @@ void ChassisType::Update()
     walking_complete = _Walking();
   }
 
-  // // 当MoveAt完成且只是位置锁定（不是显式RotateTo）时，清除yaw锁定
-  // if (walking_complete && _is_yaw_locked && !_rotating)
-  // {
-  //     _is_yaw_locked = false;
-  // }
-
   if (_rotating || _is_yaw_locked)
   {
     rotaing_complete = _Rotating();
   }
-
-  // if(rotaing_complete && _is_pos_locked && !_walking)
-  // {
-  //     _is_pos_locked = false;
-  // }
 
   // 将底盘的 速度targ_speed 上传到各个电机
   _UploadSpeed();
