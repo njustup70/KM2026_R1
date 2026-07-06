@@ -25,8 +25,7 @@ using namespace APP;
 using namespace MOD;
 using namespace MOVE;
 
-
-static void ResponseButtonArea3(float velo_k=1.0f);
+static void ResponseButtonArea3(float velo_k = 1.0f);
 
 // 引用路径
 #include "HiddenTreasures_path1.hpp"
@@ -45,10 +44,25 @@ bool choose_to_Combination = 0;
 // 重试区域自动规划路径跑到九宫格前面中间
 void Action_PrePut(StateCore *core)
 {
+  while (MOD::farcon.button_first_half[0] != 1)
+  {
+    ResponseButtonArea3(0.25f);
+    Seq::Wait(0.005f);
+  }
+  // 抬升到对应放块高度
   r1block.PrePut();
-  MOVE::MoveToTargPos(Hid_Come_In_Red); // 从重试点到正中间
-  Seq::WaitUntil([&]()
-                 { return (farcon.button_first_half[6] == 1); }); // 等按键
+  while (MOD::farcon.button_first_half[0] != 1)
+  {
+    ResponseButtonArea3(0.25f);
+    Seq::Wait(0.005f);
+  }
+  // 从重试点到正中间
+  MOVE::MoveToTargPos(Hid_Come_In_Red);
+  while (MOD::farcon.button_first_half[0] != 1)
+  {
+    ResponseButtonArea3(0.25f);
+    Seq::Wait(0.005f);
+  }
   state_core.GetCurState()->Complete = true;
 }
 
@@ -56,25 +70,37 @@ void Action_InPlanPutBlock(StateCore *state_core)
 {
   MOVE::MoveToTargPos(Hid_Red_Wall_To_Grid); // 从重试点到正中间
 
+  // 按KFS中间按键
   r1block.FromMiddleToAny(); /// 从中间走进任意一个洞
+
   r1block.PutBlock();
   state_core->GetCurState()->Complete = true;
 }
 // 状态：取地上预设的块
 void Action_InPlantoGetGroundBlock(StateCore *state_core)
 {
-  Seq::WaitUntil([&]()
-                 { return (farcon.button_first_half[5] == 1); });
+  while (MOD::farcon.button_first_half[0] != 1)
+  {
+    ResponseButtonArea3(0.25f);
+    Seq::Wait(0.005f);
+  }
   chassis.RotateAt(0);
   Seq::WaitUntil([&]()
                  { return (chassis._Rotating() == 1); });
-  Seq::WaitUntil([&]()
-                 { return (farcon.button_first_half[5] == 1); });
+  while (MOD::farcon.button_first_half[0] != 1)
+  {
+    ResponseButtonArea3(0.25f);
+    Seq::Wait(0.005f);
+  }
 
   chassis.MoveAt({10.9, 4.04}); //
   Seq::WaitUntil([&]()
                  { return (chassis._Walking() == 1); });
-
+  while (MOD::farcon.button_first_half[0] != 1)
+  {
+    ResponseButtonArea3(0.25f);
+    Seq::Wait(0.005f);
+  }
   r1block.GetGroundBlock();
   state_core->GetCurState()->Complete = true;
 }
@@ -143,9 +169,9 @@ void Action_FreeGetBlock(StateCore *state_core)
 
 void Action_Choose_Hid_Mode(StateCore *state_core)
 {
-  while (farcon.button_middle[1][1] != 1)
+  while (farcon.button_middle[2][1] != 1)
   {
-    if (farcon.button_middle[0][0] == 1)
+    if (farcon.button_middle[1][0] == 1)
     {
       choose_call_to_R2 = 1;
       choose_to_put_block = 0;
@@ -153,7 +179,7 @@ void Action_Choose_Hid_Mode(StateCore *state_core)
       choose_to_fight_block = 0;
       choose_to_Combination = 0;
     }
-    else if (farcon.button_middle[0][1] == 1)
+    else if (farcon.button_middle[1][1] == 1)
     {
       choose_call_to_R2 = 0;
       choose_to_put_block = 1;
@@ -161,7 +187,7 @@ void Action_Choose_Hid_Mode(StateCore *state_core)
       choose_to_fight_block = 0;
       choose_to_Combination = 0;
     }
-    else if (farcon.button_middle[0][2] == 1)
+    else if (farcon.button_middle[1][2] == 1)
     {
       choose_call_to_R2 = 0;
       choose_to_put_block = 0;
@@ -181,18 +207,26 @@ void Action_R2_call(StateCore *state_core)
   chassis.RotateAt(1.57);
   Seq::WaitUntil([&]()
                  { return (chassis._Rotating() == 1); });
-
+  while (MOD::farcon.button_first_half[0] != 1)
+  {
+    ResponseButtonArea3(0.25f);
+    Seq::Wait(0.005f);
+  }
   chassis.MoveAt({10.1, 3.8}); // 去对接点通信
   Seq::WaitUntil([&]()
                  { return (chassis._Walking() == 1); });
-  Seq::WaitUntil([&]()
-                 { return (farcon.button_first_half[7] == 1); }); // 等按键
-  chassis.MoveAt({10.8, 3.8});                                    // 去等待点
+
+  while (MOD::farcon.button_first_half[0] != 1)
+  {
+    ResponseButtonArea3(0.25f);
+    Seq::Wait(0.005f);
+  }
+
+  chassis.MoveAt({10.8, 3.8}); // 去等待点
   Seq::WaitUntil([&]()
                  { return (chassis._Walking() == 1); });
   state_core->GetCurState()->Complete = true;
 }
-
 
 // ================================初始化========================================================================
 void HiddenTreasuresGragh_Init(void)
@@ -282,11 +316,20 @@ void ResponseButtonArea3(float velo_k)
     chassis.Move(Vec2(v_body.x, v_body.y));
   }
 
+  // 控制R2放中间层的第一个块
+  if (farcon.button_middle[0][0] == 1)
+  {
+  }
 
+  // 控制R2放中间层的第二个块
+  if (farcon.button_middle[0][1] == 1)
+  {
+  }
 
-  
-
+  // 控制R2放中间层的第三个块
+  if (farcon.button_middle[0][2] == 1)
+  {
+  }
 }
-
 
 #endif
