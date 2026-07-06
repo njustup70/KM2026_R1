@@ -297,6 +297,8 @@ class ChassisType : public Application
         void UnlockWalk();
         void UnlockRotate();
 
+        void LockYaw(float yaw);
+
         /**
          * @brief 返回此时是否正在进行角度闭环
          * 

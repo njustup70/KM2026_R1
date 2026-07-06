@@ -132,6 +132,7 @@ void ChassisType::UnlockWalk()
 void ChassisType::UnlockRotate()
 {
   _rotating = false;
+  _is_yaw_locked = false;
 }
 
 void ChassisType::Update()
@@ -453,6 +454,12 @@ void ChassisType::RotateAt(float yaw)
 {
   targ_ges.z = NormalizeAngle(yaw);
   _rotating = true;
+}
+
+void ChassisType::LockYaw(float yaw)
+{
+  targ_ges.z = NormalizeAngle(yaw);
+  _is_yaw_locked = true;
 }
 
 /**

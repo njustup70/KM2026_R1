@@ -22,7 +22,7 @@
 #include "a1_todock.hpp"
 #include "a1_toassemble.hpp"
 
-static void ResponseFarcon();
+static void ResponseFarcon(float velo_k = 1.0f);
 
 using namespace APP;
 using namespace MOD;
@@ -151,17 +151,16 @@ void GoFetchRod(StateCore *state_core)
   // 先往前怼到杆架子
   chassis.Move(Vec3(0.075, 0, 0), 1);
   // 锁 yaw 角
-  chassis.RotateAt(3.14);
+  chassis.LockYaw(3.14);
 
   Seq::Wait(1.0f);
 
-  // 再左右微调，小小黄上拉，0为识别到杆了
-  while (Hardware::miniyellow_aim_rod.Read() != 0)
+  // 再手动微调，锁定yaw角
+  while (MOD::farcon.button_first_half[0] != 1)
   {
-    chassis.Move(Vec3(0.035, -0.035, 0));
+    ResponseFarcon(0.25f);
     Seq::Wait(0.005f);
-  };
-
+  }
   // 停止底盘运动
   chassis.Move(Vec2(0, 0));
 
@@ -405,15 +404,16 @@ void ExploringCharmsGragh_Init(void)
 
 /**
  * @brief 遥控器能控制的中间时刻
+ * @param velo_k 底盘速度系数，在不同的地方进入遥控器，理论速度不同
  */
-static void ResponseFarcon()
+static void ResponseFarcon(float velo_k)
 {
   // 解锁底盘的位置闭环，角度闭环仍然由系统控制
   chassis.UnlockWalk();
 
   Vec2 v_world;
-  v_world.x = -farcon.jys_value[3] * 1.0f / 100.f * 1.0f; // 摇杆向前 -> 场地X正
-  v_world.y = -farcon.jys_value[2] * 1.0f / 100.f * 1.0f; // 摇杆向左 -> 场地Y正
+  v_world.x = -farcon.jys_value[3] * 1.0f / 100.f * 1.0f * velo_k; // 摇杆向前 -> 场地X正
+  v_world.y = -farcon.jys_value[2] * 1.0f / 100.f * 1.0f * velo_k; // 摇杆向左 -> 场地Y正
 
   Vec2 v_body = v_world.Rotate(-System.position.z);
 
