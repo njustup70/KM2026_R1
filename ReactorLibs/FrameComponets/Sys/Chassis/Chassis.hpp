@@ -297,6 +297,14 @@ class ChassisType : public Application
         void UnlockWalk();
         void UnlockRotate();
 
+        /**
+         * @brief 返回此时是否正在进行角度闭环
+         * 
+         * @return true 
+         * @return false 
+         */
+        bool IsLockRotate() { return _rotating; }
+
         //跟通讯相关 CommCenter
         friend class CommCenter;
 };

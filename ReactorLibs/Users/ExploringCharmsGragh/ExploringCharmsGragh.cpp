@@ -59,6 +59,18 @@ int GetBlockHeight(int index_id)
   return 200;
 }
 
+static void Wait_ForStart(StateCore *state_core)
+{
+  while (farcon.button_first_half[0] != 1)
+  {
+    ResponseFarcon();
+    Seq::Wait(0.005f);
+  }
+
+  state_core->GetCurState()->Complete = true;
+}
+
+
 static void WalkToPathNode(PathNode cur_node)
 {
   // 提取当前这一帧动作节点的打包数据
@@ -203,7 +215,7 @@ void GoFetchRod(StateCore *state_core)
     comm.SendActionCommand(ActionType::CLAMP_2_ON);
     
     monit.LogInfo("ready to area2");
-    
+
     go_to_area2 = true;
   }
   else
@@ -345,6 +357,7 @@ void Action_OverWait(StateCore *state_core)
 // ================================初始化========================================================================
 void ExploringCharmsGragh_Init(void)
 {
+  StateBlock &s_wait = EC_flow.AddState("WaitForStart");
   StateBlock &s_fetch_rod = EC_flow.AddState("Fetch_Rod");
 
   StateBlock &s_plan = EC_flow.AddState("Planning");
@@ -355,6 +368,7 @@ void ExploringCharmsGragh_Init(void)
   StateBlock &s_overwait = EC_flow.AddState("OverWait");
 
   // 一区
+  s_wait.StateAction = Wait_ForStart;
   s_fetch_rod.StateAction = GoFetchRod;
   // 二区
   s_plan.StateAction = Action_Planning;
@@ -364,6 +378,7 @@ void ExploringCharmsGragh_Init(void)
   s_overwait.StateAction = Action_OverWait;
 
   // 状态转移关系
+  s_wait.LinkTo(&s_wait.Complete, s_fetch_rod); // 等待开始
   /****   一区取杆    ****/
   s_fetch_rod.LinkTo(&need_fetch_rod_again, s_fetch_rod);
   s_fetch_rod.LinkTo(&go_to_area2, s_plan);
@@ -392,7 +407,16 @@ static void ResponseFarcon()
   v_world.y = -farcon.jys_value[2] * 1.0f / 100.f * 1.0f; // 摇杆向左 -> 场地Y正
 
   Vec2 v_body = v_world.Rotate(-System.position.z);
-  chassis.Move(Vec2(v_body.x, v_body.y));
+
+  if (!chassis.IsLockRotate()) 
+  {
+    float yaw_spd = -farcon.jys_value[0] * 1.0f / 100.f * 1.5f; // 摇杆向左 -> 逆时针旋转
+    chassis.Move(Vec3(v_body.x, v_body.y, yaw_spd));
+  }
+  else
+  {
+    chassis.Move(Vec2(v_body.x, v_body.y));
+  }
 
   /***********************/
   // 控制矛头上下
