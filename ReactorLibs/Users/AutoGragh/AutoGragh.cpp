@@ -18,7 +18,7 @@
 
 // 更改PATHS
 #include "a1_torod.hpp"
-#include "a1_todock2.hpp"
+#include "a1_todock.hpp"
 #include "R1_area3.hpp"
 
 using namespace APP;
@@ -28,11 +28,6 @@ extern bool manual_pick_flag;
 // 全局状态图对象
 StateGraph auto_flow{"AutoGragh"};
 
-int kfs_point[12] = {1, 0, 1,
-                     0, 2, 1,
-                     0, 2, 2,
-                     3, 2, 0};
-int kfs_data[12] = {0};
 #define Zone1 1
 #define Zone2 2
 #define Zone3 3
@@ -117,7 +112,7 @@ int GetBlockHeight(int index_xid)
   {
     return 200; // 200高度
   }
-  else if (index_xid == 4 || index_xid == 15)
+  else if (index_xid == 4)
   {
     return 600; // 600高度
   }
