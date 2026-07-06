@@ -25,6 +25,9 @@ using namespace APP;
 using namespace MOD;
 using namespace MOVE;
 
+
+static void ResponseButtonArea3(float velo_k=1.0f);
+
 // 引用路径
 #include "HiddenTreasures_path1.hpp"
 
@@ -162,5 +165,33 @@ void HiddenTreasuresGragh_Init(void)
   // // 注册图
   state_core.RegistGraph(HT_flow);
 }
+
+void ResponseButtonArea3(float velo_k)
+{
+  // 解锁底盘的位置闭环，角度闭环仍然由系统控制
+  chassis.UnlockWalk();
+
+  Vec2 v_world;
+  v_world.x = -farcon.jys_value[3] * 1.0f / 100.f * 1.0f * velo_k; // 摇杆向前 -> 场地X正
+  v_world.y = -farcon.jys_value[2] * 1.0f / 100.f * 1.0f * velo_k; // 摇杆向左 -> 场地Y正
+
+  Vec2 v_body = v_world.Rotate(-System.position.z);
+
+  if (!chassis.IsLockRotate())
+  {
+    float yaw_spd = -farcon.jys_value[0] * 1.0f / 100.f * 1.5f; // 摇杆向左 -> 逆时针旋转
+    chassis.Move(Vec3(v_body.x, v_body.y, yaw_spd));
+  }
+  else
+  {
+    chassis.Move(Vec2(v_body.x, v_body.y));
+  }
+
+
+
+  
+
+}
+
 
 #endif

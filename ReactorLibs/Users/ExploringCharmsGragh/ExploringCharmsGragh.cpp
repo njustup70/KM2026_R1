@@ -38,9 +38,9 @@ StateGraph EC_flow{"ExploringCharmsGragh"};
 
 /**
  * @brief 根据块的ID，获取其对应的取块高度
- * 
- * @param index_id 
- * @return int 
+ *
+ * @param index_id
+ * @return int
  */
 int GetBlockHeight(int index_id)
 {
@@ -70,7 +70,6 @@ static void Wait_ForStart(StateCore *state_core)
   state_core->GetCurState()->Complete = true;
 }
 
-
 static void WalkToPathNode(PathNode cur_node)
 {
   // 提取当前这一帧动作节点的打包数据
@@ -89,20 +88,20 @@ static void WalkToPathNode(PathNode cur_node)
   {
     // 强等待底盘横移就位
     Seq::WaitUntil([]() -> bool
-                    { return chassis._Walking(); });
+                   { return chassis._Walking(); });
 
     // 调整yaw
     chassis.RotateAt(target_yaw);
 
     // 强等待旋转就位
     Seq::WaitUntil([]() -> bool
-                    { return chassis._Rotating(); });
+                   { return chassis._Rotating(); });
   }
   else
   {
     // 普通通过点，也只需要等底盘横移到达即可
     Seq::WaitUntil([]() -> bool
-                    { return chassis._Walking(); });
+                   { return chassis._Walking(); });
   }
 }
 
@@ -115,8 +114,8 @@ bool go_to_area2 = false;
 
 /**
  * @brief 一区取杆逻辑
- * 
- * @param state_core 
+ *
+ * @param state_core
  */
 void GoFetchRod(StateCore *state_core)
 {
@@ -183,7 +182,7 @@ void GoFetchRod(StateCore *state_core)
   comm.SendActionCommand(ActionType::CLAMP_2_ON);
   // 走到对接点
   MOVE::MoveToTargPos(Area1ToDock);
-  
+
   // 锁定Yaw角，并转手动（本图是红场图）
   chassis.RotateAt(-1.571f);
   while (MOD::farcon.button_first_half[0] != 1)
@@ -201,7 +200,7 @@ void GoFetchRod(StateCore *state_core)
     ResponseFarcon();
     Seq::Wait(0.005f);
   }
-  
+
   /*****    吐杆逻辑    *****/
   if (rod_id >= 2)
   {
@@ -210,11 +209,11 @@ void GoFetchRod(StateCore *state_core)
 
     // 把杆放平，复用一下Pick
     comm.SendActionCommand(ActionType::PICK);
-    
+
     Seq::Wait(1);
-    
+
     comm.SendActionCommand(ActionType::CLAMP_2_ON);
-    
+
     monit.LogInfo("ready to area2");
 
     go_to_area2 = true;
@@ -228,7 +227,8 @@ void GoFetchRod(StateCore *state_core)
     comm.SendActionCommand(ActionType::BOW);
 
     Seq::Wait(1.0f);
-    Seq::WaitUntil([]() -> bool { return comm.rodmotor_OK; });
+    Seq::WaitUntil([]() -> bool
+                   { return comm.rodmotor_OK; });
 
     // 机械臂收回
     comm.SendActionCommand(ActionType::PICK);
@@ -249,23 +249,19 @@ void Action_Planning(StateCore *state_core)
 {
   monit.LogSpec("begin plan ");
 
-  // 等待遥控器确认 KFS数据 已完成装填
-  Seq::WaitUntil([]() -> bool{
-    return farcon.button_first_half[0] == 1;
-  });
+  // 要求遥控器确认，KFS数据 已完成装填
+  while (MOD::farcon.button_first_half[0] != 1)
+  {
+    ResponseFarcon();
+    Seq::Wait(0.005f);
+  }
 
-  // 向工控机发送 KFS 数据
-  comm.SendKFStoPC();
-
-  // 等待数据发送 / 回调完成
-  Seq::Wait(2.0f);
-
-  // 日志打印，确认收到 KFS 数据
-  monit.LogWarning("Waiting for path from PC!");
-
-  Seq::WaitUntil([]() -> bool{
-    return comm.is_got_dogpath_from_pc;
-  });
+  while (comm.is_got_dogpath_from_pc == false)
+  {
+    // 向工控机发送 KFS 数据
+    comm.SendKFStoPC();
+    Seq::Wait(0.1);
+  }
 
   monit.LogOK("get path from PC! Now decode.");
 
@@ -288,6 +284,13 @@ void Action_NavToBlock(StateCore *state_core)
   // 打印日志，确认进入状态
   monit.LogInfo("Naving To Block...");
 
+  // 要求遥控器确认，才跑下一个点
+  while (MOD::farcon.button_first_half[0] != 1)
+  {
+    ResponseFarcon();
+    Seq::Wait(0.005f);
+  }
+
   // 获取当前节点
   PathNode cur_node = guide_dog[guide_dog_index];
 
@@ -301,7 +304,7 @@ void Action_NavToBlock(StateCore *state_core)
     target_height = GetBlockHeight(cur_node.label);
 
     // 状态转移，进入取块逻辑
-    is_ready_to_pick = true; 
+    is_ready_to_pick = true;
     return;
   }
 
@@ -314,13 +317,6 @@ void Action_NavToBlock(StateCore *state_core)
     return;
   }
 
-  // 要求遥控器确认，才跑下一个点
-  while (MOD::farcon.button_first_half[0] != 1)
-  {
-    ResponseFarcon();
-    Seq::Wait(0.005f);
-  }
-
   // 如果是普通过点：不切外部状态，增索引，并自回环重新进入本状态
   guide_dog_index++;
   monit.LogInfo("Go To Next Node, it's id:%d", guide_dog_index);
@@ -330,8 +326,8 @@ void Action_NavToBlock(StateCore *state_core)
 
 /**
  * @brief 自动取块
- * 
- * @param state_core 
+ *
+ * @param state_core
  */
 void Action_AutoGetBlock(StateCore *state_core)
 {
@@ -392,9 +388,9 @@ void ExploringCharmsGragh_Init(void)
   s_fetch_rod.LinkTo(&go_to_area2, s_plan);
 
   /****   二区取块    ****/
-  s_plan.LinkTo(&s_plan.Complete, s_move);          // 规划路径
-  s_move.LinkTo(&is_ready_to_pick, s_auto_pick);        // 取块
-  s_move.LinkTo(&is_final_goal_reached, s_overwait);    // 等待
+  s_plan.LinkTo(&s_plan.Complete, s_move);           // 规划路径
+  s_move.LinkTo(&is_ready_to_pick, s_auto_pick);     // 取块
+  s_move.LinkTo(&is_final_goal_reached, s_overwait); // 等待
 
   s_auto_pick.LinkTo(&s_auto_pick.Complete, s_move);
 
@@ -417,7 +413,7 @@ static void ResponseFarcon(float velo_k)
 
   Vec2 v_body = v_world.Rotate(-System.position.z);
 
-  if (!chassis.IsLockRotate()) 
+  if (!chassis.IsLockRotate())
   {
     float yaw_spd = -farcon.jys_value[0] * 1.0f / 100.f * 1.5f; // 摇杆向左 -> 逆时针旋转
     chassis.Move(Vec3(v_body.x, v_body.y, yaw_spd));
@@ -429,17 +425,21 @@ static void ResponseFarcon(float velo_k)
 
   /***********************/
   // 控制矛头上下
-  if (farcon.button_first_half[2])  comm.SendActionCommand(ActionType::SpearUp);
-  if (farcon.button_first_half[3])  comm.SendActionCommand(ActionType::SpearDown);
+  if (farcon.button_first_half[2])
+    comm.SendActionCommand(ActionType::SpearUp);
+  if (farcon.button_first_half[3])
+    comm.SendActionCommand(ActionType::SpearDown);
   // 控制矛头左右
-  if (farcon.button_first_half[6])  comm.SendActionCommand(ActionType::SpearLeft);
-  if (farcon.button_first_half[7])  comm.SendActionCommand(ActionType::SpearRight);
+  if (farcon.button_first_half[6])
+    comm.SendActionCommand(ActionType::SpearLeft);
+  if (farcon.button_first_half[7])
+    comm.SendActionCommand(ActionType::SpearRight);
   // 放弃对接
-  if (farcon.button_second_half[0]) comm.SendActionCommand(ActionType::GiveUpDock);
+  if (farcon.button_second_half[0])
+    comm.SendActionCommand(ActionType::GiveUpDock);
   // 发送对接完成
-  if (farcon.button_first_half[4]) comm.SendActionCommand(ActionType::DockOK);     // ------这里需要新增发送对接完成
+  if (farcon.button_first_half[4])
+    comm.SendActionCommand(ActionType::DockOK); // ------这里需要新增发送对接完成
 }
-
-
 
 #endif
