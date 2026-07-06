@@ -4,7 +4,7 @@
  */
 #include "ModeSelector.hpp"
 
-#if Current_Mode == Mode_Hidden_Treasures&& Halve == Blue_Halve
+#if Current_Mode == Mode_Hidden_Treasures && Halve == Blue_Halve
 
 #include "HiddenTreasuresGragh_blue.hpp"
 #include "PathPlaner.hpp"
@@ -26,7 +26,9 @@ using namespace MOD;
 using namespace MOVE;
 
 // 引用路径
-#include "blue_dragon_hid_in.hpp"
+
+#include "hid_blue_come_in.hpp"
+#include "hid_blue_wall_to_grid.hpp"
 // 全局状态图对象
 StateGraph HT_flow{"HiddenTreasuresGragh_blue"};
 
@@ -35,14 +37,17 @@ StateGraph HT_flow{"HiddenTreasuresGragh_blue"};
 void Action_PrePut(StateCore *core)
 {
   r1block.PrePut();
-  MOVE::MoveToTargPos(Hidden_Blue_InPath); // 从重试点到正中间
-
+  MOVE::MoveToTargPos(hid_blue_come_in); // 从重试点到贴着墙
+  Seq::WaitUntil([&]()
+                 { return (farcon.button_first_half[6] == 1); }); // 等按键
   state_core.GetCurState()->Complete = true;
 }
 
 void Action_InPlanPutBlock(StateCore *state_core)
 {
-  r1block.FromMiddleToAny(); /// 从中间走进任意一个洞
+  MOVE::MoveToTargPos(hid_blue_wall_to_grid); // 从重试点到正中间
+
+  r1block.FromMiddleToAny();             /// 从中间走进任意一个洞
   r1block.PutBlock();
   state_core->GetCurState()->Complete = true;
 }
@@ -57,7 +62,7 @@ void Action_InPlantoGetGroundBlock(StateCore *state_core)
   Seq::WaitUntil([&]()
                  { return (farcon.button_first_half[5] == 1); });
 
-  chassis.MoveAt({10.9, 3.4});
+  chassis.MoveAt({10.9, 1.875});
   Seq::WaitUntil([&]()
                  { return (chassis._Walking() == 1); });
 
@@ -105,7 +110,7 @@ void Action_FreeToGrid(StateCore *state_core)
   }
   else if (freeput_pos == 1)
   {
-        chassis.MoveAt({10.75, 1.15});
+    chassis.MoveAt({10.75, 1.15});
     Seq::WaitUntil([&]()
                    { return (chassis._Walking() == 1); });
   }
@@ -132,7 +137,7 @@ void HiddenTreasuresGragh_Blue_Init(void)
 {
   // 按照正常的规划
 
-    monit.LogWarning("this is Blue HiddenTreasures!");
+  monit.LogWarning("this is Blue HiddenTreasures!");
 
   StateBlock &s_put_pre = HT_flow.AddState("PrePutBlock");
   StateBlock &s_planput = HT_flow.AddState("PutBlock"); // 不同的
