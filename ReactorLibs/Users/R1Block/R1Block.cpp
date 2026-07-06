@@ -748,21 +748,10 @@ void R1Block::
     suckmotor[0].SetSpd(0);
     suckmotor[1].SetSpd(0);
     Seq::Wait(1);
-
-    if (block_exist[2] == 1 && block_exist[1] == 1)
-    {
-      SmoothMoveLiftToTarget(trans_height(last_height), trans_height(600), 3);
-      last_height = 600;
-      Seq::WaitUntil([&]()
-                     { return (llift_reached && rlift_reached); }); // 检测到抬升到对应位置
-    }
-    else
-    {
-      SetTargetStretch(0, 0);
-      Seq::WaitUntil([&]()
-                     { return ((stretchmotor[0].IsReached() == 1) && (stretchmotor[1].IsReached() == 1)); }); // 检测到最外面到了
-    }
-
+    SmoothMoveLiftToTarget(trans_height(last_height), trans_height(600), 3);
+    last_height = 600;
+    Seq::WaitUntil([&]()
+                   { return (llift_reached && rlift_reached); }); // 检测到抬升到对应位置
     Seq::Wait(2);
   }
 
