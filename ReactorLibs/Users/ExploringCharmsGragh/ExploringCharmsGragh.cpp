@@ -254,7 +254,7 @@ void Action_Planning(StateCore *state_core)
   {
     // 向工控机发送 KFS 数据
     comm.SendKFStoPC();
-      comm.ProcessGuideDogData();
+    comm.ProcessGuideDogData();
     Seq::Wait(0.1);
   }
 

@@ -752,7 +752,7 @@ void R1Block::Get_Block(int block_height, int auto_flag)
   if (now_get_block == 0)
   {
     SmoothMoveStretchToTarget(stretch_distance[1], 0, 2, 10);
-    Seq::Wait(2);
+    Seq::Wait(1);
     suckmotor[0].SetSpd(0);
     suckmotor[1].SetSpd(0);
     Clamp_block(); // 夹紧
@@ -763,10 +763,9 @@ void R1Block::Get_Block(int block_height, int auto_flag)
   else if (now_get_block == 1)
   {
     SmoothMoveStretchToTarget(stretch_distance[1], 0, 2, 10);
-    Seq::Wait(2);
+    Seq::Wait(1);
     suckmotor[0].SetSpd(0);
     suckmotor[1].SetSpd(0);
-    Seq::Wait(1);
     Seq::Wait(1);
     return;
   }
@@ -774,7 +773,7 @@ void R1Block::Get_Block(int block_height, int auto_flag)
   else if (now_get_block == 2)
   {
     SmoothMoveStretchToTarget(stretch_distance[1], stretch_distance[0], 2, 10);
-    Seq::Wait(2);
+    Seq::Wait(1);
     suckmotor[0].SetSpd(0);
     suckmotor[1].SetSpd(0);
     Seq::Wait(1);
