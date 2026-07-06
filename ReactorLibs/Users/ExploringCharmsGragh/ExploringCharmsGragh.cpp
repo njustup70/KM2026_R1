@@ -268,6 +268,15 @@ void Action_Planning(StateCore *state_core)
   // 解码收到的路径数据，并存入 guide_dog 数组
   comm.ProcessGuideDogData();
 
+  uint8_t guide_dog_lable[13];
+  guide_dog_lable[0] = 0x67;
+  guide_dog_lable[1] = 0x21;
+  for (int i = 0; i < 11; i++)
+  {
+    guide_dog_lable[i + 2] = guide_dog[i].label;
+  }
+  farcon.TransmitFarcon(guide_dog_lable, 13);
+
   state_core->GetCurState()->Complete = true;
 
   monit.LogInfo("over plan");
@@ -317,35 +326,7 @@ void Action_NavToBlock(StateCore *state_core)
     return;
   }
 
-    if (guide_dog[guide_dog_index].is_pick_point)
-    {
-      // 如果是有块的点：获取高度，准备通过 LinkTo 条件触发切入 Action_GetBlock
-      target_height = GetBlockHeight(target_xid);
-      
-      is_ready_to_pick = true; // 马上跳转，保证状态块只跑一次
-                               //   return;
-      return;
-    }
-    else if (guide_dog[guide_dog_index].is_at_end)
-    {
-      is_final_goal_reached = true;
-      return;
-    }
-    else
-    {
-      // 如果是普通通过点：不切外部状态，自主自增索引，并自回环重新进入本状态
-      guide_dog_index++;
-      state_core->GetCurState()->Complete = true;
-      return;
-    }
-    Seq::Wait(0.005);
-  }
-  monit.LogSpec("Out Auto GetBlock");
-  // 如果是普通过点：不切外部状态，增索引，并自回环重新进入本状态
-  guide_dog_index++;
-  monit.LogInfo("Go To Next Node, it's id:%d", guide_dog_index);
 }
-
 /**********************************************************************/
 
 /**
