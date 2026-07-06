@@ -135,6 +135,7 @@ void Action_FreeGetBlock(StateCore *state_core)
 // ================================初始化========================================================================
 void HiddenTreasuresGragh_Blue_Init(void)
 {
+
   // 按照正常的规划
 
   monit.LogWarning("this is Blue HiddenTreasures!");

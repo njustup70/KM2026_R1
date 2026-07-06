@@ -9,7 +9,7 @@
 #include "PathChaser.hpp"
 #include "CommCenter.hpp"
 
-//全局变量
+// 全局变量
 bool is_dock_done = false;
 
 bool is_final_goal_reached = false;
@@ -22,7 +22,6 @@ using namespace APP;
 extern CommCenter &APP::comm;
 void TaskLogic::Start()
 {
-
 }
 
 static bool aimrod_state = 0;
@@ -32,16 +31,35 @@ static bool aimrod_state = 0;
  */
 void TaskLogic::Update()
 {
-    aimrod_state = Hardware::miniyellow_aim_rod.Read();
+  aimrod_state = Hardware::miniyellow_aim_rod.Read();
 
-    if (farcon.button_second_half[16 - 8 - 1]) 
+  if (farcon.button_second_half[16 - 8 - 1])
+  {
+    is_dock_done = true;
+  }
+  static int restart_slam_count= 0;
+  if (farcon.button_second_half[13 - 8 - 1])
+  {
+    restart_slam_count++;
+    if (restart_slam_count >= 5)
     {
-      is_dock_done = true;
+      comm.RestartSLAM();
+      restart_slam_count = 0;
     }
+  }
 
-    uint8_t state_data[17];
-    state_data[0] = 0x05;
-    memcpy(state_data + 1, APP::state_core.GetCurState()->name, sizeof(APP::state_core.GetCurState()->name));
-		MOD::farcon.TransmitFarcon(state_data, sizeof(state_data));
-	
+
+  static int choose_halve = 0;
+  choose_halve++;
+  if (choose_halve >= 100)
+  {
+    comm.ChooseHalve();
+    comm.ChoosePowerOnPos();
+    choose_halve = 0;
+  }
+
+  uint8_t state_data[17];
+  state_data[0] = 0x05;
+  memcpy(state_data + 1, APP::state_core.GetCurState()->name, sizeof(APP::state_core.GetCurState()->name));
+  MOD::farcon.TransmitFarcon(state_data, sizeof(state_data));
 }

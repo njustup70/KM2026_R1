@@ -9,9 +9,10 @@
 #include "freertos.h"
 #include "task.h"
 #include "RtosCpp.hpp"
-
+#include "CommCenter.hpp"
 #include "motor_dji.hpp"
-
+using MOD::farcon;
+using APP::comm;
 SystemType& System = SystemType::GetInstance();
 LedWs2812 sys_ledband;
 
@@ -39,7 +40,7 @@ void SystemType::Init(bool Sc)
     pos_offset = Vec2(0.45f, 0.425f);  
 
     camp = Systems::Camp_Red; 
-
+		
 }
 
 /**
@@ -55,6 +56,7 @@ void SystemType::Run()
   _Update_SelfCheck();
 
     /*--<       正式运行        >--*/
+
 
     // 管理 主灯带 状态（50Hz分频）
     _Update_LedBand();

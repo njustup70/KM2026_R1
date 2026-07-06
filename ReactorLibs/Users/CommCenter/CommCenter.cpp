@@ -47,6 +47,7 @@ void CommCenter::Update()
   static float cooldown_tick = 0;
   if (DWT_GetTimeline_Sec() - cooldown_tick > 0.01)
   {
+    cooldown_tick = DWT_GetTimeline_Sec();
     pc.SendOdom(System.odometer.transform.x, System.odometer.transform.y, System.odometer.transform.z);
   }
   // pc.SendSickData(MOD::sick.GetData().raw_frame);
@@ -70,47 +71,46 @@ void CommCenter::Update()
 /**==========================发给工控机========================= */
 void CommCenter::ChooseHalve()
 {
-  uint8_t payload[4] = {0};
-#if Halve == Red_Halve
-  payload[0] = 0xFF;
-  payload[1] = 0x78;
-  payload[2] = 0x00;
-  payload[3] = 0xFF;
-  pc.SendRawData(payload, sizeof(payload));
+  uint8_t payload[2] = {0};
 
-#elif Halve == Blue_Halve
-  payload[0] = 0xFF;
-  payload[1] = 0x78;
-  payload[2] = 0x01;
-  payload[3] = 0xFF;
-  pc.SendRawData(payload, sizeof(payload));
-#endif
+  if (farcon.toggle[3] == 0)
+  {
+    payload[0] = 0x00;// 红方
+    payload[1] = 0xFF;
+
+    pc.PublicSendFrame(0xFF, 0x78, payload, sizeof(payload));
+    // pc.SendRawData(payload, sizeof(payload));
+  }
+  else
+  {
+    payload[0] = 0x01;//蓝方
+    payload[1] = 0xFF;
+    pc.PublicSendFrame(0xFF, 0x78, payload, sizeof(payload));
+    // pc.SendRawData(payload, sizeof(payload));
+  }
 }
 void CommCenter::ChoosePowerOnPos()
 {
-  uint8_t payload[4] = {0};
+  uint8_t payload[2] = {0};
+
 #if Current_Mode == Mode_Hidden_Treasures
-  payload[0] = 0xFF;
-  payload[1] = 0x69;
-  payload[2] = 0x03;
-  payload[3] = 0xFF;
-  pc.SendRawData(payload, sizeof(payload));
+
+  payload[0] = 0x03;
+  payload[1] = 0xFF;
+  pc.PublicSendFrame(0xFF, 0x69, payload, sizeof(payload));
 #else
-  payload[0] = 0xFF;
-  payload[1] = 0x78;
-  payload[2] = 0x01;
-  payload[3] = 0xFF;
-pc.SendRawData(payload, sizeof(payload));
+  payload[0] = 0x01;
+  payload[1] = 0xFF;
+  pc.PublicSendFrame(0xFF, 0x69, payload, sizeof(payload));
 #endif
 }
 void CommCenter::RestartSLAM()
 {
-  uint8_t payload[4] = {0};
-  payload[0] = 0xFF;
-  payload[1] = 0x13;
-  payload[2] = 0x13;
-  payload[3] = 0xFF;
- pc.SendRawData(payload, sizeof(payload));
+
+    uint8_t payload[2] = {0};
+  payload[0] = 0x13;
+  payload[1] = 0xFF;
+  pc.PublicSendFrame(0xFF, 0x13, payload, sizeof(payload));
 }
 
 /** -------------------  工控机的接收回调函数   ------------------------- **/
