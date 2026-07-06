@@ -39,7 +39,7 @@ int kfs_data[12] = {0};
 #define competition 4
 
 #define Run_Zone competition
-
+#include "HiddenTreasures_path1.hpp"
 //====================状态函数组织=======================================================================================
 
 void GetRod(StateCore *state_core)
@@ -271,24 +271,85 @@ void Action_ManualGetBlock(StateCore *state_core)
 }
 
 //**************************************三区状态块*******************************************************//
-void Action_PreLay(StateCore *core)
+
+// 重试区域自动规划路径跑到九宫格前面中间
+void Action_PrePut(StateCore *core)
 {
-  monit.LogInfo("State:Action_PreLay");
-  r1block.PreLayBLock();
-  Seq::WaitUntil([&]()
-                 { return (farcon.button_second_half[9 - 8 - 1] == 1); }); // 往后走一步，退洞
-  MOVE::MoveToTargPos(Area3Path);
+  r1block.PrePut();
+  MOVE::MoveToTargPos(HiddenInPath); // 从重试点到正中间
 
   state_core.GetCurState()->Complete = true;
 }
 
-void Action_LayBlock(StateCore *state_core)
+void Action_InPlanPutBlock(StateCore *state_core)
 {
-  monit.LogInfo("State:Action_LayBlock");
-  r1block.ReleaseBlock(1);
+  MOVE::MoveToTargPos(HiddenInPath); // 从重试点到正中间
+  r1block.FromMiddleToAny();         /// 从中间走进任意一个洞
+  r1block.ReleaseBlock(0);
   state_core->GetCurState()->Complete = true;
 }
 
+// 到对应格子前面
+void Action_freetogrid(StateCore *state_core)
+{
+  static int freeput_pos = 1;
+
+  while (farcon.button_middle[2][1] != 1)
+  {
+    if (farcon.button_middle[3][0] == 1)
+    {
+      freeput_pos = 0;
+    }
+    else if (farcon.button_middle[3][2] == 1)
+    {
+      freeput_pos = 2;
+    }
+    else if (farcon.button_middle[3][1] == 1)
+    {
+      freeput_pos = 1;
+    }
+    Seq::Wait(0.01);
+  }
+
+  chassis.RotateAt(1.57);
+  Seq::WaitUntil([&]()
+                 { return (chassis._Rotating() == 1); });
+
+  if (freeput_pos == 0)
+  {
+    chassis.MoveAt({10.21, 4.85});
+    Seq::WaitUntil([&]()
+                   { return (chassis._Walking() == 1); });
+  }
+  else if (freeput_pos == 2)
+  {
+    chassis.MoveAt({11.29, 4.85});
+    Seq::WaitUntil([&]()
+                   { return (chassis._Walking() == 1); });
+  }
+  else if (freeput_pos == 1)
+  {
+    chassis.MoveAt({10.75, 4.85});
+    Seq::WaitUntil([&]()
+                   { return (chassis._Walking() == 1); });
+  }
+  state_core->GetCurState()->Complete = true;
+}
+
+void Action_FreePut(StateCore *state_core)
+{
+  chassis.MoveRelative({0.5, 0});
+  Seq::WaitUntil([&]()
+                 { return (chassis._Walking() == 1); }); // 往前走一步
+  r1block.ReleaseBlock(0);
+  state_core->GetCurState()->Complete = true;
+}
+
+void Action_FreeGetBlock(StateCore *state_core)
+{
+  r1block.GetGroundBlock();
+  state_core->GetCurState()->Complete = true;
+}
 // ================================初始化========================================================================
 void AutoGragh_Init(void)
 {
@@ -337,11 +398,23 @@ void AutoGragh_Init(void)
 #elif Run_Zone == Zone3
 
   // 只跑三区
-  StateBlock &s_lay_pre = auto_flow.AddState("Pre LayBlock");
-  StateBlock &s_lay = auto_flow.AddState("LayBlock");
-  s_lay_pre.StateAction = Action_PreLay;
-  s_lay.StateAction = Action_LayBlock;
-  s_lay_pre.LinkTo(&s_lay_pre.Complete, s_lay);
+  StateBlock &s_put_pre = auto_flow.AddState("PrePutBlock");
+  StateBlock &s_planput = auto_flow.AddState("PutBlock"); // 不同的
+  StateBlock &s_free_togrid = auto_flow.AddState("FreeToGrid");
+  StateBlock &s_free_put = auto_flow.AddState("FreePutBlock");
+  StateBlock &s_free_pick = auto_flow.AddState("FreePickBlock");
+
+  s_put_pre.StateAction = Action_PrePut;
+  s_planput.StateAction = Action_InPlanPutBlock;
+  s_free_togrid.StateAction = Action_freetogrid;
+  s_free_put.StateAction = Action_FreePut;
+  s_free_pick.StateAction = Action_FreeGetBlock;
+
+  s_put_pre.LinkTo(&s_put_pre.Complete, s_planput)
+      s_planput.LinkTo(&s_planput.Complete, s_free_togrid);
+  s_free_togrid.LinkTo(&s_free_togrid.Complete, s_free_put);
+  s_free_put.LinkTo(&s_free_put.Complete, s_free_pick);
+  s_free_pick.LinkTo(&s_free_pick.Complete, s_free_togrid);
 
 #elif Run_Zone == competition
   // 全跑
@@ -357,9 +430,10 @@ void AutoGragh_Init(void)
   StateBlock &s_manual_pick = auto_flow.AddState("ManualGetBlocking");
 
   // 三区
-  StateBlock &s_lay_pre = auto_flow.AddState("Pre LayBlock");
-  StateBlock &s_lay = auto_flow.AddState("LayBlock");
-
+  StateBlock &s_planput = auto_flow.AddState("PutBlock"); // 不同的
+  StateBlock &s_free_togrid = auto_flow.AddState("FreeToGrid");
+  StateBlock &s_free_put = auto_flow.AddState("FreePutBlock");
+  StateBlock &s_free_pick = auto_flow.AddState("FreePickBlock");
   // 一区
   s_rod.StateAction = GetRod;
   s_dock.StateAction = Dock;
@@ -370,8 +444,10 @@ void AutoGragh_Init(void)
   s_auto_pick.StateAction = Action_AutoGetBlock;
   s_manual_pick.StateAction = Action_ManualGetBlock;
   // 三区
-  s_lay_pre.StateAction = Action_PreLay;
-  s_lay.StateAction = Action_LayBlock;
+  s_planput.StateAction = Action_InPlanPutBlock;
+  s_free_togrid.StateAction = Action_freetogrid;
+  s_free_put.StateAction = Action_FreePut;
+  s_free_pick.StateAction = Action_FreeGetBlock;
 
   // 状态转移关系
   s_rod.LinkTo(&s_rod.Complete, s_dock);
@@ -388,10 +464,11 @@ void AutoGragh_Init(void)
 
   s_manual_pick.LinkTo(&s_manual_pick.Complete, s_manual_pick);
   // 二区跑到终点
-  s_move.LinkTo(&is_final_goal_reached, s_lay_pre);
-  // 三区
-  s_lay_pre.LinkTo(&s_lay_pre.Complete, s_lay);
-
+  s_move.LinkTo(&is_final_goal_reached, s_planput);
+  s_planput.LinkTo(&s_planput.Complete, s_free_togrid);
+  s_free_togrid.LinkTo(&s_free_togrid.Complete, s_free_put);
+  s_free_put.LinkTo(&s_free_put.Complete, s_free_pick);
+  s_free_pick.LinkTo(&s_free_pick.Complete, s_free_togrid);
 #endif
 
   // // 注册图
