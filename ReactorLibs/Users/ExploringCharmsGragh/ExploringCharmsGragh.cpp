@@ -274,6 +274,7 @@ void Action_NavToBlock(StateCore *state_core)
     {
       // 如果是有块的点：获取高度，准备通过 LinkTo 条件触发切入 Action_GetBlock
       target_height = GetBlockHeight(target_xid);
+      
       is_ready_to_pick = true; // 马上跳转，保证状态块只跑一次
                                //   return;
       return;

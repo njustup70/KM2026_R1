@@ -27,22 +27,26 @@ using namespace MOVE;
 
 // 引用路径
 #include "HiddenTreasures_path1.hpp"
-
+#include "hid_come_in_red.hpp"
+#include "hid_red_wall_to_grid.hpp"
 // 全局状态图对象
-StateGraph HT_flow{"HiddenTreasuresGragh"};
+StateGraph HT_flow{"HiddenTreasuresGraph"};
 
 //**************************************三区状态块*******************************************************//
 // 重试区域自动规划路径跑到九宫格前面中间
 void Action_PrePut(StateCore *core)
 {
   r1block.PrePut();
-  MOVE::MoveToTargPos(HiddenInPath); // 从重试点到正中间
-
+  MOVE::MoveToTargPos(Hid_Come_In_Red); // 从重试点到正中间
+ Seq::WaitUntil([&]()
+                 { return (farcon.button_first_half[6] == 1); }); // 等按键
   state_core.GetCurState()->Complete = true;
 }
 
 void Action_InPlanPutBlock(StateCore *state_core)
 {
+    MOVE::MoveToTargPos(Hid_Red_Wall_To_Grid); // 从重试点到正中间
+
   r1block.FromMiddleToAny(); /// 从中间走进任意一个洞
   r1block.PutBlock();
   state_core->GetCurState()->Complete = true;
