@@ -162,6 +162,7 @@ void GoFetchRod(StateCore *state_core)
   }
   // 停止底盘运动
   chassis.Move(Vec2(0, 0));
+  chassis.UnlockRotate();
 
   // 完成左右位置确定，准备伸出机械臂
   comm.SendActionCommand(ActionType::BOW);
@@ -224,14 +225,7 @@ void GoFetchRod(StateCore *state_core)
     MOVE::MoveToTargPos(ToAssemble);
 
     // 机械臂伸出
-    comm.SendActionCommand(ActionType::BOW);
-
-    Seq::Wait(1.0f);
-    Seq::WaitUntil([]() -> bool
-                   { return comm.rodmotor_OK; });
-
-    // 机械臂收回
-    comm.SendActionCommand(ActionType::PICK);
+    comm.SendActionCommand(ActionType::LooseClaw);
 
     // 遥控器确认
     while (MOD::farcon.button_first_half[0] != 1)
@@ -260,13 +254,14 @@ void Action_Planning(StateCore *state_core)
   {
     // 向工控机发送 KFS 数据
     comm.SendKFStoPC();
+      comm.ProcessGuideDogData();
     Seq::Wait(0.1);
   }
 
   monit.LogOK("get path from PC! Now decode.");
 
-  // 解码收到的路径数据，并存入 guide_dog 数组
-  comm.ProcessGuideDogData();
+  // // 解码收到的路径数据，并存入 guide_dog 数组
+  // comm.ProcessGuideDogData();
 
   uint8_t guide_dog_lable[13];
   guide_dog_lable[0] = 0x67;
@@ -326,6 +321,9 @@ void Action_NavToBlock(StateCore *state_core)
     return;
   }
 
+  // 如果是普通过点：不切外部状态，增索引，并自回环重新进入本状态
+  guide_dog_index++;
+  monit.LogInfo("Go To Next Node, it's id:%d", guide_dog_index);
 }
 /**********************************************************************/
 
