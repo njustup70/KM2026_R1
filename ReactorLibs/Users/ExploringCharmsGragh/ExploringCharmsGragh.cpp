@@ -206,13 +206,15 @@ void GoFetchRod(StateCore *state_core)
   if (rod_id >= 2)
   {
     // 这里要加一个倒把手的
-    MOVE::MoveToTargGes(Vec3(2.45, 1.72, -1.57));
+    MOVE::MoveToTargGes(Vec3(2.40, 3.0, 0.0));
 
     // 把杆放平，复用一下Pick
     comm.SendActionCommand(ActionType::PICK);
 
     Seq::Wait(1);
 
+    // 这里要加一个倒把手的
+    // 但有风险会掉杆，决定加个按键可以在二区把杆微抬起来，防止捅到对方场地
     comm.SendActionCommand(ActionType::CLAMP_2_ON);
 
     monit.LogInfo("ready to area2");
@@ -259,9 +261,6 @@ void Action_Planning(StateCore *state_core)
   }
 
   monit.LogOK("get path from PC! Now decode.");
-
-  // // 解码收到的路径数据，并存入 guide_dog 数组
-  // comm.ProcessGuideDogData();
 
   uint8_t guide_dog_lable[13];
   guide_dog_lable[0] = 0x67;
