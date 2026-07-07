@@ -25,9 +25,8 @@ using namespace MOVE;
 static void ResponseButtonArea3(float velo_k = 1.0f);
 
 // 引用路径
-#include "HiddenTreasures_path1.hpp"
-#include "hid_come_in_red.hpp"
-#include "hid_red_wall_to_grid.hpp"
+#include "a3_red_hid_come_in_gentle.hpp"
+#include "a3_red_hid_wall_to_grid_gentle.hpp"
 // 全局状态图对象
 StateGraph HT_flow{"HiddenTreasuresGraph"};
 
@@ -54,7 +53,7 @@ void Action_PrePut(StateCore *core)
     Seq::Wait(0.005f);
   }
   // 从重试点到正中间
-  MOVE::MoveToTargPos(Hid_Come_In_Red);
+  MOVE::MoveToTargPos(Red_Hid_Come_In_Gentle);
   while (MOD::farcon.button_first_half[0] != 1)
   {
     ResponseButtonArea3(0.25f);
@@ -65,11 +64,16 @@ void Action_PrePut(StateCore *core)
 
 void Action_InPlanPutBlock(StateCore *state_core)
 {
-  MOVE::MoveToTargPos(Hid_Red_Wall_To_Grid); // 从重试点到正中间
+  MOVE::MoveToTargPos(Red_Hid_Wall_to_Grid_Gentle); // 从重试点到正中间
 
   // 按KFS中间按键
   r1block.FromMiddleToAny(); /// 从中间走进任意一个洞
-
+  Seq::Wait(1);
+  while (farcon.button_first_half[0] == 0)
+  {
+    ResponseButtonArea3();
+    Seq::Wait(0.005f);
+  }
   r1block.PutBlock();
   state_core->GetCurState()->Complete = true;
 }
@@ -130,36 +134,48 @@ void Action_freetogrid(StateCore *state_core)
 
   if (freeput_pos == 0)
   {
-    chassis.MoveAt({10.21, 4.85});
+    chassis.MoveAt({10.21, 5.05});
     Seq::WaitUntil([&]()
                    { return (chassis._Walking() == 1); });
   }
   else if (freeput_pos == 2)
   {
-    chassis.MoveAt({11.29, 4.85});
+    chassis.MoveAt({11.29, 5.05});
     Seq::WaitUntil([&]()
                    { return (chassis._Walking() == 1); });
   }
   else if (freeput_pos == 1)
   {
-    chassis.MoveAt({10.75, 4.85});
+    chassis.MoveAt({10.75, 5.05});
     Seq::WaitUntil([&]()
                    { return (chassis._Walking() == 1); });
   }
+  while (MOD::farcon.button_first_half[0] != 1)
+  {
+    ResponseButtonArea3(0.25f);
+    Seq::Wait(0.005f);
+  }
+  Seq::Wait(1);
   state_core->GetCurState()->Complete = true;
 }
 
 void Action_FreePut(StateCore *state_core)
 {
+  Seq::Wait(1);
+
+  while (farcon.button_first_half[0] == 0)
+  {
+    chassis.Move({0.1, 0});
+    Seq::Wait(0.05);
+  }
+  Seq::Wait(1);
   // 请求人工确认
   while (farcon.button_first_half[0] == 0)
   {
     ResponseButtonArea3();
     Seq::Wait(0.005f);
   }
-  chassis.MoveRelative({0.5, 0});
-  Seq::WaitUntil([&]()
-                 { return (chassis._Walking() == 1); }); // 往前走一步
+
   r1block.PutBlock();
   state_core->GetCurState()->Complete = true;
 }
@@ -207,27 +223,57 @@ void Action_Choose_Hid_Mode(StateCore *state_core)
 // 去找R2
 void Action_R2_call(StateCore *state_core)
 {
+  static int r2_reed_call_first = 0;
   chassis.RotateAt(1.57);
   Seq::WaitUntil([&]()
                  { return (chassis._Rotating() == 1); });
-  while (MOD::farcon.button_first_half[0] != 1)
+  if (r2_reed_call_first == 0)
   {
-    ResponseButtonArea3(0.25f);
-    Seq::Wait(0.005f);
-  }
-  chassis.MoveAt({10.1, 3.8}); // 去对接点通信
-  Seq::WaitUntil([&]()
-                 { return (chassis._Walking() == 1); });
+    while (MOD::farcon.button_first_half[0] != 1)
+    {
+      ResponseButtonArea3(0.25f);
+      Seq::Wait(0.005f);
+    }
+    chassis.MoveAt({11.4, 3.75}); // 去对接点通信
+    Seq::WaitUntil([&]()
+                   { return (chassis._Walking() == 1); });
 
-  while (MOD::farcon.button_first_half[0] != 1)
+    while (MOD::farcon.button_first_half[0] != 1)
+    {
+      ResponseButtonArea3(0.25f);
+      Seq::Wait(0.005f);
+    }
+
+    chassis.MoveAt({10.1, 3.75}); // 去等待点
+    Seq::WaitUntil([&]()
+                   { return (chassis._Walking() == 1); });
+    r2_reed_call_first++;
+  }
+  else
   {
-    ResponseButtonArea3(0.25f);
-    Seq::Wait(0.005f);
+    while (MOD::farcon.button_first_half[0] != 1)
+    {
+      ResponseButtonArea3(0.25f);
+      Seq::Wait(0.005f);
+    }
+    chassis.MoveAt({11.4, 4.3}); // 去对接点通信
+    Seq::WaitUntil([&]()
+                   { return (chassis._Walking() == 1); });
+
+    while (MOD::farcon.button_first_half[0] != 1)
+    {
+      ResponseButtonArea3(0.25f);
+      Seq::Wait(0.005f);
+    }
+
+    chassis.MoveAt({10.1, 4.3}); // 去等待点
+    Seq::WaitUntil([&]()
+                   { return (chassis._Walking() == 1); });
+    chassis.MoveAt({10.1, 2.25}); // 去等待点
+    Seq::WaitUntil([&]()
+                   { return (chassis._Walking() == 1); });
   }
 
-  chassis.MoveAt({10.8, 3.8}); // 去等待点
-  Seq::WaitUntil([&]()
-                 { return (chassis._Walking() == 1); });
   state_core->GetCurState()->Complete = true;
 }
 
