@@ -473,7 +473,7 @@ void Action_Freelay(StateCore *state_core)
     ResponseButtonArea3();
     Seq::Wait(0.005f);
   }
-  r1block.layBlock();
+  r1block.ReleaseBlock();
   Seq::Wait(1);
   // 请求人工确认
   while (farcon.button_first_half[0] == 0)
