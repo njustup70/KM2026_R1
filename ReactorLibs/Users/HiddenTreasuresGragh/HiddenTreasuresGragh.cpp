@@ -27,6 +27,7 @@ static void ResponseButtonArea3(float velo_k = 1.0f);
 // 引用路径
 #include "a3_red_hid_come_in_gentle.hpp"
 #include "a3_red_hid_wall_to_grid_gentle.hpp"
+#include "a3_red_hid_wall_to_grid_gentle_75.hpp"
 // 全局状态图对象
 StateGraph HT_flow{"HiddenTreasuresGraph"};
 
@@ -64,7 +65,7 @@ void Action_PrePut(StateCore *core)
 
 void Action_InPlanPutBlock(StateCore *state_core)
 {
-  MOVE::MoveToTargPos(Red_Hid_Wall_to_Grid_Gentle); // 从重试点到正中间
+  MOVE::MoveToTargPos(Red_Hid_Wall_to_Grid_Gentle_75); // 从重试点到正中间
 
   // 按KFS中间按键
   r1block.FromMiddleToAny(); /// 从中间走进任意一个洞
@@ -94,7 +95,7 @@ void Action_InPlantoGetGroundBlock(StateCore *state_core)
     Seq::Wait(0.005f);
   }
 
-  chassis.MoveAt({10.9, 4.04}); //
+  chassis.MoveAt({10.7, 4.1}); //
   Seq::WaitUntil([&]()
                  { return (chassis._Walking() == 1); });
   while (MOD::farcon.button_first_half[0] != 1)
@@ -125,7 +126,7 @@ void Action_freetogrid(StateCore *state_core)
     {
       freeput_pos = 1;
     }
-    Seq::Wait(0.01);
+    Seq::Wait(0.005);
   }
 
   chassis.RotateAt(1.57);
