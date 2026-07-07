@@ -978,20 +978,23 @@ void R1Block::FromMiddleToAny()
   // 放左边块
   if (put_dposition == 0)
   {
-    chassis.MoveRelative({0, 0.54});
+    chassis.MoveRelative({0.2, 0.54});
     Seq::WaitUntil([&]()
                    { return (chassis._Walking() == 1); }); // 走到第一个块
   }
   // 放右边块
   else if (put_dposition == 2)
   {
-    chassis.MoveRelative({0, -0.54});
+    chassis.MoveRelative({0.2, -0.54});
     Seq::WaitUntil([&]()
                    { return (chassis._Walking() == 1); }); // 走到第三个块
   }
   // 放中间块
   else if (put_dposition == 1)
   {
+        chassis.MoveRelative({0.2, 0});
+    Seq::WaitUntil([&]()
+                   { return (chassis._Walking() == 1); }); // 走到第三个块
   }
   // 请求人工确认
   while (farcon.button_first_half[0] == 0)

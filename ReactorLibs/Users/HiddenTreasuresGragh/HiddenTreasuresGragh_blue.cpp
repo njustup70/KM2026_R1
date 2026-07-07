@@ -41,7 +41,7 @@ void Action_PrePut(StateCore *core)
 {
   while (MOD::farcon.button_first_half[0] != 1)
   {
-    ResponseButtonArea3(0.5f);
+    ResponseButtonArea3(0.7f);
     Seq::Wait(0.005f);
   }
   r1block.PrePut();
@@ -130,19 +130,19 @@ void Action_FreeToGrid(StateCore *state_core)
 
   if (freeput_pos == 0)
   {
-    chassis.MoveAt({10.21, 1.15});
+    chassis.MoveAt({11.29, 0.95});
     Seq::WaitUntil([&]()
                    { return (chassis._Walking() == 1); });
   }
   else if (freeput_pos == 2)
   {
-    chassis.MoveAt({11.29, 1.15});
+    chassis.MoveAt({10.21, 0.95});
     Seq::WaitUntil([&]()
                    { return (chassis._Walking() == 1); });
   }
   else if (freeput_pos == 1)
   {
-    chassis.MoveAt({10.75, 1.15});
+    chassis.MoveAt({10.75, 0.95});
     Seq::WaitUntil([&]()
                    { return (chassis._Walking() == 1); });
   }
@@ -264,6 +264,9 @@ void Action_R2_call(StateCore *state_core)
     }
 
     chassis.MoveAt({10.1, 1.7}); // 去等待点
+    Seq::WaitUntil([&]()
+                   { return (chassis._Walking() == 1); });
+    chassis.MoveAt({10.1, 2.25}); // 去等待点
     Seq::WaitUntil([&]()
                    { return (chassis._Walking() == 1); });
   }
