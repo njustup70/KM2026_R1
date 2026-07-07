@@ -17,7 +17,7 @@ R1Block &APP::r1block = R1Block::GetInstance();
 // int push_height_debug = 580000;
 // int release_test_flag = 0;
 // int calm_flag = 0;
-
+static void ResponseFarconForR1Block(float velo_k = 0.25);
 extern bool is_prelay_finished;
 int debug_origin = 0;
 int target_height = 200;
@@ -604,7 +604,7 @@ void R1Block::Aim_Block()
 
 /**
  * @brief 将梅林的取块高度转换为提升电机目标位置
- * 
+ *
  * @param block_height 梅林的高度
  * @return int 电机实际对应的 Pos Code
  */
@@ -650,9 +650,9 @@ void R1Block::Manual_Reset_to_All()
 
 /**
  * @brief R1 取块
- * 
- * @param block_height 
- * @param auto_flag 
+ *
+ * @param block_height
+ * @param auto_flag
  */
 void R1Block::Get_Block(int block_height, int auto_flag)
 {
@@ -703,7 +703,7 @@ void R1Block::Get_Block(int block_height, int auto_flag)
 
     // 等到抬升完成
     Seq::WaitUntil([&]()
-                    { return (llift_reached && rlift_reached); }); // 检测到抬升到对应位置
+                   { return (llift_reached && rlift_reached); }); // 检测到抬升到对应位置
   }
 
   // 此时，确认高度正确
@@ -711,7 +711,7 @@ void R1Block::Get_Block(int block_height, int auto_flag)
 
   // 等待 2 秒，确保块被吸住
   Seq::Wait(2);
-  
+
   // 完成抬升
   monit.LogSpec("lift finished");
 
@@ -727,16 +727,16 @@ void R1Block::Get_Block(int block_height, int auto_flag)
   // 请求人工确认
   while (farcon.button_first_half[0] != 1)
   {
-    Seq::Wait(0.005);
+    ResponseFarconForR1Block();
+    Seq::Wait(0.005f);
   }
 
   // 等待对准完成，伸出双爪，取块
   SetTargetStretch(stretch_distance[1], stretch_distance[1]);
 
   // 确认两爪到位，检测到最外面到了
-  Seq::WaitUntil([&](){
-    return ((stretchmotor[0].IsReached() == 1) && (stretchmotor[1].IsReached() == 1));
-  }); 
+  Seq::WaitUntil([&]()
+                 { return ((stretchmotor[0].IsReached() == 1) && (stretchmotor[1].IsReached() == 1)); });
   Seq::Wait(1);
 
   // 开始吸入块
@@ -752,7 +752,7 @@ void R1Block::Get_Block(int block_height, int auto_flag)
   if (now_get_block == 0)
   {
     SmoothMoveStretchToTarget(stretch_distance[1], 0, 2, 10);
-    Seq::Wait(2);
+    Seq::Wait(1);
     suckmotor[0].SetSpd(0);
     suckmotor[1].SetSpd(0);
     Clamp_block(); // 夹紧
@@ -763,10 +763,9 @@ void R1Block::Get_Block(int block_height, int auto_flag)
   else if (now_get_block == 1)
   {
     SmoothMoveStretchToTarget(stretch_distance[1], 0, 2, 10);
-    Seq::Wait(2);
+    Seq::Wait(1);
     suckmotor[0].SetSpd(0);
     suckmotor[1].SetSpd(0);
-    Seq::Wait(1);
     Seq::Wait(1);
     return;
   }
@@ -774,7 +773,7 @@ void R1Block::Get_Block(int block_height, int auto_flag)
   else if (now_get_block == 2)
   {
     SmoothMoveStretchToTarget(stretch_distance[1], stretch_distance[0], 2, 10);
-    Seq::Wait(2);
+    Seq::Wait(1);
     suckmotor[0].SetSpd(0);
     suckmotor[1].SetSpd(0);
     Seq::Wait(1);
@@ -783,6 +782,13 @@ void R1Block::Get_Block(int block_height, int auto_flag)
     Seq::WaitUntil([&]()
                    { return (llift_reached && rlift_reached); }); // 检测到抬升到对应位置
     Seq::Wait(2);
+  }
+
+  // 请求人工确认
+  while (farcon.button_first_half[0] != 1)
+  {
+    ResponseFarconForR1Block();
+    Seq::Wait(0.005f);
   }
 
 #endif
@@ -808,35 +814,9 @@ void R1Block::ReleaseBlock(int auto_flag)
 {
   appstate = STATE_RELEASEBLOCK;
 
-  // 舵机位置设置
   // R2死了
 #ifdef R2_dead
-  ///////////进洞自动操作
-  // if (auto_flag == 1)
-  // {
-  //   // 向右边走一步对准洞
-  //   Seq::WaitUntil([&]()
-  //                  { return (farcon.button_first_half[6] == 1); });
-  //   Seq::WaitUntil([&]()
-  //                  { return ((Block_Sick_lf[0] <= 0.5) && (Block_Sick_lf[0] >= 0.2)); });
 
-  //   chassis.MoveRelative({0, -float(0.245 - Block_Sick_lf[0])});
-  //   Seq::WaitUntil([&]()
-  //                  { return (chassis._Walking() == 1); }); // 往后走一步，退洞
-  //   // 向前走一步进洞
-  //   Seq::WaitUntil([&]()
-  //                  { return (farcon.button_first_half[6] == 1); }); // 往后走一步，退洞
-  //   Seq::WaitUntil([&]()
-  //                  { return ((Block_Sick_lf[1] <= 1) && (Block_Sick_lf[1] >= 0.2)); });
-  //   chassis.MoveRelative({float(Block_Sick_lf[1] - 0.3), 0});
-  //   Seq::WaitUntil([&]()
-  //                  { return (chassis._Walking() == 1); }); // 往后走一步，退洞
-
-  //   Seq::WaitUntil([&]()
-  //                  { return (farcon.button_first_half[6] == 1); }); // 往后走一步，退洞
-  // }
-  // suckmotor[0].SetSpd(0);
-  // suckmotor[1].SetSpd(0);
   static int now_put_block = 0;
   if (block_exist[2] == 1 && block_exist[1] == 1 && block_exist[0] == 1)
   {
@@ -962,9 +942,6 @@ void R1Block::PrePut()
 {
   Seq::WaitUntil([&]()
                  { return (_lift_origined == 1); }); // 往后走一步，退洞
-  Seq::WaitUntil([&]()
-                 { return (farcon.button_first_half[6] == 1); }); // 往后走一步，退洞
-
   Clamp_block();
   Seq::Wait(1);
   // 从 0 平滑移动到目标位置，总耗时 4.0 秒，切分 100 步完成
@@ -1008,6 +985,12 @@ void R1Block::FromMiddleToAny()
   // 放中间块
   else if (put_dposition == 1)
   {
+  }
+  // 请求人工确认
+  while (farcon.button_first_half[0] == 0)
+  {
+    ResponseFarconForR1Block();
+    Seq::Wait(0.005f);
   }
   chassis.MoveRelative({0.5, 0});
   Seq::WaitUntil([&]()
@@ -1066,9 +1049,12 @@ void R1Block::PutBlock()
 
 void R1Block::GetGroundBlock()
 {
-  // 取块动作等待
-  Seq::WaitUntil([&]()
-                 { return (farcon.button_first_half[5] == 1); });
+  // 请求人工确认
+  while (farcon.button_first_half[0] == 0)
+  {
+    ResponseFarconForR1Block();
+    Seq::Wait(0.005f);
+  }
 
   SmoothMoveLiftToTarget(realse_block_height, 0, 3, 100); // 差一个高度变化
   Seq::WaitUntil([&]()
@@ -1105,7 +1091,12 @@ void R1Block::GetGroundBlock()
 
   suckmotor[0].SetSpd(-0.8 * suck_speed);
   suckmotor[1].SetSpd(0.8 * suck_speed);
-  Seq::Wait(1);
+  // 请求人工确认
+  while (farcon.button_first_half[0] == 0)
+  {
+    ResponseFarconForR1Block();
+    Seq::Wait(0.005f);
+  }
 
   SetTargetStretch(stretch_distance[1], stretch_distance[1]);
   Seq::WaitUntil([&]()
@@ -1140,4 +1131,38 @@ void R1Block::Action_LiftToHeight(float height)
  */
 void R1Block::GetTargetBlockInfo()
 {
+}
+
+/**
+ * @brief 遥控器能控制的中间时刻
+ * @param velo_k 底盘速度系数，在不同的地方进入遥控器，理论速度不同
+ */
+static void ResponseFarconForR1Block(float velo_k)
+{
+  // 解锁底盘的位置闭环，角度闭环仍然由系统控制
+  chassis.UnlockWalk();
+
+  Vec2 v_world;
+  v_world.x = -farcon.jys_value[3] * 1.0f / 100.f * 1.0f * velo_k; // 摇杆向前 -> 场地X正
+  v_world.y = -farcon.jys_value[2] * 1.0f / 100.f * 1.0f * velo_k; // 摇杆向左 -> 场地Y正
+
+  Vec2 v_body = v_world.Rotate(-System.position.z);
+
+  if (!chassis.IsLockRotate())
+  {
+    float yaw_spd = -farcon.jys_value[0] * 1.0f / 100.f * 1.5f; // 摇杆向左 -> 逆时针旋转
+    chassis.Move(Vec3(v_body.x, v_body.y, yaw_spd));
+  }
+  else
+  {
+    chassis.Move(Vec2(v_body.x, v_body.y));
+  }
+  if (farcon.button_first_half[1] == 1)
+  {
+    APP::r1block.SetTargetHeight(APP::r1block.blockheight_2_liftmotortargetpos[2], APP::r1block.blockheight_2_liftmotortargetpos[2]);
+    APP::r1block.last_height = 600;
+    Seq::WaitUntil([&]()
+                   { return (APP::r1block.llift_reached && APP::r1block.rlift_reached); }); // 检测到抬升到对应位置
+    Seq::Wait(2);
+  }
 }
