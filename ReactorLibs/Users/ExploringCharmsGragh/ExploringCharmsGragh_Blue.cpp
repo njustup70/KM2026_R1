@@ -171,7 +171,6 @@ void GoFetchRod(StateCore *state_core)
   // 等待机械臂完成取杆
   Seq::Wait(1);
 
-
   while (MOD::farcon.button_first_half[0] != 1)
   {
     ResponseFarcon(0.25f);
