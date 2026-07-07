@@ -41,7 +41,7 @@ void Action_PrePut(StateCore *core)
 {
   while (MOD::farcon.button_first_half[0] != 1)
   {
-    ResponseButtonArea3(0.25f);
+    ResponseButtonArea3(0.5f);
     Seq::Wait(0.005f);
   }
   r1block.PrePut();
@@ -64,6 +64,12 @@ void Action_InPlanPutBlock(StateCore *state_core)
   MOVE::MoveToTargPos(hid_blue_wall_to_grid); // 从重试点到正中间
 
   r1block.FromMiddleToAny(); /// 从中间走进任意一个洞
+  Seq::Wait(1);
+  while (farcon.button_first_half[0] == 0)
+  {
+    ResponseButtonArea3();
+    Seq::Wait(0.005f);
+  }
   r1block.PutBlock();
   state_core->GetCurState()->Complete = true;
 }
@@ -100,7 +106,7 @@ void Action_InPlantoGetGroundBlock(StateCore *state_core)
 void Action_FreeToGrid(StateCore *state_core)
 {
   static int freeput_pos = 1;
-
+    Seq::Wait(1);
   while (farcon.button_middle[2][1] != 1)
   {
     if (farcon.button_middle[3][0] == 1)
@@ -140,14 +146,34 @@ void Action_FreeToGrid(StateCore *state_core)
     Seq::WaitUntil([&]()
                    { return (chassis._Walking() == 1); });
   }
+  while (MOD::farcon.button_first_half[0] != 1)
+  {
+    ResponseButtonArea3(0.25f);
+    Seq::Wait(0.005f);
+  }
+  Seq::Wait(1);
+
   state_core->GetCurState()->Complete = true;
 }
 
 void Action_FreePut(StateCore *state_core)
 {
-  chassis.MoveRelative({0.5, 0});
-  Seq::WaitUntil([&]()
-                 { return (chassis._Walking() == 1); }); // 往前走一步
+  Seq::Wait(1);
+
+
+  while (farcon.button_first_half[0] == 0)
+  {
+    chassis.Move({0.1, 0});
+    Seq::Wait(0.05);
+  }
+    Seq::Wait(1);
+  // 请求人工确认
+  while (farcon.button_first_half[0] == 0)
+  {
+    ResponseButtonArea3();
+    Seq::Wait(0.005f);
+  }
+
   r1block.PutBlock();
   state_core->GetCurState()->Complete = true;
 }
@@ -219,7 +245,6 @@ void Action_R2_call(StateCore *state_core)
   state_core->GetCurState()->Complete = true;
 }
 
-
 // ================================初始化========================================================================
 void HiddenTreasuresGragh_Blue_Init(void)
 {
@@ -241,7 +266,7 @@ void HiddenTreasuresGragh_Blue_Init(void)
   // 后期选择是放块/取块/给R2发送消息还是？
 
   StateBlock &call_R2 = HT_Blue_flow.AddState("Call_R2");
- //******************************状态函数绑定***********************
+  //******************************状态函数绑定***********************
   // 正常规划
   s_put_pre.StateAction = Action_PrePut;
   s_planput.StateAction = Action_InPlanPutBlock;
@@ -250,7 +275,7 @@ void HiddenTreasuresGragh_Blue_Init(void)
   // 状态图切换
   s_choose_hid_mode.StateAction = Action_Choose_Hid_Mode;
   // 自由搏击
-  s_free_togrid.StateAction = Action_freetogrid;
+  s_free_togrid.StateAction = Action_FreeToGrid;
   s_free_put.StateAction = Action_FreePut;
   s_free_pick.StateAction = Action_FreeGetBlock;
 
