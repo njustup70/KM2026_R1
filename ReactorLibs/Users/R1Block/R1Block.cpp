@@ -778,7 +778,8 @@ void R1Block::Get_Block(int block_height, int auto_flag)
     suckmotor[1].SetSpd(0);
     Seq::Wait(1);
     if (block_detect[0] == 0)
-    {Clamp_block();
+    {
+      Clamp_block();
       Seq::Wait(1);
       SmoothMoveStretchToTarget(stretch_distance[0], 2, 0);
       Seq::Wait(1);
@@ -998,9 +999,14 @@ void R1Block::FromMiddleToAny()
     ResponseFarconForR1Block();
     Seq::Wait(0.005f);
   }
-  chassis.MoveRelative({0.5, 0});
-  Seq::WaitUntil([&]()
-                 { return (chassis._Walking() == 1); }); // 往前走一步
+  Seq::Wait(2);
+
+  while (farcon.button_first_half[0] == 0)
+  {
+    chassis.Move({0.1, 0});
+    Seq::Wait(0.05);
+  }
+  chassis.Move({0.00, 0});
 }
 // 后面可以接FromMiddleToAny
 void R1Block::AnyToMiddleGrid()
@@ -1033,17 +1039,21 @@ void R1Block::PutBlock()
   suckmotor[0].SetSpd(suck_speed);
   suckmotor[1].SetSpd(-suck_speed);
 
+  Seq::Wait(1);
+  SetTargetStretch(stretch_distance[0]-1500000, stretch_distance[0]-1500000);
   Seq::WaitUntil([&]()
-                 { return block_exist[2] == 0; }); // 检测到没有块在上面的时候
-  SetTargetStretch(release_strectch_distance[0], release_strectch_distance[0]);
-  Seq::WaitUntil([&]()
-                 { return block_exist[0] == 1; }); // 检测到没有块在上面的时候
-  Seq::WaitUntil([&]()
-                 { return block_exist[0] == 0; }); // 检测到没有块在上面的时候
+                 { return ((stretchmotor[0].IsReached() == 1) && (stretchmotor[1].IsReached() == 1)); }); //检测到最外/面到了
+    // 请求人工确认
+  while (farcon.button_first_half[0] == 0)
+  {
+    ResponseFarconForR1Block();
+    Seq::Wait(0.005f);
+  }
   suckmotor[0].SetSpd(0);
   suckmotor[1].SetSpd(0);
   Loosen_block(); // 松
   Seq::Wait(1);
+  
   SetTargetStretch(0, 0);
   Seq::WaitUntil([&]()
                  { return ((stretchmotor[0].IsReached() == 1) && (stretchmotor[1].IsReached() == 1)); }); // 检测到最外面到了
@@ -1095,8 +1105,6 @@ void R1Block::GetGroundBlock()
   }
   chassis.Move({0, 0});
 
-  suckmotor[0].SetSpd(-0.8 * suck_speed);
-  suckmotor[1].SetSpd(0.8 * suck_speed);
   // 请求人工确认
   while (farcon.button_first_half[0] == 0)
   {
@@ -1107,14 +1115,19 @@ void R1Block::GetGroundBlock()
   SetTargetStretch(stretch_distance[1], stretch_distance[1]);
   Seq::WaitUntil([&]()
                  { return ((stretchmotor[0].IsReached() == 1) && (stretchmotor[1].IsReached() == 1)); }); // 检测到最外面到了
+  suckmotor[0].SetSpd(-0.8 * suck_speed);
+  suckmotor[1].SetSpd(0.8 * suck_speed);
   Seq::Wait(1);
 
   Clamp_block(); // 夹紧
   Seq::Wait(1);
   SmoothMoveStretchToTarget(stretch_distance[1], 0, 2, 10);
 
-  Seq::WaitUntil([&]()
-                 { return (block_exist[2] == 1); }); // 检测到最里面到了
+  while (farcon.button_first_half[0] == 0)
+  {
+    ResponseFarconForR1Block();
+    Seq::Wait(0.005f);
+  }
 
   suckmotor[0].SetSpd(0);
   suckmotor[1].SetSpd(0);
