@@ -784,6 +784,13 @@ void R1Block::Get_Block(int block_height, int auto_flag)
     Seq::Wait(2);
   }
 
+  // 请求人工确认
+  while (farcon.button_first_half[0] != 1)
+  {
+    ResponseFarconForR1Block();
+    Seq::Wait(0.005f);
+  }
+
 #endif
 }
 
@@ -1149,5 +1156,13 @@ static void ResponseFarconForR1Block(float velo_k)
   else
   {
     chassis.Move(Vec2(v_body.x, v_body.y));
+  }
+  if (farcon.button_first_half[1] == 1)
+  {
+    APP::r1block.SmoothMoveLiftToTarget(APP::r1block.trans_height(APP::r1block.last_height), APP::r1block.trans_height(600), 3);
+    APP::r1block.last_height = 600;
+    Seq::WaitUntil([&]()
+                   { return (APP::r1block.llift_reached && APP::r1block.rlift_reached); }); // 检测到抬升到对应位置
+    Seq::Wait(2);
   }
 }
