@@ -168,9 +168,15 @@ void GoFetchRod(StateCore *state_core)
   // 完成左右位置确定，准备伸出机械臂
   comm.SendActionCommand(ActionType::BOW);
   monit.LogInfo("Bow At:(%.2f,%.2f)", comm.slam_pos.x, comm.slam_pos.y);
-
   // 等待机械臂完成取杆
   Seq::Wait(1);
+
+
+  while (MOD::farcon.button_first_half[0] != 1)
+  {
+    ResponseFarcon(0.25f);
+    Seq::Wait(0.005f);
+  }
 
   // 前方丝杠锁紧
   comm.SendActionCommand(ActionType::CLAMP);
@@ -178,7 +184,7 @@ void GoFetchRod(StateCore *state_core)
 
   // 机械臂抬起
   comm.SendActionCommand(ActionType::PICK);
-  Seq::Wait(0.8);
+  Seq::Wait(1);
 
   // 同时闭紧夹爪
   comm.SendActionCommand(ActionType::CLAMP_2_ON);
@@ -186,22 +192,21 @@ void GoFetchRod(StateCore *state_core)
   MOVE::MoveToTargPos(Area1ToDock);
 
   // 锁定Yaw角，并转手动（本图是蓝场图）
-  chassis.RotateAt(1.571f);
+  chassis.LockYaw(1.571f);
   while (MOD::farcon.button_first_half[0] != 1)
   {
     ResponseFarcon();
     Seq::Wait(0.005f);
   }
+  chassis.UnlockRotate();
+
+  // 松开夹爪
+  comm.SendActionCommand(ActionType::CLAMP_2_OFF);
+  Seq::Wait(0.8);
 
   // 抬起机械臂
   comm.SendActionCommand(ActionType::AWAYFROMDOCK);
-
-  // 遥控器确认
-  while (MOD::farcon.button_first_half[0] != 1)
-  {
-    ResponseFarcon();
-    Seq::Wait(0.005f);
-  }
+  Seq::Wait(0.8);
 
   /*****    吐杆逻辑    *****/
   if (rod_id >= 2)
@@ -442,7 +447,10 @@ static void ResponseFarcon(float velo_k)
     comm.SendActionCommand(ActionType::GiveUpDock);
   // 发送对接完成
   if (farcon.button_first_half[4])
-    comm.SendActionCommand(ActionType::DockOK); // ------这里需要新增发送对接完成
+    comm.SendActionCommand(ActionType::DockOK); 
+  // 发送KFS给R2
+  if (farcon.button_first_half[5])
+    comm.SendActionCommand(ActionType::SendKFS); 
 }
 
 #endif

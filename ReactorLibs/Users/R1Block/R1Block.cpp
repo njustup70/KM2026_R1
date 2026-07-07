@@ -777,6 +777,12 @@ void R1Block::Get_Block(int block_height, int auto_flag)
     suckmotor[0].SetSpd(0);
     suckmotor[1].SetSpd(0);
     Seq::Wait(1);
+    if (block_detect[0] == 0)
+    {Clamp_block();
+      Seq::Wait(1);
+      SmoothMoveStretchToTarget(stretch_distance[0], 2, 0);
+      Seq::Wait(1);
+    }
     SmoothMoveLiftToTarget(trans_height(last_height), trans_height(600), 3);
     last_height = 600;
     Seq::WaitUntil([&]()
