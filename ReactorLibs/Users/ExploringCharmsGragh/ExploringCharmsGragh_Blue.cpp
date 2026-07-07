@@ -401,6 +401,9 @@ void ExploringCharmsGragh_Blue_Init(void)
 
   // 状态转移关系
   s_wait.LinkTo(&s_wait.Complete, s_fetch_rod); // 等待开始
+  // 假如重启，也可以选择直接跳入二区
+  s_wait.LinkTo(&go_to_area2, s_plan);
+
   /****   一区取杆    ****/
   s_fetch_rod.LinkTo(&need_fetch_rod_again, s_fetch_rod);
   s_fetch_rod.LinkTo(&go_to_area2, s_plan);
@@ -409,8 +412,11 @@ void ExploringCharmsGragh_Blue_Init(void)
   s_plan.LinkTo(&s_plan.Complete, s_move);           // 规划路径
   s_move.LinkTo(&is_ready_to_pick, s_auto_pick);     // 取块
   s_move.LinkTo(&is_final_goal_reached, s_overwait); // 等待
+  s_auto_pick.LinkTo(&s_auto_pick.Complete, s_move); 
 
-  s_auto_pick.LinkTo(&s_auto_pick.Complete, s_move);
+  // 二区重试
+  s_move.LinkTo(&go_to_area2,s_plan);
+  s_auto_pick.LinkTo(&go_to_area2, s_plan);
 
   // 注册图
   state_core.RegistGraph(EC_Blue_flow);
@@ -464,14 +470,13 @@ static void ResponseFarcon(float velo_k)
   // 放弃对接
   if (farcon.button_second_half[0])
     comm.SendActionCommand(ActionType::GiveUpDock);
-  // 结束对接,r1跳入planer状态
-  if (farcon.button_second_half[1])
-    go_to_area2 = true;
   // r1得再去取杆
-  if (farcon.button_second_half[2])
+  if (farcon.button_second_half[1])
     need_fetch_rod_again = true;
-
-  
+  // 1.结束对接,r1跳入planer状态；
+  // 2.在取块、跑点的任意响应按键处，r1重新跳入planer，此时可以重新选好kfs块（取过的可以删去）
+  if (farcon.button_second_half[2])
+    go_to_area2 = true;
 }
 
 #endif
