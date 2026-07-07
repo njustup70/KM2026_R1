@@ -805,8 +805,6 @@ void R1Block::PreLayBLock()
 {
   Seq::WaitUntil([&]()
                  { return (_lift_origined == 1); });
-  Seq::WaitUntil([&]()
-                 { return (farcon.button_first_half[6] == 1); });
 
   Loosen_block();
   Seq::Wait(1);
