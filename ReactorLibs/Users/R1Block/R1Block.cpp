@@ -1159,7 +1159,7 @@ static void ResponseFarconForR1Block(float velo_k)
   }
   if (farcon.button_first_half[1] == 1)
   {
-    APP::r1block.SmoothMoveLiftToTarget(APP::r1block.trans_height(APP::r1block.last_height), APP::r1block.trans_height(600), 3);
+    APP::r1block.SetTargetHeight(APP::r1block.blockheight_2_liftmotortargetpos[2], APP::r1block.blockheight_2_liftmotortargetpos[2]);
     APP::r1block.last_height = 600;
     Seq::WaitUntil([&]()
                    { return (APP::r1block.llift_reached && APP::r1block.rlift_reached); }); // 检测到抬升到对应位置
