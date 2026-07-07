@@ -192,9 +192,19 @@ void GoFetchRod(StateCore *state_core)
 
   // 锁定Yaw角，并转手动（本图是蓝场图）
   chassis.LockYaw(1.571f);
+
+  // 此处响应按键：
+  // 正常情况：发kfs，发光通信让r2松开夹爪，看到松开后，按按键1，r1继续后续的自动动作
+  //          以及可能需要触发让夹爪微调
+  // 异常情况：1.r1发现杆位置有问题，r1可以手动开回重试区，调整，开回来继续对接：不需要按任何按键
+  //          2.r1、r2接触了，强制性重试：最好不要按光通信，要不然r2会继续下一步，可以手动打开夹爪，保留原有的对接状态，开回重试区：不需要按任何按键，罚时之后还是继续对接
+  //            强制性重试之后我感觉，对接完这一根直接走吧：按按键6、5，发kfs及松开夹爪，再按按键9告诉r2放弃对接，r2直接进二区，r1先执行正常逻辑把杆取出来然后可能是会回重试区，在这里的按键按下按键10告诉r1直接进入planner
+  //          3.矛头掉落，r2重试，因为不能触发光通信让他取下一根杆
+  //          4.身上已经有一根杆了，对接不上，时间不够，决定直接进入二区，按一下6发KFS，直接按按键9，r2会进入2区，r1也进入2区
+  // 最后都要按按键1，确认
   while (MOD::farcon.button_first_half[0] != 1)
   {
-    ResponseFarcon();
+    ResponseFarcon(0.5f);
     Seq::Wait(0.005f);
   }
   chassis.UnlockRotate();
@@ -238,6 +248,7 @@ void GoFetchRod(StateCore *state_core)
     {
       ResponseFarcon();
       Seq::Wait(0.005f);
+      // if (go_to_area2) return;  
     }
 
     rod_id++;
@@ -431,25 +442,36 @@ static void ResponseFarcon(float velo_k)
   }
 
   /***********************/
-  // 控制矛头上下
-  if (farcon.button_first_half[2])
-    comm.SendActionCommand(ActionType::SpearUp);
+  // 控制矛头
   if (farcon.button_first_half[3])
-    comm.SendActionCommand(ActionType::SpearDown);
+    comm.SendActionCommand(ActionType::SpearUp);//矛头会向下
+  if (farcon.button_first_half[2])
+    comm.SendActionCommand(ActionType::SpearDown);//矛头会向上
   // 控制矛头左右
   if (farcon.button_first_half[6])
     comm.SendActionCommand(ActionType::SpearLeft);
   if (farcon.button_first_half[7])
     comm.SendActionCommand(ActionType::SpearRight);
+
+  // 发送对接完成
+  if (farcon.button_first_half[4])
+    comm.SendActionCommand(ActionType::DockOK);
+  
+  // 发送KFS给R2,这个考虑融在逻辑里自动发
+  if (farcon.button_first_half[5])
+    comm.SendActionCommand(ActionType::SendKFS); 
+
   // 放弃对接
   if (farcon.button_second_half[0])
     comm.SendActionCommand(ActionType::GiveUpDock);
-  // 发送对接完成
-  if (farcon.button_first_half[4])
-    comm.SendActionCommand(ActionType::DockOK); 
-  // 发送KFS给R2
-  if (farcon.button_first_half[5])
-    comm.SendActionCommand(ActionType::SendKFS); 
+  // 结束对接,r1跳入planer状态
+  if (farcon.button_second_half[1])
+    go_to_area2 = true;
+  // r1得再去取杆
+  if (farcon.button_second_half[2])
+    need_fetch_rod_again = true;
+
+  
 }
 
 #endif
