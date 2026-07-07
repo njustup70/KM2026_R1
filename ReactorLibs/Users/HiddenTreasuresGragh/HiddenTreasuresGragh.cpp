@@ -43,7 +43,7 @@ void Action_PrePut(StateCore *core)
 {
   while (MOD::farcon.button_first_half[0] != 1)
   {
-    ResponseButtonArea3(0.25f);
+    ResponseButtonArea3(0.6f);
     Seq::Wait(0.005f);
   }
   // 抬升到对应放块高度
@@ -151,6 +151,12 @@ void Action_freetogrid(StateCore *state_core)
 
 void Action_FreePut(StateCore *state_core)
 {
+  // 请求人工确认
+  while (farcon.button_first_half[0] == 0)
+  {
+    ResponseButtonArea3();
+    Seq::Wait(0.005f);
+  }
   chassis.MoveRelative({0.5, 0});
   Seq::WaitUntil([&]()
                  { return (chassis._Walking() == 1); }); // 往前走一步

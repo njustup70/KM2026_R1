@@ -979,6 +979,12 @@ void R1Block::FromMiddleToAny()
   else if (put_dposition == 1)
   {
   }
+  // 请求人工确认
+  while (farcon.button_first_half[0] == 0)
+  {
+    ResponseFarconForR1Block();
+    Seq::Wait(0.005f);
+  }
   chassis.MoveRelative({0.5, 0});
   Seq::WaitUntil([&]()
                  { return (chassis._Walking() == 1); }); // 往前走一步
