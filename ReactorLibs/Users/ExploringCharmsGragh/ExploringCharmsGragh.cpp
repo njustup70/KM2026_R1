@@ -441,7 +441,10 @@ static void ResponseFarcon(float velo_k)
     comm.SendActionCommand(ActionType::GiveUpDock);
   // 发送对接完成
   if (farcon.button_first_half[4])
-    comm.SendActionCommand(ActionType::DockOK); // ------这里需要新增发送对接完成
+    comm.SendActionCommand(ActionType::DockOK); 
+  // 发送KFS给R2
+  if (farcon.button_first_half[5])
+    comm.SendActionCommand(ActionType::SendKFS); 
 }
 
 #endif

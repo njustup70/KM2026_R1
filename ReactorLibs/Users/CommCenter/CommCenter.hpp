@@ -26,6 +26,7 @@ enum class ActionType : uint8_t
     SpearRight = 10,
     GiveUpDock = 11,
     DockOK = 20,
+    SendKFS = 15,
 
     //戳块
     PokeF1 = 12,
