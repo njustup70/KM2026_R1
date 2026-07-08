@@ -18,18 +18,14 @@
 
 // 加入PATHS
 #include "rod1.hpp"
-#include "rod2.hpp"
-#include "rod3.hpp"
 #include "a1_todock.hpp"
-#include "a1_toassemble.hpp"
-#include "R1_area3.hpp"
 
 #include "a3_red_hid_come_in_gentle.hpp"
 #include "a3_red_hid_wall_to_grid_gentle.hpp"
 #include "a3_red_hid_wall_to_grid_gentle_75.hpp"
 #include "Red_KF_Are3_Plan.hpp"
-static void ResponseFarcon(float velo_k = 1.0f);
 
+static void ResponseFarcon(float velo_k = 1.0f);
 static void ResponseButtonArea3(float velo_k = 1.0f);
 using namespace APP;
 using namespace MOD;
@@ -78,17 +74,6 @@ int GetBlockHeight(int index_id)
   return 200;
 }
 
-static void Wait_ForStart(StateCore *state_core)
-{
-  while (farcon.button_first_half[0] != 1)
-  {
-    ResponseFarcon();
-    Seq::Wait(0.005f);
-  }
-
-  state_core->GetCurState()->Complete = true;
-}
-
 static void WalkToPathNode(PathNode cur_node)
 {
   // 提取当前这一帧动作节点的打包数据
@@ -96,28 +81,37 @@ static void WalkToPathNode(PathNode cur_node)
   int target_xid = cur_node.label;
   float target_yaw = cur_node.target_yaw;
 
-  // 判断是否是角点
-  bool is_corner = (target_xid == 2 || target_xid == 7 || target_xid == 11 || target_xid == 16);
+  // 判断是否角点
+  bool is_backcorner = (target_xid == 7 || target_xid == 11);
+  bool is_frontcorner = (target_xid == 2 || target_xid == 16 || target_xid == 0);
 
-  // 移动底盘到目标点
-  chassis.MoveAt(target_pos);
-
-  // 姿态控制：如果是四个角点，调用旋转指令并强等待底盘就位
-  if (is_corner)
+  // 如果是从一区进入二区的三个点，yaw可以先开始转
+  if (is_frontcorner)
   {
+    // 移动底盘到目标点
+    chassis.MoveAt(target_pos);
+    // 同时调整yaw
+    chassis.RotateAt(target_yaw);
+    Seq::WaitUntil([]() -> bool
+                   { return (chassis._Walking() && chassis._Rotating()); });
+  }
+  // 姿态控制：如果是四个角点，调用旋转指令并强等待底盘就位
+  if (is_backcorner)
+  {
+    chassis.MoveAt(target_pos);
     // 强等待底盘横移就位
     Seq::WaitUntil([]() -> bool
                    { return chassis._Walking(); });
-
     // 调整yaw
     chassis.RotateAt(target_yaw);
-
     // 强等待旋转就位
     Seq::WaitUntil([]() -> bool
                    { return chassis._Rotating(); });
   }
   else
   {
+    // 移动底盘到目标点
+    chassis.MoveAt(target_pos);
     // 普通通过点，也只需要等底盘横移到达即可
     Seq::WaitUntil([]() -> bool
                    { return chassis._Walking(); });
@@ -131,6 +125,19 @@ bool need_fetch_rod_again = false;
 // 状态转移标志位：进入二区
 bool go_to_area2 = false;
 
+static void Wait_ForStart(StateCore *state_core)
+{
+  while (farcon.button_first_half[0] != 1)
+  {
+    ResponseFarcon();
+    Seq::Wait(0.005f);
+    if (go_to_area2)
+      return;
+  }
+
+  state_core->GetCurState()->Complete = true;
+}
+
 /**
  * @brief 一区取杆逻辑
  *
@@ -141,30 +148,7 @@ void GoFetchRod(StateCore *state_core)
   // 进入之后，清空标志位，防止无限循环
   need_fetch_rod_again = false;
 
-  // 根据取杆的杆号，选择对应的路径
-  switch (rod_id)
-  {
-    case 0:
-    {
-      MOVE::MoveToTargPos(Rod1);
-      break;
-    }
-    case 1:
-    {
-      MOVE::MoveToTargPos(Rod2);
-      break;
-    }
-    case 2:
-    {
-      MOVE::MoveToTargPos(Rod3);
-      break;
-    }
-    default:
-    {
-      APP::monit.LogError("Unexpected Rod ID!");
-      break;
-    }
-  }
+  MOVE::MoveToTargPos(Rod1);
 
   // 先往前怼到杆架子
   chassis.Move(Vec3(0.075, 0, 0), 1);
@@ -212,15 +196,6 @@ void GoFetchRod(StateCore *state_core)
   // 锁定Yaw角，并转手动（本图是红场图）
   chassis.LockYaw(-1.571f);
 
-  // 此处响应按键：
-  // 正常情况：发kfs，发光通信让r2松开夹爪，看到松开后，按按键1，r1继续后续的自动动作
-  //          以及可能需要触发让夹爪微调
-  // 异常情况：1.r1发现杆位置有问题，r1可以手动开回重试区，调整，开回来继续对接：不需要按任何按键
-  //          2.r1、r2接触了，强制性重试：最好不要按光通信，要不然r2会继续下一步，可以手动打开夹爪，保留原有的对接状态，开回重试区：不需要按任何按键，罚时之后还是继续对接
-  //            强制性重试之后我感觉，对接完这一根直接走吧：按按键6、5，发kfs及松开夹爪，再按按键9告诉r2放弃对接，r2直接进二区，r1先执行正常逻辑把杆取出来然后可能是会回重试区，在这里的按键按下按键10告诉r1直接进入planner
-  //          3.矛头掉落，r2重试，因为不能触发光通信让他取下一根杆
-  //          4.身上已经有一根杆了，对接不上，时间不够，决定直接进入二区，按一下6发KFS，直接按按键9，r2会进入2区，r1也进入2区
-  // 最后都要按按键1，确认
   while (MOD::farcon.button_first_half[0] != 1)
   {
     ResponseFarcon(0.5f);
@@ -236,47 +211,31 @@ void GoFetchRod(StateCore *state_core)
   comm.SendActionCommand(ActionType::AWAYFROMDOCK);
   Seq::Wait(0.8);
 
-  /*****    吐杆逻辑    *****/
-  if (rod_id >= 2)
-  {
-    // 这里要加一个倒把手的
-    MOVE::MoveToTargGes(Vec3(2.40, 3.0, 0.0));
+  chassis.Move(Vec2(1, 0), 0.5);
 
-    // 把杆放平，复用一下Pick
-    comm.SendActionCommand(ActionType::PICK);
+  // 把杆放平，复用一下Pick
+  comm.SendActionCommand(ActionType::PICK);
 
-    Seq::Wait(1);
+  Seq::Wait(1);
 
-    // 这里要加一个倒把手的
-    // 但有风险会掉杆，决定加个按键可以在二区把杆微抬起来，防止捅到对方场地
-    comm.SendActionCommand(ActionType::CLAMP_2_ON);
+  // 这里要加一个倒把手的
+  // 但有风险会掉杆，决定加个按键可以在二区把杆微抬起来，防止捅到对方场地
+  comm.SendActionCommand(ActionType::CLAMP_2_ON);
 
-    monit.LogInfo("ready to area2");
+  monit.LogInfo("ready to area2");
 
-    go_to_area2 = true;
-  }
-  else
-  {
-    // 返回对接点
-    MOVE::MoveToTargPos(ToAssemble);
-
-    // 机械臂伸出
-    comm.SendActionCommand(ActionType::LooseClaw);
-
-    // 遥控器确认
-    while (MOD::farcon.button_first_half[0] != 1)
-    {
-      ResponseFarcon();
-      Seq::Wait(0.005f);
-    }
-
-    rod_id++;
-  }
+  go_to_area2 = true;
 }
 
 //**********************************二区状态块***********************************************************************//
 void Action_Planning(StateCore *state_core)
 {
+  // 刷新标志位
+  go_to_area2 = false;
+  comm.is_got_dogpath_from_pc = false;
+  // 刷新狗
+  guide_dog_index = 0;
+  // memset(guide_dog, 0, sizeof(guide_dog));
   monit.LogSpec("begin plan ");
 
   // 要求遥控器确认，KFS数据 已完成装填
@@ -284,6 +243,8 @@ void Action_Planning(StateCore *state_core)
   {
     ResponseFarcon();
     Seq::Wait(0.005f);
+    if (go_to_area2)
+      return;
   }
 
   while (comm.is_got_dogpath_from_pc == false)
@@ -326,6 +287,8 @@ void Action_NavToBlock(StateCore *state_core)
   {
     ResponseFarcon();
     Seq::Wait(0.005f);
+    if (go_to_area2)
+      return;
   }
 
   // 获取当前节点
@@ -380,6 +343,8 @@ void Action_AutoGetBlock(StateCore *state_core)
   {
     ResponseFarcon();
     Seq::Wait(0.005f);
+    if (go_to_area2)
+      return;
   }
 
   // 本路点执行完成，进入下一路点
@@ -403,18 +368,17 @@ void Action_PreLay(StateCore *core)
 
 void Action_PlanToGrid(StateCore *core)
 {
-  #if Run_Zone==competition
+#if Run_Zone == competition
   r1block.Clamp_block();
   while (MOD::farcon.button_first_half[0] != 1)
   {
     ResponseFarcon(0.6f);
     Seq::Wait(0.005f);
   }
-    Seq::Wait(1);
-  r1block.SmoothMoveLiftToTarget(r1block.blockheight_2_liftmotortargetpos[2],r1block.realse_block_height, 3, 100);
+  Seq::Wait(1);
+  r1block.SmoothMoveLiftToTarget(r1block.blockheight_2_liftmotortargetpos[2], r1block.realse_block_height, 3, 100);
 
-  #endif
-
+#endif
 
   while (MOD::farcon.button_first_half[0] != 1)
   {
@@ -422,7 +386,7 @@ void Action_PlanToGrid(StateCore *core)
     Seq::Wait(0.005f);
   }
   MOVE::MoveToTargPos(Red_KF_Are3_PlanPath); // 从重试点到贴着墙
-    state_core.GetCurState()->Complete = true;
+  state_core.GetCurState()->Complete = true;
 }
 
 // 到对应格子前面
