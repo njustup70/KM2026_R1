@@ -46,6 +46,16 @@ bool choose_to_Combination = 0;
 
 extern volatile bool g_guide_dog_data_ready;
 
+// 遥控器显示当前三区状态
+uint8_t Area3_farcon_data[3] = {0x46, 0x43, 0};
+
+void Area3_facon_Transmit(int choose_mode, int pos_id = 0)
+{
+  Area3_farcon_data[2] = 0;
+  Area3_farcon_data[2] = ((choose_mode & 0x0F) << 4) | (pos_id & 0x0F);
+  farcon.TransmitFarcon(Area3_farcon_data, 3);
+}
+
 // 全局状态图对象
 StateGraph auto_flow{"AutoGragh"};
 
@@ -403,18 +413,17 @@ void Action_PreLay(StateCore *core)
 
 void Action_PlanToGrid(StateCore *core)
 {
-  #if Run_Zone==competition
+#if Run_Zone == competition
   r1block.Clamp_block();
   while (MOD::farcon.button_first_half[0] != 1)
   {
     ResponseFarcon(0.6f);
     Seq::Wait(0.005f);
   }
-    Seq::Wait(1);
-  r1block.SmoothMoveLiftToTarget(r1block.blockheight_2_liftmotortargetpos[2],r1block.realse_block_height, 3, 100);
+  Seq::Wait(1);
+  r1block.SmoothMoveLiftToTarget(r1block.blockheight_2_liftmotortargetpos[2], r1block.realse_block_height, 3, 100);
 
-  #endif
-
+#endif
 
   while (MOD::farcon.button_first_half[0] != 1)
   {
@@ -422,12 +431,13 @@ void Action_PlanToGrid(StateCore *core)
     Seq::Wait(0.005f);
   }
   MOVE::MoveToTargPos(Red_KF_Are3_PlanPath); // 从重试点到贴着墙
-    state_core.GetCurState()->Complete = true;
+  state_core.GetCurState()->Complete = true;
 }
 
 // 到对应格子前面
 void Action_freetogrid(StateCore *state_core)
 {
+  Area3_facon_Transmit(2);
   monit.LogInfo("FREE TO GRID");
   static int freelay_pos = 1;
 
@@ -435,16 +445,21 @@ void Action_freetogrid(StateCore *state_core)
   {
     if (farcon.button_middle[3][0] == 1)
     {
+      Area3_facon_Transmit(2, 1);
       monit.LogInfo("get left block");
       freelay_pos = 0;
     }
     else if (farcon.button_middle[3][2] == 1)
     {
+      Area3_facon_Transmit(2, 3);
+
       monit.LogInfo("get right block");
       freelay_pos = 2;
     }
     else if (farcon.button_middle[3][1] == 1)
     {
+      Area3_facon_Transmit(2, 2);
+
       monit.LogInfo("get middle block");
       freelay_pos = 1;
     }
@@ -457,19 +472,19 @@ void Action_freetogrid(StateCore *state_core)
 
   if (freelay_pos == 0)
   {
-    chassis.MoveAt({10.21, 4.7});
+    chassis.MoveAt({10.21, 5});
     Seq::WaitUntil([&]()
                    { return (chassis._Walking() == 1); });
   }
   else if (freelay_pos == 2)
   {
-    chassis.MoveAt({11.29, 4.7});
+    chassis.MoveAt({11.29, 5});
     Seq::WaitUntil([&]()
                    { return (chassis._Walking() == 1); });
   }
   else if (freelay_pos == 1)
   {
-    chassis.MoveAt({10.75, 4.7});
+    chassis.MoveAt({10.75, 5});
     Seq::WaitUntil([&]()
                    { return (chassis._Walking() == 1); });
   }
@@ -485,13 +500,14 @@ void Action_freetogrid(StateCore *state_core)
 
 void Action_Freelay(StateCore *state_core)
 {
-  Seq::Wait(0.5);
-  // 请求人工确认
+  Seq::Wait(1);
+
   while (farcon.button_first_half[0] == 0)
   {
-    ResponseButtonArea3();
-    Seq::Wait(0.005f);
+    chassis.Move({0.1, 0});
+    Seq::Wait(0.05);
   }
+  Seq::Wait(1);
   r1block.ReleaseBlock();
   Seq::Wait(0.5);
   // 请求人工确认
@@ -505,6 +521,7 @@ void Action_Freelay(StateCore *state_core)
 
 void Action_FreeGetBlock(StateCore *state_core)
 {
+  Area3_facon_Transmit(3);
   Seq::Wait(0.5);
   // 请求人工确认
   while (farcon.button_first_half[0] == 0)
@@ -518,6 +535,7 @@ void Action_FreeGetBlock(StateCore *state_core)
 
 void Action_Choose_Hid_Mode(StateCore *state_core)
 {
+  Area3_facon_Transmit(0);
   monit.LogInfo("Choosing Mode");
   Seq::Wait(0.5);
   while (farcon.button_first_half[0] != 1)
@@ -558,6 +576,7 @@ void Action_Choose_Hid_Mode(StateCore *state_core)
 // 去找R2
 void Action_R2_call(StateCore *state_core)
 {
+  Area3_facon_Transmit(1);
   static int r2_reed_call_first = 0;
   chassis.RotateAt(1.57);
   Seq::WaitUntil([&]()

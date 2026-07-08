@@ -896,11 +896,8 @@ void R1Block::ReleaseBlock(int auto_flag)
     SetTargetState(0.0f, 0.0f, 0.0f, 0.0f, realse_block_height, realse_block_height);
     Seq::Wait(2);
     SetTargetState(release_strectch_distance[0], release_strectch_distance[0], 0.0f, 0.0f, realse_block_height, realse_block_height);
-    Seq::WaitUntil([&]()
-                   { return block_exist[0] == 1; }); // 检测到有块在上面的时候
-    Seq::WaitUntil([&]()
-                   { return block_exist[0] == 0; }); // 检测到没有块在上面的时候
-    Loosen_block();                                  // 松
+    Seq::Wait(3);
+    Loosen_block();                          
     suckmotor[0].SetSpd(0);
     suckmotor[1].SetSpd(0);
     chassis.MoveRelative({-0.6, 0});
