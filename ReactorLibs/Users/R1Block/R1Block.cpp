@@ -697,7 +697,7 @@ void R1Block::Get_Block(int block_height, int auto_flag)
     lift_target_pos = trans_height(block_height);
 
     // 抬升至对应位置
-    SmoothMoveLiftToTarget(trans_height(last_height), lift_target_pos, 3);
+    SmoothMoveLiftToTarget(trans_height(last_height), lift_target_pos, 1.5);
 
     // 更新历史量
     last_height = block_height;
@@ -757,7 +757,7 @@ void R1Block::Get_Block(int block_height, int auto_flag)
     suckmotor[0].SetSpd(0);
     suckmotor[1].SetSpd(0);
     Clamp_block(); // 夹紧
-    Seq::Wait(1);
+
     return;
   }
   // 取第二个块
@@ -767,7 +767,6 @@ void R1Block::Get_Block(int block_height, int auto_flag)
     Seq::Wait(1);
     suckmotor[0].SetSpd(0);
     suckmotor[1].SetSpd(0);
-    Seq::Wait(1);
     return;
   }
   // 取第三个块
@@ -777,7 +776,6 @@ void R1Block::Get_Block(int block_height, int auto_flag)
     Seq::Wait(1);
     suckmotor[0].SetSpd(0);
     suckmotor[1].SetSpd(0);
-    Seq::Wait(1);
     if (block_detect[0] == 0)
     {
       Clamp_block();
@@ -810,7 +808,7 @@ void R1Block::PreLayBLock()
   Loosen_block();
   Seq::Wait(1);
   // 从 0 平滑移动到目标位置，总耗时 4.0 秒，切分 100 步完成
-  SmoothMoveTo(0.0f, release_strectch_distance[1], 0.0f, realse_block_height, 4, 100);
+  SmoothMoveTo(0.0f, release_strectch_distance[1], 0.0f, realse_block_height, 2, 100);
   Seq::Wait(1);
 
   Clamp_block();

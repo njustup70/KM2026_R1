@@ -561,7 +561,7 @@ void Action_R2_call(StateCore *state_core)
                    { return (chassis._Walking() == 1); });
 
     while (MOD::farcon.button_first_half[0] != 1)
-    {
+    { 
       ResponseButtonArea3(0.25f);
       Seq::Wait(0.005f);
     }
