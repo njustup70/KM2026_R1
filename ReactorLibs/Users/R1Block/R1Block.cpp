@@ -844,8 +844,7 @@ void R1Block::ReleaseBlock(int auto_flag)
     Clamp_block();
     suckmotor[0].SetSpd(suck_speed * 0.9);
     suckmotor[1].SetSpd(-suck_speed * 0.9);
-    Seq::WaitUntil([&]()
-                   { return block_exist[0] == 0; }); // 检测到没有块在上面的时候
+    Seq::Wait(3);
     suckmotor[0].SetSpd(0);
     suckmotor[1].SetSpd(0);
     Loosen_block(); // 松
@@ -870,11 +869,8 @@ void R1Block::ReleaseBlock(int auto_flag)
 
     suckmotor[0].SetSpd(suck_speed * 0.9);
     suckmotor[1].SetSpd(-suck_speed * 0.9);
-    Seq::WaitUntil([&]()
-                   { return block_exist[0] == 1; }); // 检测到有块在上面的时候
-    Seq::WaitUntil([&]()
-                   { return block_exist[0] == 0; }); // 检测到没有块在上面的时候
-    Loosen_block();                                  // 松
+    Seq::Wait(3);
+    Loosen_block(); // 松
     Seq::Wait(1);
 
     suckmotor[0].SetSpd(0);
@@ -894,8 +890,7 @@ void R1Block::ReleaseBlock(int auto_flag)
     Clamp_block(); // 夹紧
     suckmotor[0].SetSpd(suck_speed);
     suckmotor[1].SetSpd(-suck_speed);
-    Seq::WaitUntil([&]()
-                   { return block_exist[1] == 1; }); // 检测到有块在上面的时候
+    Seq::Wait(3);
 
     //************************* */ 开始吐第三个块****************************//
     SetTargetState(0.0f, 0.0f, 0.0f, 0.0f, realse_block_height, realse_block_height);
@@ -911,7 +906,7 @@ void R1Block::ReleaseBlock(int auto_flag)
     chassis.MoveRelative({-0.6, 0});
     Seq::WaitUntil([&]()
                    { return (chassis._Walking() == 1); }); // 往后走一步，退洞
-    SetTargetState(0.0f, 0.0f, 0.0f, 0.0f, 0, 0);
+    SetTargetStretch(0, 0);
   }
 
 #else
@@ -990,7 +985,7 @@ void R1Block::FromMiddleToAny()
   // 放中间块
   else if (put_dposition == 1)
   {
-        chassis.MoveRelative({0.2, 0});
+    chassis.MoveRelative({0.2, 0});
     Seq::WaitUntil([&]()
                    { return (chassis._Walking() == 1); }); // 走到第三个块
   }
@@ -1041,10 +1036,10 @@ void R1Block::PutBlock()
   suckmotor[1].SetSpd(-suck_speed);
 
   Seq::Wait(1);
-  SetTargetStretch(stretch_distance[0]-1500000, stretch_distance[0]-1500000);
+  SetTargetStretch(stretch_distance[0] - 1500000, stretch_distance[0] - 1500000);
   Seq::WaitUntil([&]()
-                 { return ((stretchmotor[0].IsReached() == 1) && (stretchmotor[1].IsReached() == 1)); }); //检测到最外/面到了
-    // 请求人工确认
+                 { return ((stretchmotor[0].IsReached() == 1) && (stretchmotor[1].IsReached() == 1)); }); // 检测到最外/面到了
+  // 请求人工确认
   while (farcon.button_first_half[0] == 0)
   {
     ResponseFarconForR1Block();
@@ -1054,7 +1049,7 @@ void R1Block::PutBlock()
   suckmotor[1].SetSpd(0);
   Loosen_block(); // 松
   Seq::Wait(1);
-  
+
   SetTargetStretch(0, 0);
   Seq::WaitUntil([&]()
                  { return ((stretchmotor[0].IsReached() == 1) && (stretchmotor[1].IsReached() == 1)); }); // 检测到最外面到了

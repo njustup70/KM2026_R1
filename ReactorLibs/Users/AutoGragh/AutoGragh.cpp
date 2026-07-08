@@ -393,7 +393,7 @@ void Action_PreLay(StateCore *core)
 {
   while (MOD::farcon.button_first_half[0] != 1)
   {
-    ResponseButtonArea3(0.6f);
+    ResponseFarcon(0.6f);
     Seq::Wait(0.005f);
   }
   // 抬升到对应放块高度
@@ -409,25 +409,30 @@ void Action_PlanToGrid(StateCore *core)
     Seq::Wait(0.005f);
   }
   MOVE::MoveToTargPos(Red_KF_Are3_PlanPath); // 从重试点到贴着墙
+    state_core.GetCurState()->Complete = true;
 }
 
 // 到对应格子前面
 void Action_freetogrid(StateCore *state_core)
 {
+  monit.LogInfo("FREE TO GRID");
   static int freelay_pos = 1;
 
   while (farcon.button_middle[2][1] != 1)
   {
     if (farcon.button_middle[3][0] == 1)
     {
+      monit.LogInfo("get left block");
       freelay_pos = 0;
     }
     else if (farcon.button_middle[3][2] == 1)
     {
+      monit.LogInfo("get right block");
       freelay_pos = 2;
     }
     else if (farcon.button_middle[3][1] == 1)
     {
+      monit.LogInfo("get middle block");
       freelay_pos = 1;
     }
     Seq::Wait(0.005);
@@ -455,18 +460,19 @@ void Action_freetogrid(StateCore *state_core)
     Seq::WaitUntil([&]()
                    { return (chassis._Walking() == 1); });
   }
+
   while (MOD::farcon.button_first_half[0] != 1)
   {
     ResponseButtonArea3(0.25f);
     Seq::Wait(0.005f);
   }
-  Seq::Wait(1);
+  Seq::Wait(0.5);
   state_core->GetCurState()->Complete = true;
 }
 
 void Action_Freelay(StateCore *state_core)
 {
-  Seq::Wait(1);
+  Seq::Wait(0.5);
   // 请求人工确认
   while (farcon.button_first_half[0] == 0)
   {
@@ -474,7 +480,7 @@ void Action_Freelay(StateCore *state_core)
     Seq::Wait(0.005f);
   }
   r1block.ReleaseBlock();
-  Seq::Wait(1);
+  Seq::Wait(0.5);
   // 请求人工确认
   while (farcon.button_first_half[0] == 0)
   {
@@ -486,13 +492,22 @@ void Action_Freelay(StateCore *state_core)
 
 void Action_FreeGetBlock(StateCore *state_core)
 {
+  Seq::Wait(0.5);
+  // 请求人工确认
+  while (farcon.button_first_half[0] == 0)
+  {
+    ResponseButtonArea3();
+    Seq::Wait(0.005f);
+  }
   r1block.GetGroundBlock();
   state_core->GetCurState()->Complete = true;
 }
 
 void Action_Choose_Hid_Mode(StateCore *state_core)
 {
-  while (farcon.button_middle[2][1] != 1)
+  monit.LogInfo("Choosing Mode");
+  Seq::Wait(0.5);
+  while (farcon.button_first_half[0] != 1)
   {
     if (farcon.button_middle[1][0] == 1)
     {
@@ -501,6 +516,7 @@ void Action_Choose_Hid_Mode(StateCore *state_core)
       choose_to_get_block = 0;
       choose_to_fight_block = 0;
       choose_to_Combination = 0;
+      monit.LogInfo("Mode:CALL R2");
     }
     else if (farcon.button_middle[1][1] == 1)
     {
@@ -509,6 +525,7 @@ void Action_Choose_Hid_Mode(StateCore *state_core)
       choose_to_get_block = 0;
       choose_to_fight_block = 0;
       choose_to_Combination = 0;
+      monit.LogInfo("Mode:LAY BLOCK");
     }
     else if (farcon.button_middle[1][2] == 1)
     {
@@ -517,6 +534,7 @@ void Action_Choose_Hid_Mode(StateCore *state_core)
       choose_to_get_block = 1;
       choose_to_fight_block = 0;
       choose_to_Combination = 0;
+      monit.LogInfo("Mode:GET BLOCK");
     }
     Seq::Wait(0.005);
   }
@@ -638,7 +656,7 @@ void AutoGragh_Init(void)
   StateBlock &call_R2 = auto_flow.AddState("Call_R2");
   // 绑定函数
   s_lay_pre.StateAction = Action_PreLay;
-  s_plantogrid.StateAction = Action_PlanToGrid;
+  s_plantogrid.StateAction = Action_PlanToGrid; // 导航到前面
   s_choose_hid_mode.StateAction = Action_Choose_Hid_Mode;
   s_free_togrid.StateAction = Action_freetogrid;
   s_free_lay.StateAction = Action_Freelay;

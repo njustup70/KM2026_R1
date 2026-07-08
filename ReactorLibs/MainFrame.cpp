@@ -49,6 +49,9 @@ void MainFrameCpp()
 #if Current_Mode == Mode_Test_Degenerate
   test.Degenerate(ActionDege);
   state_core.RegistGraph(test);
+#elif Current_Mode==Mode_KungFu_Master && Halve == Red_Halve
+AutoGragh_Init(); 
+#elif Current_Mode==Mode_KungFu_Master && Halve == Blue_Halve
 
 // 3.崇武探幽
 #elif Current_Mode == Mode_Exploring_the_Charms && Halve == Red_Halve
@@ -66,6 +69,9 @@ void MainFrameCpp()
   HiddenTreasuresGragh_Init();
 #elif Current_Mode == Mode_Hidden_Treasures && Halve == Blue_Halve
   HiddenTreasuresGragh_Blue_Init();
+	
+	
+	
 #endif
 
   APP::state_core.Enable(0); // 启动状态机核心，指定初始状态图为0号图 3
