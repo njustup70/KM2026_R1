@@ -115,7 +115,7 @@ void Action_InPlantoGetGroundBlock(StateCore *state_core)
 // 到对应格子前面
 void Action_FreeToGrid(StateCore *state_core)
 {
-      Area3_facon_Transmit(2);
+  Area3_facon_Transmit(2);
   static int freeput_pos = 1;
   while (farcon.button_middle[2][1] != 1)
   {
@@ -188,7 +188,7 @@ void Action_FreePut(StateCore *state_core)
 
 void Action_FreeGetBlock(StateCore *state_core)
 {
-      Area3_facon_Transmit(3);
+  Area3_facon_Transmit(3);
   Seq::Wait(0.5);
   // 请求人工确认
   while (farcon.button_first_half[0] == 0)
@@ -202,11 +202,11 @@ void Action_FreeGetBlock(StateCore *state_core)
 
 void Action_Choose_Hid_Mode(StateCore *state_core)
 {
-      Area3_facon_Transmit(0);
-      monit.LogInfo("Choosing Mode");
+  Area3_facon_Transmit(0);
+  monit.LogInfo("Choosing Mode");
   while (farcon.button_first_half[0] == 0)
   {
-        ResponseButtonArea3();
+    ResponseButtonArea3();
     if (farcon.button_middle[1][0] == 1)
     {
       choose_call_to_R2 = 1;
@@ -240,7 +240,7 @@ void Action_Choose_Hid_Mode(StateCore *state_core)
 // 去找R2
 void Action_R2_call(StateCore *state_core)
 {
-      Area3_facon_Transmit(1);
+  Area3_facon_Transmit(1);
   static int r2_call_first = 0;
   chassis.RotateAt(-1.57);
   Seq::WaitUntil([&]()
@@ -363,15 +363,14 @@ void ResponseButtonArea3(float velo_k)
   // 解锁底盘的位置闭环，角度闭环仍然由系统控制
   chassis.UnlockWalk();
 
-  Vec2 v_world;
-  v_world.x = -farcon.jys_value[3] * 1.0f / 100.f * 1.0f * velo_k; // 摇杆向前 -> 场地X正
-  v_world.y = -farcon.jys_value[2] * 1.0f / 100.f * 1.0f * velo_k; // 摇杆向左 -> 场地Y正
-
-  Vec2 v_body = v_world.Rotate(-System.position.z);
+  // 摇杆直接映射到车体坐标系
+  Vec3 v_body;
+  v_body.x = -farcon.jys_value[3] * 1.0f / 100.f * 1.0f * velo_k;
+  v_body.y = -farcon.jys_value[2] * 1.0f / 100.f * 1.0f * velo_k;
 
   if (!chassis.IsLockRotate())
   {
-    float yaw_spd = -farcon.jys_value[0] * 1.0f / 100.f * 1.5f; // 摇杆向左 -> 逆时针旋转
+    float yaw_spd = -farcon.jys_value[0] * 1.0f / 100.f * 1.5f;
     chassis.Move(Vec3(v_body.x, v_body.y, yaw_spd));
   }
   else

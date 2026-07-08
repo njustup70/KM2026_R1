@@ -766,15 +766,14 @@ void ResponseButtonArea3(float velo_k)
   // 解锁底盘的位置闭环，角度闭环仍然由系统控制
   chassis.UnlockWalk();
 
-  Vec2 v_world;
-  v_world.x = -farcon.jys_value[3] * 1.0f / 100.f * 1.0f * velo_k; // 摇杆向前 -> 场地X正
-  v_world.y = -farcon.jys_value[2] * 1.0f / 100.f * 1.0f * velo_k; // 摇杆向左 -> 场地Y正
-
-  Vec2 v_body = v_world.Rotate(-System.position.z);
+  // 摇杆直接映射到车体坐标系
+  Vec3 v_body;
+  v_body.x = -farcon.jys_value[3] * 1.0f / 100.f * 1.0f * velo_k;
+  v_body.y = -farcon.jys_value[2] * 1.0f / 100.f * 1.0f * velo_k;
 
   if (!chassis.IsLockRotate())
   {
-    float yaw_spd = -farcon.jys_value[0] * 1.0f / 100.f * 1.5f; // 摇杆向左 -> 逆时针旋转
+    float yaw_spd = -farcon.jys_value[0] * 1.0f / 100.f * 1.5f; 
     chassis.Move(Vec3(v_body.x, v_body.y, yaw_spd));
   }
   else
