@@ -90,6 +90,7 @@ public:
     
     /// @brief 取杆电机完成动作标志位
     bool rodmotor_OK = false;
+    bool rodair_state;
 
 public:
     void SendKFStoPC();
