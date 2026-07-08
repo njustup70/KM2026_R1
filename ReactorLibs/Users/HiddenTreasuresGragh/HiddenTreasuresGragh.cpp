@@ -79,7 +79,7 @@ void Action_InPlanPutBlock(StateCore *state_core)
 
   // 按KFS中间按键
   r1block.FromMiddleToAny(); /// 从中间走进任意一个洞
-  Seq::Wait(0.3);;
+  Seq::Wait(0.3);
   while (farcon.button_first_half[0] == 0)
   {
     ResponseButtonArea3();
@@ -176,8 +176,6 @@ void Action_freetogrid(StateCore *state_core)
 
 void Action_FreePut(StateCore *state_core)
 {
-  Seq::Wait(0.3);
-
   while (farcon.button_first_half[0] == 0)
   {
     chassis.Move({0.1, 0});
@@ -215,6 +213,7 @@ void Action_Choose_Hid_Mode(StateCore *state_core)
       monit.LogInfo("Choosing Mode");
   while (farcon.button_first_half[0] == 0)
   {
+    ResponseButtonArea3();
     if (farcon.button_middle[1][0] == 1)
     {
       choose_call_to_R2 = 1;
