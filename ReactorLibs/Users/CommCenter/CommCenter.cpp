@@ -48,17 +48,14 @@ void CommCenter::Update()
   if (DWT_GetTimeline_Sec() - cooldown_tick > 0.01)
   {
     cooldown_tick = DWT_GetTimeline_Sec();
-    pc.SendOdom(System.odometer.transform.x, System.odometer.transform.y, System.odometer.transform.z);
+    pc.SendOdom(chassis.chas_odom.pos.x, chassis.chas_odom.pos.y, chassis.chas_odom.pos.z);
+    //pc.SendOdom(System.odometer.transform.x, System.odometer.transform.y, System.odometer.transform.z);
   }
   // pc.SendSickData(MOD::sick.GetData().raw_frame);
 
   //=========板间通讯还是不能降频发送a to c，遥控器反应会有点慢
   SendButtonData(); // 实时发送，目前没发现payload被覆盖的情况
-
-  // if (farcon.button_second_half[16 - 8 - 1] == 1)
-  // {
-  //   SendKFSdata(); // 板间通讯
-  // }
+  SendKFSdata(); // 板间通讯给c板
 
   if (farcon.button_second_half[15 - 8 - 1] == 1)
   {
