@@ -59,17 +59,6 @@ int GetBlockHeight(int index_id)
   return 200;
 }
 
-static void Wait_ForStart(StateCore *state_core)
-{
-  while (farcon.button_first_half[0] != 1)
-  {
-    ResponseFarcon();
-    Seq::Wait(0.005f);
-  }
-
-  state_core->GetCurState()->Complete = true;
-}
-
 static void WalkToPathNode(PathNode cur_node)
 {
   // 提取当前这一帧动作节点的打包数据
@@ -77,28 +66,37 @@ static void WalkToPathNode(PathNode cur_node)
   int target_xid = cur_node.label;
   float target_yaw = cur_node.target_yaw;
 
-  // 判断是否是角点
-  bool is_corner = (target_xid == 2 || target_xid == 7 || target_xid == 11 || target_xid == 16);
+  // 判断是否角点
+  bool is_backcorner = (target_xid == 7 || target_xid == 11);
+  bool is_frontcorner = (target_xid == 2 || target_xid == 16 || target_xid == 0);
 
-  // 移动底盘到目标点
-  chassis.MoveAt(target_pos);
-
-  // 姿态控制：如果是四个角点，调用旋转指令并强等待底盘就位
-  if (is_corner)
+  // 如果是从一区进入二区的三个点，yaw可以先开始转
+  if (is_frontcorner)
   {
+    // 移动底盘到目标点
+    chassis.MoveAt(target_pos);
+    // 同时调整yaw
+    chassis.RotateAt(target_yaw);
+    Seq::WaitUntil([]() -> bool
+                   { return (chassis._Walking() && chassis._Rotating()); });
+  }
+  // 姿态控制：如果是四个角点，调用旋转指令并强等待底盘就位
+  if (is_backcorner)
+  {
+    chassis.MoveAt(target_pos);
     // 强等待底盘横移就位
     Seq::WaitUntil([]() -> bool
                    { return chassis._Walking(); });
-
     // 调整yaw
     chassis.RotateAt(target_yaw);
-
     // 强等待旋转就位
     Seq::WaitUntil([]() -> bool
                    { return chassis._Rotating(); });
   }
   else
   {
+    // 移动底盘到目标点
+    chassis.MoveAt(target_pos);
     // 普通通过点，也只需要等底盘横移到达即可
     Seq::WaitUntil([]() -> bool
                    { return chassis._Walking(); });
@@ -112,6 +110,18 @@ bool need_fetch_rod_again = false;
 // 状态转移标志位：进入二区
 bool go_to_area2 = false;
 
+static void Wait_ForStart(StateCore *state_core)
+{
+  while (farcon.button_first_half[0] != 1)
+  {
+    ResponseFarcon();
+    Seq::Wait(0.005f);
+    if (go_to_area2)
+      return;
+  }
+
+  state_core->GetCurState()->Complete = true;
+}
 
 /**
  * @brief 一区取杆逻辑
@@ -160,6 +170,8 @@ void GoFetchRod(StateCore *state_core)
   {
     ResponseFarcon(0.25f);
     Seq::Wait(0.005f);
+    if (go_to_area2)
+      return;
   }
   // 停止底盘运动
   chassis.Move(Vec2(0, 0));
@@ -175,6 +187,8 @@ void GoFetchRod(StateCore *state_core)
   {
     ResponseFarcon(0.25f);
     Seq::Wait(0.005f);
+    if (go_to_area2)
+      return;
   }
 
   // 前方丝杠锁紧
@@ -206,6 +220,8 @@ void GoFetchRod(StateCore *state_core)
   {
     ResponseFarcon(0.5f);
     Seq::Wait(0.005f);
+    if (go_to_area2)
+      return;
   }
   chassis.UnlockRotate();
 
@@ -220,8 +236,8 @@ void GoFetchRod(StateCore *state_core)
   /*****    吐杆逻辑    *****/
   if (rod_id >= 2)
   {
-    //必须先往前移动一点，使杆完全脱离r2
-    chassis.Move(Vec2(0.8,0),1.5);
+    // 必须先往前移动一点，使杆完全脱离r2
+    chassis.Move(Vec2(1, 0), 0.5);
 
     // //先进去二区
     // MOVE::MoveToTargGes(Vec3(2.40, 3.0, 0.0));
@@ -231,10 +247,9 @@ void GoFetchRod(StateCore *state_core)
 
     // Seq::Wait(1);
 
-    // // 这里要加一个倒把手的
-    // // 但有风险会掉杆，决定加个按键可以在二区把杆微抬起来，防止捅到对方场地
-    // comm.SendActionCommand(ActionType::CLAMP_2_ON);
-
+    // 这里要加一个倒把手的
+    // 但有风险会掉杆，决定加个按键可以在二区把杆微抬起来，防止捅到对方场地
+    comm.SendActionCommand(ActionType::CLAMP_2_ON);
     monit.LogInfo("ready to area2");
 
     go_to_area2 = true;
@@ -252,17 +267,22 @@ void GoFetchRod(StateCore *state_core)
     {
       ResponseFarcon();
       Seq::Wait(0.005f);
-      // if (go_to_area2) return;  
+      if (go_to_area2)
+        return;
     }
-
     rod_id++;
   }
 }
 
-
 //**********************************二区状态块***********************************************************************//
 void Action_Planning(StateCore *state_core)
 {
+  // 刷新标志位
+  go_to_area2 = false;
+  comm.is_got_dogpath_from_pc = false;
+  // 刷新狗
+  guide_dog_index = 0;
+  memset(guide_dog, 0, sizeof(guide_dog));
   monit.LogSpec("begin plan ");
 
   // 要求遥控器确认，KFS数据 已完成装填
@@ -270,6 +290,8 @@ void Action_Planning(StateCore *state_core)
   {
     ResponseFarcon();
     Seq::Wait(0.005f);
+    if (go_to_area2)
+      return;
   }
 
   while (comm.is_got_dogpath_from_pc == false)
@@ -312,6 +334,8 @@ void Action_NavToBlock(StateCore *state_core)
   {
     ResponseFarcon();
     Seq::Wait(0.005f);
+    if (go_to_area2)
+      return;
   }
 
   // 获取当前节点
@@ -366,6 +390,8 @@ void Action_AutoGetBlock(StateCore *state_core)
   {
     ResponseFarcon();
     Seq::Wait(0.005f);
+    if (go_to_area2)
+      return;
   }
 
   // 本路点执行完成，进入下一路点
@@ -377,7 +403,13 @@ void Action_AutoGetBlock(StateCore *state_core)
 
 void Action_OverWait(StateCore *state_core)
 {
-  Seq::Wait(1.0f);
+  while (MOD::farcon.button_first_half[0] != 1)
+  {
+    ResponseFarcon();
+    Seq::Wait(0.005f);
+    if (go_to_area2)
+      return;
+  }
 }
 
 // ================================初始化========================================================================
@@ -416,10 +448,10 @@ void ExploringCharmsGragh_Blue_Init(void)
   s_plan.LinkTo(&s_plan.Complete, s_move);           // 规划路径
   s_move.LinkTo(&is_ready_to_pick, s_auto_pick);     // 取块
   s_move.LinkTo(&is_final_goal_reached, s_overwait); // 等待
-  s_auto_pick.LinkTo(&s_auto_pick.Complete, s_move); 
+  s_auto_pick.LinkTo(&s_auto_pick.Complete, s_move);
 
   // 二区重试
-  s_move.LinkTo(&go_to_area2,s_plan);
+  s_move.LinkTo(&go_to_area2, s_plan);
   s_auto_pick.LinkTo(&go_to_area2, s_plan);
 
   // 注册图
@@ -432,6 +464,8 @@ void ExploringCharmsGragh_Blue_Init(void)
  */
 static void ResponseFarcon(float velo_k)
 {
+  if (farcon.toggle[1])
+    velo_k = 1.0f;
   // 解锁底盘的位置闭环，角度闭环仍然由系统控制
   chassis.UnlockWalk();
 
@@ -454,9 +488,9 @@ static void ResponseFarcon(float velo_k)
   /***********************/
   // 控制矛头
   if (farcon.button_first_half[3])
-    comm.SendActionCommand(ActionType::SpearUp);//矛头会向下
+    comm.SendActionCommand(ActionType::SpearUp); // 矛头会向下
   if (farcon.button_first_half[2])
-    comm.SendActionCommand(ActionType::SpearDown);//矛头会向上
+    comm.SendActionCommand(ActionType::SpearDown); // 矛头会向上
   // 控制矛头左右
   if (farcon.button_first_half[6])
     comm.SendActionCommand(ActionType::SpearLeft);
@@ -466,10 +500,10 @@ static void ResponseFarcon(float velo_k)
   // 发送对接完成
   if (farcon.button_first_half[4])
     comm.SendActionCommand(ActionType::DockOK);
-  
+
   // 发送KFS给R2,这个考虑融在逻辑里自动发
   if (farcon.button_first_half[5])
-    comm.SendActionCommand(ActionType::SendKFS); 
+    comm.SendActionCommand(ActionType::SendKFS);
 
   // 放弃对接
   if (farcon.button_second_half[0])
