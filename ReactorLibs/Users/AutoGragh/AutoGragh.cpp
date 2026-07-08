@@ -403,6 +403,19 @@ void Action_PreLay(StateCore *core)
 
 void Action_PlanToGrid(StateCore *core)
 {
+  #if Run_Zone==competition
+  r1block.Clamp_block();
+  while (MOD::farcon.button_first_half[0] != 1)
+  {
+    ResponseFarcon(0.6f);
+    Seq::Wait(0.005f);
+  }
+    Seq::Wait(1);
+  r1block.SmoothMoveLiftToTarget(r1block.blockheight_2_liftmotortargetpos[2],r1block.realse_block_height, 3, 100);
+
+  #endif
+
+
   while (MOD::farcon.button_first_half[0] != 1)
   {
     ResponseButtonArea3(0.6f);
