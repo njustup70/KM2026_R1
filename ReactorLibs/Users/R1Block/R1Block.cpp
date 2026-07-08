@@ -17,7 +17,8 @@ R1Block &APP::r1block = R1Block::GetInstance();
 // int push_height_debug = 580000;
 // int release_test_flag = 0;
 // int calm_flag = 0;
-static void ResponseFarconForR1Block(float velo_k = 0.25);
+static void Area2ResponseFarconForR1Block(float velo_k = 0.25);
+static void Area3ResponseFarconForR1Block(float velo_k = 0.25);
 extern bool is_prelay_finished;
 int debug_origin = 0;
 int target_height = 200;
@@ -727,7 +728,7 @@ void R1Block::Get_Block(int block_height, int auto_flag)
   // 请求人工确认
   while (farcon.button_first_half[0] != 1)
   {
-    ResponseFarconForR1Block();
+    Area2ResponseFarconForR1Block();
     Seq::Wait(0.005f);
   }
 
@@ -794,7 +795,7 @@ void R1Block::Get_Block(int block_height, int auto_flag)
   // 请求人工确认
   while (farcon.button_first_half[0] != 1)
   {
-    ResponseFarconForR1Block();
+    Area2ResponseFarconForR1Block();
     Seq::Wait(0.005f);
   }
 
@@ -848,7 +849,7 @@ void R1Block::ReleaseBlock(int auto_flag)
     // 请求人工确认
     while (farcon.button_first_half[0] == 0)
     {
-      ResponseFarconForR1Block();
+      Area3ResponseFarconForR1Block();
       Seq::Wait(0.005f);
     }
     suckmotor[0].SetSpd(0);
@@ -872,7 +873,7 @@ void R1Block::ReleaseBlock(int auto_flag)
     // 请求人工确认
     while (farcon.button_first_half[0] == 0)
     {
-      ResponseFarconForR1Block();
+      Area3ResponseFarconForR1Block();
       Seq::Wait(0.005f);
     }
     Loosen_block(); // 松
@@ -898,7 +899,7 @@ void R1Block::ReleaseBlock(int auto_flag)
     // 请求人工确认
     while (farcon.button_first_half[0] == 0)
     {
-      ResponseFarconForR1Block();
+      Area3ResponseFarconForR1Block();
       Seq::Wait(0.005f);
     }
     Loosen_block();
@@ -993,7 +994,7 @@ void R1Block::FromMiddleToAny()
   // 请求人工确认
   while (farcon.button_first_half[0] == 0)
   {
-    ResponseFarconForR1Block();
+    Area3ResponseFarconForR1Block();
     Seq::Wait(0.005f);
   }
   Seq::Wait(2);
@@ -1043,7 +1044,7 @@ void R1Block::PutBlock()
   // 请求人工确认
   while (farcon.button_first_half[0] == 0)
   {
-    ResponseFarconForR1Block();
+    Area3ResponseFarconForR1Block();
     Seq::Wait(0.005f);
   }
   suckmotor[0].SetSpd(0);
@@ -1065,7 +1066,7 @@ void R1Block::GetGroundBlock()
   // 请求人工确认
   while (farcon.button_first_half[0] == 0)
   {
-    ResponseFarconForR1Block();
+    Area3ResponseFarconForR1Block();
     Seq::Wait(0.005f);
   }
 
@@ -1105,7 +1106,7 @@ void R1Block::GetGroundBlock()
   // 请求人工确认
   while (farcon.button_first_half[0] == 0)
   {
-    ResponseFarconForR1Block();
+    Area3ResponseFarconForR1Block();
     Seq::Wait(0.005f);
   }
 
@@ -1122,7 +1123,7 @@ void R1Block::GetGroundBlock()
 
   while (farcon.button_first_half[0] == 0)
   {
-    ResponseFarconForR1Block();
+    Area3ResponseFarconForR1Block();
     Seq::Wait(0.005f);
   }
 
@@ -1150,10 +1151,10 @@ void R1Block::GetTargetBlockInfo()
 }
 
 /**
- * @brief 遥控器能控制的中间时刻
+ * @brief 遥控器能控制的中间时刻,世界坐标系，二区
  * @param velo_k 底盘速度系数，在不同的地方进入遥控器，理论速度不同
  */
-static void ResponseFarconForR1Block(float velo_k)
+static void Area2ResponseFarconForR1Block(float velo_k)
 {
   // 解锁底盘的位置闭环，角度闭环仍然由系统控制
   chassis.UnlockWalk();
@@ -1181,4 +1182,27 @@ static void ResponseFarconForR1Block(float velo_k)
                    { return (APP::r1block.llift_reached && APP::r1block.rlift_reached); }); // 检测到抬升到对应位置
     Seq::Wait(2);
   }
+}
+
+//车体坐标系
+static void Area3ResponseFarconForR1Block(float velo_k)
+{
+// 解锁底盘的位置闭环，角度闭环仍然由系统控制
+  chassis.UnlockWalk();
+
+  // 摇杆直接映射到车体坐标系
+  Vec3 v_body;
+  v_body.x = -farcon.jys_value[3] * 1.0f / 100.f * 1.0f * velo_k;
+  v_body.y = -farcon.jys_value[2] * 1.0f / 100.f * 1.0f * velo_k;
+
+  if (!chassis.IsLockRotate())
+  {
+    float yaw_spd = -farcon.jys_value[0] * 1.0f / 100.f * 1.5f; 
+    chassis.Move(Vec3(v_body.x, v_body.y, yaw_spd));
+  }
+  else
+  {
+    chassis.Move(Vec2(v_body.x, v_body.y));
+  }
+  
 }
