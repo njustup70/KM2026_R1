@@ -35,6 +35,16 @@ bool choose_to_get_block = 0;
 bool choose_to_fight_block = 0;
 bool choose_to_Combination = 0;
 
+// 遥控器显示当前三区状态
+uint8_t Area3_farcon_data[3] = {0x46, 0x43, 0};
+
+void Area3_facon_Transmit(int choose_mode, int pos_id = 0)
+{
+  Area3_farcon_data[2] = 0;
+  Area3_farcon_data[2] = ((choose_mode & 0x0F) << 4) | (pos_id & 0x0F);
+  farcon.TransmitFarcon(Area3_farcon_data, 3);
+}
+
 //**************************************三区状态块*******************************************************//
 // 重试区域自动规划路径跑到九宫格前面中间
 void Action_PrePut(StateCore *core)
@@ -64,7 +74,7 @@ void Action_InPlanPutBlock(StateCore *state_core)
   MOVE::MoveToTargPos(Blue_Hid_Wall_to_Grid_Gentle); // 从重试点到正中间
 
   r1block.FromMiddleToAny(); /// 从中间走进任意一个洞
-  Seq::Wait(1);
+  Seq::Wait(0.3);
   while (farcon.button_first_half[0] == 0)
   {
     ResponseButtonArea3();
@@ -105,8 +115,8 @@ void Action_InPlantoGetGroundBlock(StateCore *state_core)
 // 到对应格子前面
 void Action_FreeToGrid(StateCore *state_core)
 {
+      Area3_facon_Transmit(2);
   static int freeput_pos = 1;
-  Seq::Wait(1);
   while (farcon.button_middle[2][1] != 1)
   {
     if (farcon.button_middle[3][0] == 1)
@@ -151,14 +161,13 @@ void Action_FreeToGrid(StateCore *state_core)
     ResponseButtonArea3(0.25f);
     Seq::Wait(0.005f);
   }
-  Seq::Wait(1);
-
+  Seq::Wait(0.3);
   state_core->GetCurState()->Complete = true;
 }
 
 void Action_FreePut(StateCore *state_core)
 {
-  Seq::Wait(1);
+  Seq::Wait(0.3);
 
   while (farcon.button_first_half[0] == 0)
   {
@@ -179,14 +188,25 @@ void Action_FreePut(StateCore *state_core)
 
 void Action_FreeGetBlock(StateCore *state_core)
 {
+      Area3_facon_Transmit(3);
+  Seq::Wait(0.5);
+  // 请求人工确认
+  while (farcon.button_first_half[0] == 0)
+  {
+    ResponseButtonArea3();
+    Seq::Wait(0.005f);
+  }
   r1block.GetGroundBlock();
   state_core->GetCurState()->Complete = true;
 }
 
 void Action_Choose_Hid_Mode(StateCore *state_core)
 {
-  while (farcon.button_middle[2][1] != 1)
+      Area3_facon_Transmit(0);
+      monit.LogInfo("Choosing Mode");
+  while (farcon.button_first_half[0] == 0)
   {
+        ResponseButtonArea3();
     if (farcon.button_middle[1][0] == 1)
     {
       choose_call_to_R2 = 1;
@@ -220,6 +240,7 @@ void Action_Choose_Hid_Mode(StateCore *state_core)
 // 去找R2
 void Action_R2_call(StateCore *state_core)
 {
+      Area3_facon_Transmit(1);
   static int r2_call_first = 0;
   chassis.RotateAt(-1.57);
   Seq::WaitUntil([&]()

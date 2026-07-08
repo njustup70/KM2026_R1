@@ -42,6 +42,16 @@ bool choose_to_Combination = 0;
 
 extern volatile bool g_guide_dog_data_ready;
 
+// 遥控器显示当前三区状态
+uint8_t Area3_farcon_data[3] = {0x46, 0x43, 0};
+
+void Area3_facon_Transmit(int choose_mode, int pos_id = 0)
+{
+  Area3_farcon_data[2] = 0;
+  Area3_farcon_data[2] = ((choose_mode & 0x0F) << 4) | (pos_id & 0x0F);
+  farcon.TransmitFarcon(Area3_farcon_data, 3);
+}
+
 // 全局状态图对象
 StateGraph auto_flow{"AutoGragh"};
 
@@ -392,6 +402,7 @@ void Action_PlanToGrid(StateCore *core)
 // 到对应格子前面
 void Action_freetogrid(StateCore *state_core)
 {
+  Area3_facon_Transmit(2);
   monit.LogInfo("FREE TO GRID");
   static int freelay_pos = 1;
 
@@ -399,16 +410,21 @@ void Action_freetogrid(StateCore *state_core)
   {
     if (farcon.button_middle[3][0] == 1)
     {
+      Area3_facon_Transmit(2, 1);
       monit.LogInfo("get left block");
       freelay_pos = 0;
     }
     else if (farcon.button_middle[3][2] == 1)
     {
+      Area3_facon_Transmit(2, 3);
+
       monit.LogInfo("get right block");
       freelay_pos = 2;
     }
     else if (farcon.button_middle[3][1] == 1)
     {
+      Area3_facon_Transmit(2, 2);
+
       monit.LogInfo("get middle block");
       freelay_pos = 1;
     }
@@ -421,19 +437,19 @@ void Action_freetogrid(StateCore *state_core)
 
   if (freelay_pos == 0)
   {
-    chassis.MoveAt({10.21, 4.7});
+    chassis.MoveAt({10.21, 5});
     Seq::WaitUntil([&]()
                    { return (chassis._Walking() == 1); });
   }
   else if (freelay_pos == 2)
   {
-    chassis.MoveAt({11.29, 4.7});
+    chassis.MoveAt({11.29, 5});
     Seq::WaitUntil([&]()
                    { return (chassis._Walking() == 1); });
   }
   else if (freelay_pos == 1)
   {
-    chassis.MoveAt({10.75, 4.7});
+    chassis.MoveAt({10.75, 5});
     Seq::WaitUntil([&]()
                    { return (chassis._Walking() == 1); });
   }
@@ -443,13 +459,20 @@ void Action_freetogrid(StateCore *state_core)
     ResponseButtonArea3(0.25f);
     Seq::Wait(0.005f);
   }
-  Seq::Wait(0.5);
+  Seq::Wait(0.3);
   state_core->GetCurState()->Complete = true;
 }
 
 void Action_Freelay(StateCore *state_core)
 {
-  Seq::Wait(0.5);
+
+  while (farcon.button_first_half[0] == 0)
+  {
+    chassis.Move({0.1, 0});
+    Seq::Wait(0.05);
+  }
+  Seq::Wait(0.3);
+
   // 请求人工确认
   while (farcon.button_first_half[0] == 0)
   {
@@ -457,18 +480,16 @@ void Action_Freelay(StateCore *state_core)
     Seq::Wait(0.005f);
   }
   r1block.ReleaseBlock();
-  Seq::Wait(0.5);
-  // 请求人工确认
-  while (farcon.button_first_half[0] == 0)
-  {
-    ResponseButtonArea3();
-    Seq::Wait(0.005f);
-  }
+  
+  chassis.MoveRelative({-0.5, 0});
+  Seq::WaitUntil([&]()
+                 { return (chassis._Walking() == 1); }); // 出洞   
   state_core->GetCurState()->Complete = true;
 }
 
 void Action_FreeGetBlock(StateCore *state_core)
 {
+  Area3_facon_Transmit(3);
   Seq::Wait(0.5);
   // 请求人工确认
   while (farcon.button_first_half[0] == 0)
@@ -482,14 +503,15 @@ void Action_FreeGetBlock(StateCore *state_core)
 
 void Action_Choose_Hid_Mode(StateCore *state_core)
 {
+  Area3_facon_Transmit(0);
   monit.LogInfo("Choosing Mode");
-  Seq::Wait(0.5);
-  while (farcon.button_first_half[0] != 1)
+  while (farcon.button_first_half[0] == 0)
   {
+    ResponseButtonArea3();
     if (farcon.button_middle[1][0] == 1)
     {
       choose_call_to_R2 = 1;
-      choose_to_lay_block = 0;
+      choose_to_put_block = 0;
       choose_to_get_block = 0;
       choose_to_fight_block = 0;
       choose_to_Combination = 0;
@@ -498,7 +520,7 @@ void Action_Choose_Hid_Mode(StateCore *state_core)
     else if (farcon.button_middle[1][1] == 1)
     {
       choose_call_to_R2 = 0;
-      choose_to_lay_block = 1;
+      choose_to_put_block = 1;
       choose_to_get_block = 0;
       choose_to_fight_block = 0;
       choose_to_Combination = 0;
@@ -507,7 +529,7 @@ void Action_Choose_Hid_Mode(StateCore *state_core)
     else if (farcon.button_middle[1][2] == 1)
     {
       choose_call_to_R2 = 0;
-      choose_to_lay_block = 0;
+      choose_to_put_block = 0;
       choose_to_get_block = 1;
       choose_to_fight_block = 0;
       choose_to_Combination = 0;
@@ -522,6 +544,7 @@ void Action_Choose_Hid_Mode(StateCore *state_core)
 // 去找R2
 void Action_R2_call(StateCore *state_core)
 {
+  Area3_facon_Transmit(1);
   static int r2_reed_call_first = 0;
   chassis.RotateAt(1.57);
   Seq::WaitUntil([&]()
