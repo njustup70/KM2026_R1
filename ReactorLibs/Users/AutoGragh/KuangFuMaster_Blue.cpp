@@ -22,6 +22,7 @@
 
 #include "a3_blue_hid_come_in_gentle.hpp"
 #include "a3_blue_hid_wall_to_grid_gentle.hpp"
+#include "Blue_KF_Area3_plan.hpp"
 using namespace APP;
 using namespace MOD;
 using namespace MOVE;
@@ -43,12 +44,23 @@ bool is_assemble = false;
 extern bool manual_pick_flag;
 
 bool choose_call_to_R2 = 0; // 默认与R2通信，1是去放块，2是取块，3 是戳块等偏自由操作，4是合体
-bool choose_to_put_block = 0;
+bool choose_to_lay_block = 0;
 bool choose_to_get_block = 0;
 bool choose_to_fight_block = 0;
 bool choose_to_Combination = 0;
 
 extern volatile bool g_guide_dog_data_ready;
+
+// 遥控器显示当前三区状态
+uint8_t Area3_farcon_data[3] = {0x46, 0x43, 0};
+
+void Area3_facon_Transmit(int choose_mode, int pos_id = 0)
+{
+  Area3_farcon_data[2] = 0;
+  Area3_farcon_data[2] = ((choose_mode & 0x0F) << 4) | (pos_id & 0x0F);
+  farcon.TransmitFarcon(Area3_farcon_data, 3);
+}
+
 
 //====================状态函数组织=======================================================================================
 
@@ -351,179 +363,177 @@ void Action_AutoGetBlock(StateCore *state_core)
 
 //**************************************三区状态块*******************************************************//
 // 重试区域自动规划路径跑到九宫格前面中间
-void Action_PrePut(StateCore *core)
+
+void Action_PreLay(StateCore *core)
 {
   while (MOD::farcon.button_first_half[0] != 1)
   {
-    ResponseButtonArea3(0.7f);
+    ResponseFarcon(0.6f);
     Seq::Wait(0.005f);
   }
-  r1block.PrePut();
-  while (MOD::farcon.button_first_half[0] != 1)
-  {
-    ResponseButtonArea3(0.25f);
-    Seq::Wait(0.005f);
-  }
-  MOVE::MoveToTargPos(Blue_Hid_Come_In_Gentle); // 从重试点到贴着墙
-  while (MOD::farcon.button_first_half[0] != 1)
-  {
-    ResponseButtonArea3(0.25f);
-    Seq::Wait(0.005f);
-  }
+  // 抬升到对应放块高度
+  r1block.PreLayBLock();
   state_core.GetCurState()->Complete = true;
 }
 
-void Action_InPlanPutBlock(StateCore *state_core)
+void Action_PlanToGrid(StateCore *core)
 {
-  MOVE::MoveToTargPos(Blue_Hid_Wall_to_Grid_Gentle); // 从重试点到正中间
-
-  r1block.FromMiddleToAny(); /// 从中间走进任意一个洞
+#if Run_Zone == competition
+  r1block.Clamp_block();
+  while (MOD::farcon.button_first_half[0] != 1)
+  {
+    ResponseFarcon(0.6f);
+    Seq::Wait(0.005f);
+  }
   Seq::Wait(1);
-  while (farcon.button_first_half[0] == 0)
-  {
-    ResponseButtonArea3();
-    Seq::Wait(0.005f);
-  }
-  r1block.PutBlock();
-  state_core->GetCurState()->Complete = true;
-}
-// 状态：取地上预设的块
-void Action_InPlantoGetGroundBlock(StateCore *state_core)
-{
-  while (MOD::farcon.button_first_half[0] != 1)
-  {
-    ResponseButtonArea3(0.25f);
-    Seq::Wait(0.005f);
-  }
-  chassis.RotateAt(0);
-  Seq::WaitUntil([&]()
-                 { return (chassis._Rotating() == 1); });
-  while (MOD::farcon.button_first_half[0] != 1)
-  {
-    ResponseButtonArea3(0.25f);
-    Seq::Wait(0.005f);
-  }
+  r1block.SmoothMoveLiftToTarget(r1block.blockheight_2_liftmotortargetpos[2], r1block.realse_block_height, 3, 100);
 
-  chassis.MoveAt({10.9, 1.96});
-  Seq::WaitUntil([&]()
-                 { return (chassis._Walking() == 1); });
+#endif
+
   while (MOD::farcon.button_first_half[0] != 1)
   {
-    ResponseButtonArea3(0.25f);
+    ResponseButtonArea3(0.6f);
     Seq::Wait(0.005f);
   }
-  r1block.GetGroundBlock();
-  state_core->GetCurState()->Complete = true;
+  MOVE::MoveToTargPos(Blue_KF_Are3_PlanPath); // 从重试点到贴着墙
+  state_core.GetCurState()->Complete = true;
 }
 
 // 到对应格子前面
-void Action_FreeToGrid(StateCore *state_core)
+void Action_freetogrid(StateCore *state_core)
 {
-  static int freeput_pos = 1;
-  Seq::Wait(1);
+  Area3_facon_Transmit(2);
+  monit.LogInfo("FREE TO GRID");
+  static int freelay_pos = 1;
+
   while (farcon.button_middle[2][1] != 1)
   {
     if (farcon.button_middle[3][0] == 1)
     {
-      freeput_pos = 0;
+      Area3_facon_Transmit(2, 1);
+      monit.LogInfo("get left block");
+      freelay_pos = 0;
     }
     else if (farcon.button_middle[3][2] == 1)
     {
-      freeput_pos = 2;
+      Area3_facon_Transmit(2, 3);
+
+      monit.LogInfo("get right block");
+      freelay_pos = 2;
     }
     else if (farcon.button_middle[3][1] == 1)
     {
-      freeput_pos = 1;
+      Area3_facon_Transmit(2, 2);
+
+      monit.LogInfo("get middle block");
+      freelay_pos = 1;
     }
-    Seq::Wait(0.01);
+    Seq::Wait(0.005);
   }
 
   chassis.RotateAt(-1.57);
   Seq::WaitUntil([&]()
                  { return (chassis._Rotating() == 1); });
 
-  if (freeput_pos == 0)
+  if (freelay_pos == 0)
+  {
+    chassis.MoveAt({10.21,0.95});
+    Seq::WaitUntil([&]()
+                   { return (chassis._Walking() == 1); });
+  }
+  else if (freelay_pos == 2)
   {
     chassis.MoveAt({11.29, 0.95});
     Seq::WaitUntil([&]()
                    { return (chassis._Walking() == 1); });
   }
-  else if (freeput_pos == 2)
-  {
-    chassis.MoveAt({10.21, 0.95});
-    Seq::WaitUntil([&]()
-                   { return (chassis._Walking() == 1); });
-  }
-  else if (freeput_pos == 1)
+  else if (freelay_pos == 1)
   {
     chassis.MoveAt({10.75, 0.95});
     Seq::WaitUntil([&]()
                    { return (chassis._Walking() == 1); });
   }
+
   while (MOD::farcon.button_first_half[0] != 1)
   {
     ResponseButtonArea3(0.25f);
     Seq::Wait(0.005f);
   }
-  Seq::Wait(1);
-
+  Seq::Wait(0.3);
   state_core->GetCurState()->Complete = true;
 }
 
-void Action_FreePut(StateCore *state_core)
+void Action_Freelay(StateCore *state_core)
 {
-  Seq::Wait(1);
 
   while (farcon.button_first_half[0] == 0)
   {
     chassis.Move({0.1, 0});
     Seq::Wait(0.05);
   }
-  Seq::Wait(1);
+  Seq::Wait(0.3);
+
   // 请求人工确认
   while (farcon.button_first_half[0] == 0)
   {
     ResponseButtonArea3();
     Seq::Wait(0.005f);
   }
-
-  r1block.PutBlock();
+  r1block.ReleaseBlock();
+  
+  chassis.MoveRelative({-0.5, 0});
+  Seq::WaitUntil([&]()
+                 { return (chassis._Walking() == 1); }); // 出洞   
   state_core->GetCurState()->Complete = true;
 }
 
 void Action_FreeGetBlock(StateCore *state_core)
 {
+  Area3_facon_Transmit(3);
+  Seq::Wait(0.5);
+  // 请求人工确认
+  while (farcon.button_first_half[0] == 0)
+  {
+    ResponseButtonArea3();
+    Seq::Wait(0.005f);
+  }
   r1block.GetGroundBlock();
   state_core->GetCurState()->Complete = true;
 }
 
 void Action_Choose_Hid_Mode(StateCore *state_core)
 {
-  while (farcon.button_middle[2][1] != 1)
+  Area3_facon_Transmit(0);
+  monit.LogInfo("Choosing Mode");
+  while (farcon.button_first_half[0] == 0)
   {
+    ResponseButtonArea3();
     if (farcon.button_middle[1][0] == 1)
     {
       choose_call_to_R2 = 1;
-      choose_to_put_block = 0;
+      choose_to_lay_block = 0;
       choose_to_get_block = 0;
       choose_to_fight_block = 0;
       choose_to_Combination = 0;
+      monit.LogInfo("Mode:CALL R2");
     }
     else if (farcon.button_middle[1][1] == 1)
     {
       choose_call_to_R2 = 0;
-      choose_to_put_block = 1;
+      choose_to_lay_block = 1;
       choose_to_get_block = 0;
       choose_to_fight_block = 0;
       choose_to_Combination = 0;
+      monit.LogInfo("Mode:LAY BLOCK");
     }
     else if (farcon.button_middle[1][2] == 1)
     {
       choose_call_to_R2 = 0;
-      choose_to_put_block = 0;
+      choose_to_lay_block = 0;
       choose_to_get_block = 1;
       choose_to_fight_block = 0;
       choose_to_Combination = 0;
+      monit.LogInfo("Mode:GET BLOCK");
     }
     Seq::Wait(0.005);
   }
@@ -534,11 +544,12 @@ void Action_Choose_Hid_Mode(StateCore *state_core)
 // 去找R2
 void Action_R2_call(StateCore *state_core)
 {
-  static int r2_call_first = 0;
+  Area3_facon_Transmit(1);
+  static int r2_reed_call_first = 0;
   chassis.RotateAt(-1.57);
   Seq::WaitUntil([&]()
                  { return (chassis._Rotating() == 1); });
-  if (r2_call_first == 0)
+  if (r2_reed_call_first == 0)
   {
     while (MOD::farcon.button_first_half[0] != 1)
     {
@@ -558,7 +569,7 @@ void Action_R2_call(StateCore *state_core)
     chassis.MoveAt({10.1, 2.25}); // 去等待点
     Seq::WaitUntil([&]()
                    { return (chassis._Walking() == 1); });
-    r2_call_first++;
+    r2_reed_call_first++;
   }
   else
   {
@@ -627,24 +638,40 @@ void KuangFuMaster_Blue_Init(void)
 #elif Run_Zone == Zone3
 
   // 只跑三区
-  StateBlock &s_put_pre = blue_kf_flow.AddState("PrePutBlock");
-  StateBlock &s_planput = blue_kf_flow.AddState("PutBlock"); // 不同的
-  StateBlock &s_free_togrid = blue_kf_flow.AddState("FreeToGrid");
-  StateBlock &s_free_put = blue_kf_flow.AddState("FreePutBlock");
-  StateBlock &s_free_pick = blue_kf_flow.AddState("FreePickBlock");
 
-  s_put_pre.StateAction = Action_PrePut;
-  s_planput.StateAction = Action_InPlanPutBlock;
-  s_free_togrid.StateAction = Action_freetogrid;
-  s_free_put.StateAction = Action_FreePut;
-  s_free_pick.StateAction = Action_FreeGetBlock;
+  // 当只跑三区时候的专门初始化
+  StateBlock &s_lay_pre = auto_flow.AddState("PrelayBlock");
 
-  s_put_pre.LinkTo(&s_put_pre.Complete, s_planput);
-  s_planput.LinkTo(&s_planput.Complete, s_free_togrid);
-  s_free_togrid.LinkTo(&s_free_togrid.Complete, s_free_put);
-  s_free_put.LinkTo(&s_free_put.Complete, s_free_pick);
-  s_free_pick.LinkTo(&s_free_pick.Complete, s_free_togrid);
+  StateBlock &s_plantogrid = auto_flow.AddState("Plan_toGrid");
+  // 正常模式的状态块
 
+  // 大概率R1会快一点，需要R1赶快把块塞到洞里面，留几个块自由选择，然后再加上给R2通信，和最后的取地上块
+
+  StateBlock &s_choose_hid_mode = auto_flow.AddState("Choose_Hid_Mode");
+  StateBlock &s_free_togrid = auto_flow.AddState("FreeToGrid");
+  StateBlock &s_free_lay = auto_flow.AddState("FreelayBlock");
+  StateBlock &s_free_pick = auto_flow.AddState("FreePickBlock");
+  // 后期选择是放块/取块/给R2发送消息还是？
+
+  StateBlock &call_R2 = auto_flow.AddState("Call_R2");
+
+  // 跳转条件
+  s_lay_pre.LinkTo(&s_lay_pre.Complete, s_plantogrid);
+  s_plantogrid.LinkTo(&s_plantogrid.Complete, s_choose_hid_mode);
+
+  // 由s_choose_hid_mode来选择是给R2发消息还是说直接去放块还是去手动取块还是只是单纯去戳一下对面的块
+  s_choose_hid_mode.LinkTo(&choose_call_to_R2, call_R2);
+  s_choose_hid_mode.LinkTo(&choose_to_lay_block, s_free_togrid);
+  s_choose_hid_mode.LinkTo(&choose_to_get_block, s_free_pick);
+
+  // 决定是给R2发消息
+  call_R2.LinkTo(&call_R2.Complete, s_choose_hid_mode);
+  // 决定直接去放块
+  s_free_togrid.LinkTo(&s_free_togrid.Complete, s_free_lay);
+  s_free_lay.LinkTo(&s_free_lay.Complete, s_choose_hid_mode);
+
+  // 决定去手动取块
+  s_free_pick.LinkTo(&s_free_pick.Complete, s_choose_hid_mode);
 #elif Run_Zone == competition
   // 全跑
 
@@ -659,11 +686,19 @@ void KuangFuMaster_Blue_Init(void)
   StateBlock &s_auto_pick = blue_kf_flow.AddState("AutoGetBlocking");
 
   // 三区
-  StateBlock &s_put_pre = blue_kf_flow.AddState("PrePutBlock");
-  StateBlock &s_planput = blue_kf_flow.AddState("PutBlock"); // 不同的
+  StateBlock &s_plantogrid = blue_kf_flow.AddState("Plan_toGrid");
+  // 正常模式的状态块
+
+  // 大概率R1会快一点，需要R1赶快把块塞到洞里面，留几个块自由选择，然后再加上给R2通信，和最后的取地上块
+
+  StateBlock &s_choose_hid_mode = blue_kf_flow.AddState("Choose_Hid_Mode");
   StateBlock &s_free_togrid = blue_kf_flow.AddState("FreeToGrid");
-  StateBlock &s_free_put = blue_kf_flow.AddState("FreePutBlock");
+  StateBlock &s_free_lay = blue_kf_flow.AddState("FreelayBlock");
   StateBlock &s_free_pick = blue_kf_flow.AddState("FreePickBlock");
+  // 后期选择是放块/取块/给R2发送消息还是？
+
+  StateBlock &call_R2 = blue_kf_flow.AddState("Call_R2");
+
   // 一区
   s_wait.StateAction = Wait_ForStart;
   s_fetch_rod.StateAction = GoFetchRod;
@@ -672,11 +707,12 @@ void KuangFuMaster_Blue_Init(void)
   s_move.StateAction = Action_NavToBlock;
   s_auto_pick.StateAction = Action_AutoGetBlock;
   // 三区
-  s_put_pre.StateAction = Action_PrePut;
-  s_planput.StateAction = Action_InPlanPutBlock;
-  s_free_togrid.StateAction = Action_FreeToGrid;
-  s_free_put.StateAction = Action_FreePut;
+  s_plantogrid.StateAction = Action_PlanToGrid;
+  s_choose_hid_mode.StateAction = Action_Choose_Hid_Mode;
+  s_free_togrid.StateAction = Action_freetogrid;
+  s_free_lay.StateAction = Action_Freelay;
   s_free_pick.StateAction = Action_FreeGetBlock;
+  call_R2.StateAction = Action_R2_call;
 
   // 状态转移关系
   // 一 区
@@ -687,17 +723,28 @@ void KuangFuMaster_Blue_Init(void)
   // 二区
   s_plan.LinkTo(&s_plan.Complete, s_move);          // 规划路径
   s_move.LinkTo(&is_ready_to_pick, s_auto_pick);    // 取块
-  s_move.LinkTo(&is_final_goal_reached, s_put_pre); // 等待
+
 
   s_auto_pick.LinkTo(&s_auto_pick.Complete, s_move);
+    s_move.LinkTo(&is_final_goal_reached, s_plantogrid); // 等待
 
   // 三区
+  s_plantogrid.LinkTo(&s_plantogrid.Complete, s_choose_hid_mode);
 
-  s_put_pre.LinkTo(&s_put_pre.Complete, s_planput);
-  s_planput.LinkTo(&s_planput.Complete, s_free_togrid);
-  s_free_togrid.LinkTo(&s_free_togrid.Complete, s_free_put);
-  s_free_put.LinkTo(&s_free_put.Complete, s_free_pick);
-  s_free_pick.LinkTo(&s_free_pick.Complete, s_free_togrid);
+  // 由s_choose_hid_mode来选择是给R2发消息还是说直接去放块还是去手动取块还是只是单纯去戳一下对面的块
+  s_choose_hid_mode.LinkTo(&choose_call_to_R2, call_R2);
+  s_choose_hid_mode.LinkTo(&choose_to_lay_block, s_free_togrid);
+  s_choose_hid_mode.LinkTo(&choose_to_get_block, s_free_pick);
+
+  // 决定是给R2发消息
+  call_R2.LinkTo(&call_R2.Complete, s_choose_hid_mode);
+  // 决定直接去放块
+  s_free_togrid.LinkTo(&s_free_togrid.Complete, s_free_lay);
+  s_free_lay.LinkTo(&s_free_lay.Complete, s_choose_hid_mode);
+
+  // 决定去手动取块
+  s_free_pick.LinkTo(&s_free_pick.Complete, s_choose_hid_mode);
+
 
 #endif
 
