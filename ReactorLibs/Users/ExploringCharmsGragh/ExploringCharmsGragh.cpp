@@ -59,17 +59,6 @@ int GetBlockHeight(int index_id)
   return 200;
 }
 
-static void Wait_ForStart(StateCore *state_core)
-{
-  while (farcon.button_first_half[0] != 1)
-  {
-    ResponseFarcon();
-    Seq::Wait(0.005f);
-  }
-
-  state_core->GetCurState()->Complete = true;
-}
-
 static void WalkToPathNode(PathNode cur_node)
 {
   // 提取当前这一帧动作节点的打包数据
@@ -111,6 +100,18 @@ uint8_t rod_id = 0;
 bool need_fetch_rod_again = false;
 // 状态转移标志位：进入二区
 bool go_to_area2 = false;
+
+static void Wait_ForStart(StateCore *state_core)
+{
+  while (farcon.button_first_half[0] != 1)
+  {
+    ResponseFarcon();
+    Seq::Wait(0.005f);
+    if (go_to_area2) return;
+  }
+
+  state_core->GetCurState()->Complete = true;
+}
 
 /**
  * @brief 一区取杆逻辑
@@ -159,6 +160,7 @@ void GoFetchRod(StateCore *state_core)
   {
     ResponseFarcon(0.25f);
     Seq::Wait(0.005f);
+    if (go_to_area2) return;
   }
   // 停止底盘运动
   chassis.Move(Vec2(0, 0));
@@ -175,6 +177,7 @@ void GoFetchRod(StateCore *state_core)
   {
     ResponseFarcon(0.25f);
     Seq::Wait(0.005f);
+    if (go_to_area2) return;
   }
 
   // 前方丝杠锁紧
@@ -206,6 +209,7 @@ void GoFetchRod(StateCore *state_core)
   {
     ResponseFarcon(0.5f);
     Seq::Wait(0.005f);
+    if (go_to_area2) return;
   }
   chassis.UnlockRotate();
 
@@ -220,8 +224,11 @@ void GoFetchRod(StateCore *state_core)
   /*****    吐杆逻辑    *****/
   if (rod_id >= 2)
   {
-    // 这里要加一个倒把手的
-    MOVE::MoveToTargGes(Vec3(2.40, 3.0, 0.0));
+    //必须先往前移动一点，使杆完全脱离r2
+    chassis.Move(Vec2(1,0),0.5);
+
+    // //先进去二区
+    // MOVE::MoveToTargGes(Vec3(2.40, 3.0, 0.0));
 
     // 把杆放平，复用一下Pick
     comm.SendActionCommand(ActionType::PICK);
@@ -231,7 +238,6 @@ void GoFetchRod(StateCore *state_core)
     // 这里要加一个倒把手的
     // 但有风险会掉杆，决定加个按键可以在二区把杆微抬起来，防止捅到对方场地
     comm.SendActionCommand(ActionType::CLAMP_2_ON);
-
     monit.LogInfo("ready to area2");
 
     go_to_area2 = true;
@@ -249,8 +255,8 @@ void GoFetchRod(StateCore *state_core)
     {
       ResponseFarcon();
       Seq::Wait(0.005f);
+      if (go_to_area2) return;
     }
-
     rod_id++;
   }
 }
@@ -258,6 +264,12 @@ void GoFetchRod(StateCore *state_core)
 //**********************************二区状态块***********************************************************************//
 void Action_Planning(StateCore *state_core)
 {
+  //刷新标志位
+  go_to_area2 = false;
+  comm.is_got_dogpath_from_pc = false;  
+  //刷新狗
+  guide_dog_index = 0;
+  memset(guide_dog, 0, sizeof(guide_dog));
   monit.LogSpec("begin plan ");
 
   // 要求遥控器确认，KFS数据 已完成装填
@@ -265,6 +277,7 @@ void Action_Planning(StateCore *state_core)
   {
     ResponseFarcon();
     Seq::Wait(0.005f);
+    if (go_to_area2) return;
   }
 
   while (comm.is_got_dogpath_from_pc == false)
@@ -307,6 +320,7 @@ void Action_NavToBlock(StateCore *state_core)
   {
     ResponseFarcon();
     Seq::Wait(0.005f);
+    if (go_to_area2) return;
   }
 
   // 获取当前节点
@@ -361,6 +375,7 @@ void Action_AutoGetBlock(StateCore *state_core)
   {
     ResponseFarcon();
     Seq::Wait(0.005f);
+    if (go_to_area2) return;
   }
 
   // 本路点执行完成，进入下一路点
@@ -400,6 +415,9 @@ void ExploringCharmsGragh_Init(void)
 
   // 状态转移关系
   s_wait.LinkTo(&s_wait.Complete, s_fetch_rod); // 等待开始
+  // 假如重启，也可以选择直接跳入二区
+  s_wait.LinkTo(&go_to_area2, s_plan);
+
   /****   一区取杆    ****/
   s_fetch_rod.LinkTo(&need_fetch_rod_again, s_fetch_rod);
   s_fetch_rod.LinkTo(&go_to_area2, s_plan);
@@ -408,8 +426,11 @@ void ExploringCharmsGragh_Init(void)
   s_plan.LinkTo(&s_plan.Complete, s_move);           // 规划路径
   s_move.LinkTo(&is_ready_to_pick, s_auto_pick);     // 取块
   s_move.LinkTo(&is_final_goal_reached, s_overwait); // 等待
+  s_auto_pick.LinkTo(&s_auto_pick.Complete, s_move); 
 
-  s_auto_pick.LinkTo(&s_auto_pick.Complete, s_move);
+  // 二区重试
+  s_move.LinkTo(&go_to_area2,s_plan);
+  s_auto_pick.LinkTo(&go_to_area2, s_plan);
 
   // 注册图
   state_core.RegistGraph(EC_flow);
@@ -421,6 +442,8 @@ void ExploringCharmsGragh_Init(void)
  */
 static void ResponseFarcon(float velo_k)
 {
+  if (farcon.toggle[1])
+    velo_k = 1.0f;
   // 解锁底盘的位置闭环，角度闭环仍然由系统控制
   chassis.UnlockWalk();
 
@@ -463,12 +486,13 @@ static void ResponseFarcon(float velo_k)
   // 放弃对接
   if (farcon.button_second_half[0])
     comm.SendActionCommand(ActionType::GiveUpDock);
-  // 结束对接,r1跳入planer状态
-  if (farcon.button_second_half[1])
-    go_to_area2 = true;
   // r1得再去取杆
-  if (farcon.button_second_half[2])
+  if (farcon.button_second_half[1])
     need_fetch_rod_again = true;
+  // 1.结束对接,r1跳入planer状态；
+  // 2.在取块、跑点的任意响应按键处，r1重新跳入planer，此时可以重新选好kfs块（取过的可以删去）
+  if (farcon.button_second_half[2])
+    go_to_area2 = true;
 }
 
 #endif

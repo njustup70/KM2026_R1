@@ -220,16 +220,20 @@ void GoFetchRod(StateCore *state_core)
   /*****    吐杆逻辑    *****/
   if (rod_id >= 2)
   {
-    MOVE::MoveToTargGes(Vec3(2.40, 3.0, 0.0));
+    //必须先往前移动一点，使杆完全脱离r2
+    chassis.Move(Vec2(0.8,0),1.5);
+
+    // //先进去二区
+    // MOVE::MoveToTargGes(Vec3(2.40, 3.0, 0.0));
 
     // 把杆放平，复用一下Pick
     comm.SendActionCommand(ActionType::PICK);
 
-    Seq::Wait(1);
+    // Seq::Wait(1);
 
-    // 这里要加一个倒把手的
-    // 但有风险会掉杆，决定加个按键可以在二区把杆微抬起来，防止捅到对方场地
-    comm.SendActionCommand(ActionType::CLAMP_2_ON);
+    // // 这里要加一个倒把手的
+    // // 但有风险会掉杆，决定加个按键可以在二区把杆微抬起来，防止捅到对方场地
+    // comm.SendActionCommand(ActionType::CLAMP_2_ON);
 
     monit.LogInfo("ready to area2");
 
