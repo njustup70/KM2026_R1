@@ -815,6 +815,7 @@ void R1Block::PreLayBLock()
   Clamp_block();
 }
 
+// 只有放块，不退出
 void R1Block::ReleaseBlock(int auto_flag)
 {
   appstate = STATE_RELEASEBLOCK;
@@ -844,19 +845,18 @@ void R1Block::ReleaseBlock(int auto_flag)
     Clamp_block();
     suckmotor[0].SetSpd(suck_speed * 0.9);
     suckmotor[1].SetSpd(-suck_speed * 0.9);
-    Seq::Wait(2);
+    // 请求人工确认
+    while (farcon.button_first_half[0] == 0)
+    {
+      ResponseFarconForR1Block();
+      Seq::Wait(0.005f);
+    }
     suckmotor[0].SetSpd(0);
     suckmotor[1].SetSpd(0);
     Loosen_block(); // 松
     Seq::Wait(1);
     SetTargetState(release_strectch_distance[0] - 400000, release_strectch_distance[0] - 400000, 0.0f, 0.0f, realse_block_height, realse_block_height);
-
-    // 退洞操作
-
-    chassis.MoveRelative({-0.5, 0});
-    Seq::WaitUntil([&]()
-                   { return (chassis._Walking() == 1); }); // 往后走一步，退洞
-    Clamp_block();                                         // 夹紧
+    Clamp_block(); // 夹紧
   }
 
   // **********************************开始吐第二个块*******************//
@@ -869,7 +869,12 @@ void R1Block::ReleaseBlock(int auto_flag)
 
     suckmotor[0].SetSpd(suck_speed * 0.9);
     suckmotor[1].SetSpd(-suck_speed * 0.9);
-    Seq::Wait(3);
+    // 请求人工确认
+    while (farcon.button_first_half[0] == 0)
+    {
+      ResponseFarconForR1Block();
+      Seq::Wait(0.005f);
+    }
     Loosen_block(); // 松
     Seq::Wait(1);
 
@@ -878,12 +883,6 @@ void R1Block::ReleaseBlock(int auto_flag)
     SetTargetState(0, 0, 0.0f, 0.0f, realse_block_height, realse_block_height);
 
     Seq::Wait(2);
-
-    // 退洞操作
-
-    chassis.MoveRelative({-0.5, 0});
-    Seq::WaitUntil([&]()
-                   { return (chassis._Walking() == 1); }); // 往后走一步，退洞
   }
   else if (now_put_block == 2)
   {
@@ -896,8 +895,13 @@ void R1Block::ReleaseBlock(int auto_flag)
     SetTargetState(0.0f, 0.0f, 0.0f, 0.0f, realse_block_height, realse_block_height);
     Seq::Wait(2);
     SetTargetState(release_strectch_distance[0], release_strectch_distance[0], 0.0f, 0.0f, realse_block_height, realse_block_height);
-    Seq::Wait(3);
-    Loosen_block();                          
+    // 请求人工确认
+    while (farcon.button_first_half[0] == 0)
+    {
+      ResponseFarconForR1Block();
+      Seq::Wait(0.005f);
+    }
+    Loosen_block();
     suckmotor[0].SetSpd(0);
     suckmotor[1].SetSpd(0);
     chassis.MoveRelative({-0.6, 0});

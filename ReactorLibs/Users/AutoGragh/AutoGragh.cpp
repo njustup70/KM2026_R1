@@ -494,28 +494,31 @@ void Action_freetogrid(StateCore *state_core)
     ResponseButtonArea3(0.25f);
     Seq::Wait(0.005f);
   }
-  Seq::Wait(0.5);
+  Seq::Wait(0.3);
   state_core->GetCurState()->Complete = true;
 }
 
 void Action_Freelay(StateCore *state_core)
 {
-  Seq::Wait(1);
 
   while (farcon.button_first_half[0] == 0)
   {
     chassis.Move({0.1, 0});
     Seq::Wait(0.05);
   }
-  Seq::Wait(1);
-  r1block.ReleaseBlock();
-  Seq::Wait(0.5);
+  Seq::Wait(0.3);
+
   // 请求人工确认
   while (farcon.button_first_half[0] == 0)
   {
     ResponseButtonArea3();
     Seq::Wait(0.005f);
   }
+  r1block.ReleaseBlock();
+  
+  chassis.MoveRelative({-0.5, 0});
+  Seq::WaitUntil([&]()
+                 { return (chassis._Walking() == 1); }); // 出洞   
   state_core->GetCurState()->Complete = true;
 }
 
@@ -537,13 +540,13 @@ void Action_Choose_Hid_Mode(StateCore *state_core)
 {
   Area3_facon_Transmit(0);
   monit.LogInfo("Choosing Mode");
-  Seq::Wait(0.5);
-  while (farcon.button_first_half[0] != 1)
+  while (farcon.button_first_half[0] == 0)
   {
+    ResponseButtonArea3();
     if (farcon.button_middle[1][0] == 1)
     {
       choose_call_to_R2 = 1;
-      choose_to_lay_block = 0;
+      choose_to_put_block = 0;
       choose_to_get_block = 0;
       choose_to_fight_block = 0;
       choose_to_Combination = 0;
@@ -552,7 +555,7 @@ void Action_Choose_Hid_Mode(StateCore *state_core)
     else if (farcon.button_middle[1][1] == 1)
     {
       choose_call_to_R2 = 0;
-      choose_to_lay_block = 1;
+      choose_to_put_block = 1;
       choose_to_get_block = 0;
       choose_to_fight_block = 0;
       choose_to_Combination = 0;
@@ -561,7 +564,7 @@ void Action_Choose_Hid_Mode(StateCore *state_core)
     else if (farcon.button_middle[1][2] == 1)
     {
       choose_call_to_R2 = 0;
-      choose_to_lay_block = 0;
+      choose_to_put_block = 0;
       choose_to_get_block = 1;
       choose_to_fight_block = 0;
       choose_to_Combination = 0;

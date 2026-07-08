@@ -202,8 +202,11 @@ void Action_FreeGetBlock(StateCore *state_core)
 
 void Action_Choose_Hid_Mode(StateCore *state_core)
 {
+      Area3_facon_Transmit(0);
+      monit.LogInfo("Choosing Mode");
   while (farcon.button_first_half[0] == 0)
   {
+        ResponseButtonArea3();
     if (farcon.button_middle[1][0] == 1)
     {
       choose_call_to_R2 = 1;
