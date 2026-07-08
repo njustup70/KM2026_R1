@@ -844,7 +844,7 @@ void R1Block::ReleaseBlock(int auto_flag)
     Clamp_block();
     suckmotor[0].SetSpd(suck_speed * 0.9);
     suckmotor[1].SetSpd(-suck_speed * 0.9);
-    Seq::Wait(3);
+    Seq::Wait(2);
     suckmotor[0].SetSpd(0);
     suckmotor[1].SetSpd(0);
     Loosen_block(); // 松
