@@ -50,33 +50,24 @@ void BuildXPoints_Red(Vec2 X[X_COUNT])
         return; 
     }
 
-    // 1. 原本的相对/原始坐标保持不变
-    X[0]  = Vec2(0, 0);
-    X[1]  = Vec2(0, UNIT * 1.0f);
-    X[2]  = Vec2(-0.08f, 2.4865f);
-    X[3]  = Vec2(UNIT * 1.0f, 2.4925f);
-    X[4]  = Vec2(UNIT * 2.0f, 2.4925f);
-    X[5]  = Vec2(UNIT * 3.0f, 2.4925f);
-    X[6]  = Vec2(UNIT * 4.0f, 2.4925f);
-    X[7]  = Vec2(UNIT * 5.0f, UNIT * 2.0f);
-    X[8]  = Vec2(UNIT * 5.0f, UNIT * 1.0f);
-    X[9]  = Vec2(UNIT * 5.0f, UNIT * 0.0f);
-    X[10] = Vec2(UNIT * 5.0f, -UNIT * 1.0f);
-    X[11] = Vec2(6.2f, -2.3575f);
-    X[12] = Vec2(UNIT * 4.0f, -2.4575f);
-    X[13] = Vec2(UNIT * 3.0f, -2.4575f);
-    X[14] = Vec2(UNIT * 2.0f, -2.4575f);
-    X[15] = Vec2(UNIT * 1.0f, -2.4575f);
-    X[16] = Vec2(-0.115f, -2.35f);
-    X[17] = Vec2(0, -UNIT * 1.0f);
-
-    const Vec2 S_point(2.565f, 2.9575f);
-
-    for (int i = 0; i < X_COUNT; i++)
-    {
-        X[i].x += S_point.x;
-        X[i].y += S_point.y;
-    }
+    X[0]  = Vec2(2.47,3.01);
+    X[1]  = Vec2(2.49,4.18);
+    X[2]  = Vec2(2.53,5.27);
+    X[3]  = Vec2(3.83,5.45);
+    X[4]  = Vec2(5.02,5.45);
+    X[5]  = Vec2(6.20,5.45);
+    X[6]  = Vec2(7.39,5.44);
+    X[7]  = Vec2(8.64,5.37);
+    X[8]  = Vec2(8.64,4.21);
+    X[9]  = Vec2(8.64,3.03);
+    X[10] = Vec2(8.64,1.78);
+    X[11] = Vec2(8.64,0.74);
+    X[12] = Vec2(7.38,0.55);
+    X[13] = Vec2(6.18,0.54);
+    X[14] = Vec2(4.99,0.53);
+    X[15] = Vec2(3.77,0.53);
+    X[16] = Vec2(2.50,0.66);
+    X[17] = Vec2(2.49,4.80);
 
     // 标记为已初始化，以后再调用直接 return，零开销
     is_initialized = true; 
@@ -122,34 +113,3 @@ void BuildXPoints_Blue(Vec2 X[X_COUNT])
     // 标记为已初始化，以后再调用直接 return，零开销
     is_initialized = true; 
 }
-
-// void BuildXPoints(Vec2 X[X_COUNT])
-// {
-//     // 1. 原本的相对/原始坐标保持不变
-//     X[0]  = Vec2(0, 0);
-//     X[1]  = Vec2(0, UNIT * 1.0f);
-//     X[2]  = Vec2(-0.08f, 2.4865f);
-//     X[3]  = Vec2(UNIT * 1.0f, 2.4925f);
-//     X[4]  = Vec2(UNIT * 2.0f, 2.4925f);
-//     X[5]  = Vec2(UNIT * 3.0f, 2.4925f);
-//     X[6]  = Vec2(UNIT * 4.0f, 2.4925f);
-//     X[7]  = Vec2(UNIT * 5.0f, UNIT * 2.0f);
-//     X[8]  = Vec2(UNIT * 5.0f, UNIT * 1.0f);
-//     X[9]  = Vec2(UNIT * 5.0f, UNIT * 0.0f);
-//     X[10] = Vec2(UNIT * 5.0f, -UNIT * 1.0f);
-//     X[11] = Vec2(6.2f, -2.3575f);
-//     X[12] = Vec2(UNIT * 4.0f, -2.4575f);
-//     X[13] = Vec2(UNIT * 3.0f, -2.4575f);
-//     X[14] = Vec2(UNIT * 2.0f, -2.4575f);
-//     X[15] = Vec2(UNIT * 1.0f, -2.4575f);
-//     X[16] = Vec2(-0.115f, -2.35f);
-//     X[17] = Vec2(0, -UNIT * 1.0f);
-
-//     const Vec2 S_point(2.565f, 2.9575f);
-
-//     for (int i = 0; i < X_COUNT; i++)
-//     {
-//         X[i].x += S_point.x;
-//         X[i].y += S_point.y;
-//     }
-// }
