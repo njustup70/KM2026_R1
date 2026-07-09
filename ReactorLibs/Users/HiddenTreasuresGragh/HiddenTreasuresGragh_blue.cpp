@@ -140,13 +140,13 @@ void Action_FreeToGrid(StateCore *state_core)
 
   if (freeput_pos == 0)
   {
-    chassis.MoveAt({11.29, 0.95});
+    chassis.MoveAt({11.3, 0.95});
     Seq::WaitUntil([&]()
                    { return (chassis._Walking() == 1); });
   }
   else if (freeput_pos == 2)
   {
-    chassis.MoveAt({10.21, 0.95});
+    chassis.MoveAt({10.26, 0.95});
     Seq::WaitUntil([&]()
                    { return (chassis._Walking() == 1); });
   }
@@ -171,7 +171,7 @@ void Action_FreePut(StateCore *state_core)
 
   while (farcon.button_first_half[0] == 0)
   {
-    chassis.Move({0.1, 0});
+    chassis.Move({0.2, 0});
     Seq::Wait(0.05);
   }
   Seq::Wait(1);
