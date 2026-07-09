@@ -53,19 +53,21 @@ void Action_PrePut(StateCore *core)
 {
   while (MOD::farcon.button_first_half[0] != 1)
   {
-    ResponseButtonArea3(1.0f);
+    ResponseButtonArea3(0.25f);
     Seq::Wait(0.005f);
   }
   // 抬升到对应放块高度
   r1block.PrePut();
-  comm.SendActionCommand(ActionType::PICK);
+  comm.SendActionCommand(ActionType::GuardRod);
+  Seq::Wait(0.6);
 
   while (MOD::farcon.button_first_half[0] != 1)
   {
-    ResponseButtonArea3(1.0f);
+    ResponseButtonArea3(0.25f);
     Seq::Wait(0.005f);
   }
-  comm.SendActionCommand(ActionType::LooseClaw);
+  comm.SendActionCommand(ActionType::CLAMP);
+  Seq::Wait(0.6);
 
   while (MOD::farcon.button_first_half[0] != 1)
   {
@@ -440,7 +442,7 @@ void ResponseButtonArea3(float velo_k)
     comm.SendActionCommand(ActionType::PokeF1);
   // 戳完放平
   if (farcon.button_second_half[7])
-    comm.SendActionCommand(ActionType::PICK);
+    comm.SendActionCommand(ActionType::GuardRod);
 
   //手动放块取地上块逻辑
 

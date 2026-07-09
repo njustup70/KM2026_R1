@@ -38,7 +38,9 @@ enum class ActionType : uint8_t
     A3R2LayRightBlock = 19,
 
     LooseClaw = 14,
-    VerticalRod = 16,
+    VerticalRod = 16,    
+    GuardRod = 21,
+
 };
 
 void R1CBoardCallback(uint8_t task_id, const uint8_t *payload, uint8_t payload_len, void *user_ctx);
