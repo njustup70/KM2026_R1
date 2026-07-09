@@ -411,6 +411,24 @@ void R1Block::SetTargetHeight(float lift_pos_L, float lift_pos_R)
   liftmotor[0].SetPos(target_state_pos[1]);
   liftmotor[1].SetPos(target_state_pos[2]);
 }
+void R1Block::LiftToNavHeight(int NavHeight)
+{
+  if (NavHeight == 200)
+  {
+    SetTargetHeight(blockheight_2_liftmotortargetpos[0], blockheight_2_liftmotortargetpos[0]);
+    last_height = 200;
+  }
+  else if (NavHeight == 400)
+  {
+    SetTargetHeight(blockheight_2_liftmotortargetpos[1], blockheight_2_liftmotortargetpos[1]);
+    last_height = 400;
+  }
+  else if(NavHeight==600)
+  {
+       SetTargetHeight(blockheight_2_liftmotortargetpos[2], blockheight_2_liftmotortargetpos[2]);
+    last_height = 600; 
+  }
+}
 
 void R1Block::SetTargetState(float stretch_pos_L, float stretch_pos_R,
                              float suck_pos_L, float suck_pos_R,
@@ -579,7 +597,7 @@ void R1Block::Aim_Block()
   }
   else if (block_detect[0] == 1)
   {
-    Spd = Vec2{0, 0.05};
+    Spd = Vec2{0, 0.2};
     aim_right = 0;
     Seq::WaitUntil([&]()
                    { return block_detect[1] == 1; }); // 检测到没有块在上面的时候
@@ -590,7 +608,7 @@ void R1Block::Aim_Block()
   }
   else if (block_detect[1] == 1)
   {
-    Spd = Vec2{0, -0.05};
+    Spd = Vec2{0, -0.2};
     aim_right = 0;
     Seq::WaitUntil([&]()
                    { return block_detect[0] == 1; }); // 检测到没有块在上面的时候
@@ -798,6 +816,105 @@ void R1Block::Get_Block(int block_height, int auto_flag)
   }
 
 #endif
+}
+
+void R1Block::NoLiftGet_Block(int auto_flag)
+{
+  // 当前的取块数量
+  static int no_lift_now_get_block = 0;
+  // 利用小黄来判定块的数量，而不是直接累积
+  if (block_exist[2] == 0 && block_exist[1] == 0 && block_exist[0] == 0)
+  {
+    no_lift_now_get_block = 0;
+  }
+  else if (block_exist[2] == 1 && block_exist[1] == 0 && block_exist[0] == 0)
+  {
+    no_lift_now_get_block = 1;
+  }
+  else if (block_exist[2] == 1 && block_exist[1] == 1 && block_exist[0] == 0)
+  {
+    no_lift_now_get_block = 2;
+  }
+
+ // 松开夹爪
+  Loosen_block();
+
+
+  // 自动对准
+  Aim_Block();
+
+  // 请求人工确认
+  while (farcon.button_first_half[0] != 1)
+  {
+    Area2ResponseFarconForR1Block();
+    Seq::Wait(0.005f);
+  }
+
+  // 等待对准完成，伸出双爪，取块
+  SetTargetStretch(stretch_distance[1], stretch_distance[1]);
+
+  // 确认两爪到位，检测到最外面到了
+  Seq::WaitUntil([&]()
+                 { return ((stretchmotor[0].IsReached() == 1) && (stretchmotor[1].IsReached() == 1)); });
+  Seq::Wait(1);
+
+  // 开始吸入块
+  suckmotor[0].SetSpd(-suck_speed);
+  suckmotor[1].SetSpd(suck_speed);
+
+  // 实际取块，夹紧
+  Clamp_block();
+  Seq::Wait(2);
+
+  // 可优化的自动取块
+  // 取第一个块
+  if (no_lift_now_get_block == 0)
+  {
+    SmoothMoveStretchToTarget(stretch_distance[1], 0, 2, 10);
+    Seq::Wait(1);
+    suckmotor[0].SetSpd(0);
+    suckmotor[1].SetSpd(0);
+    Clamp_block(); // 夹紧
+
+    return;
+  }
+  // 取第二个块
+  else if (no_lift_now_get_block == 1)
+  {
+    SmoothMoveStretchToTarget(stretch_distance[1], 0, 2, 10);
+    Seq::Wait(1);
+    suckmotor[0].SetSpd(0);
+    suckmotor[1].SetSpd(0);
+    return;
+  }
+  // 取第三个块
+  else if (no_lift_now_get_block == 2)
+  {
+    SmoothMoveStretchToTarget(stretch_distance[1], release_strectch_distance[1], 2, 10);
+    Seq::Wait(1);
+    suckmotor[0].SetSpd(0);
+    suckmotor[1].SetSpd(0);
+    if (block_detect[0] == 0)
+    {
+      Clamp_block();
+      Seq::Wait(1);
+      SmoothMoveStretchToTarget(stretch_distance[0], 0, 0);
+      Seq::Wait(1);
+    }
+    SmoothMoveLiftToTarget(trans_height(last_height), trans_height(600), 3);
+    last_height = 600;
+    Seq::WaitUntil([&]()
+                   { return (llift_reached && rlift_reached); }); // 检测到抬升到对应位置
+    Seq::Wait(2);
+  }
+
+  // 请求人工确认
+  while (farcon.button_first_half[0] != 1)
+  {
+    Area2ResponseFarconForR1Block();
+    Seq::Wait(0.005f);
+  }
+
 }
 
 void R1Block::PreLayBLock()
@@ -1172,7 +1289,7 @@ static void Area2ResponseFarconForR1Block(float velo_k)
   {
     chassis.Move(Vec2(v_body.x, v_body.y));
   }
-  if (farcon.button_first_half[1] == 1)
+  if (farcon.button_second_half[5] == 1)
   {
     APP::r1block.SetTargetHeight(APP::r1block.blockheight_2_liftmotortargetpos[2], APP::r1block.blockheight_2_liftmotortargetpos[2]);
     APP::r1block.last_height = 600;
@@ -1182,10 +1299,10 @@ static void Area2ResponseFarconForR1Block(float velo_k)
   }
 }
 
-//车体坐标系
+// 车体坐标系
 static void Area3ResponseFarconForR1Block(float velo_k)
 {
-// 解锁底盘的位置闭环，角度闭环仍然由系统控制
+  // 解锁底盘的位置闭环，角度闭环仍然由系统控制
   chassis.UnlockWalk();
 
   // 摇杆直接映射到车体坐标系
@@ -1195,12 +1312,11 @@ static void Area3ResponseFarconForR1Block(float velo_k)
 
   if (!chassis.IsLockRotate())
   {
-    float yaw_spd = -farcon.jys_value[0] * 1.0f / 100.f * 1.5f; 
+    float yaw_spd = -farcon.jys_value[0] * 1.0f / 100.f * 1.5f;
     chassis.Move(Vec3(v_body.x, v_body.y, yaw_spd));
   }
   else
   {
     chassis.Move(Vec2(v_body.x, v_body.y));
   }
-  
 }

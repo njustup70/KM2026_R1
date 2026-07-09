@@ -340,15 +340,19 @@ void Action_NavToBlock(StateCore *state_core)
   // 获取当前节点
   PathNode cur_node = guide_dog[guide_dog_index];
 
+  if (cur_node.is_pick_point)
+  {
+    // 获取高度，准备通过 LinkTo 条件触发切入 Action_GetBlock
+    target_height = GetBlockHeight(cur_node.label);
+    r1block.LiftToNavHeight(target_height);
+  }
+
   // 跑到下一个点
   WalkToPathNode(cur_node);
 
   // ------如果当前点是取块点，准备触发取块动作
   if (cur_node.is_pick_point)
   {
-    // 获取高度，准备通过 LinkTo 条件触发切入 Action_GetBlock
-    target_height = GetBlockHeight(cur_node.label);
-
     // 状态转移，进入取块逻辑
     is_ready_to_pick = true;
     return;
@@ -382,7 +386,7 @@ void Action_AutoGetBlock(StateCore *state_core)
   monit.LogInfo("Try to Get Block");
 
   // 自动取块
-  r1block.Get_Block(target_height, 1);
+  r1block.NoLiftGet_Block( 1);
 
   // 要求遥控器确认，才跑下一个点
   while (MOD::farcon.button_first_half[0] != 1)
@@ -467,13 +471,13 @@ static void ResponseFarcon(float velo_k)
   Vec2 v_world;
   if (farcon.toggle[1])
   {
-     v_world.x = -farcon.jys_value[3] * 1.0f / 100.f * 1.0f * multi_velo ; // 摇杆向前 -> 场地X正
-     v_world.y = -farcon.jys_value[2] * 1.0f / 100.f * 1.0f * multi_velo; // 摇杆向左 -> 场地Y正
+    v_world.x = -farcon.jys_value[3] * 1.0f / 100.f * 1.0f * multi_velo; // 摇杆向前 -> 场地X正
+    v_world.y = -farcon.jys_value[2] * 1.0f / 100.f * 1.0f * multi_velo; // 摇杆向左 -> 场地Y正
   }
-  else 
+  else
   {
-     v_world.x = -farcon.jys_value[3] * 1.0f / 100.f * 1.0f * velo_k ; // 摇杆向前 -> 场地X正
-     v_world.y = -farcon.jys_value[2] * 1.0f / 100.f * 1.0f * velo_k; // 摇杆向左 -> 场地Y正
+    v_world.x = -farcon.jys_value[3] * 1.0f / 100.f * 1.0f * velo_k; // 摇杆向前 -> 场地X正
+    v_world.y = -farcon.jys_value[2] * 1.0f / 100.f * 1.0f * velo_k; // 摇杆向左 -> 场地Y正
   }
 
   // 解锁底盘的位置闭环，角度闭环仍然由系统控制

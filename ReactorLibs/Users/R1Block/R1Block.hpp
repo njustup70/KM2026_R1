@@ -158,12 +158,16 @@ public:
   void Aim_Block();
   void SetTargetStretch(float stretch_pos_L, float stretch_pos_R);
   void SetTargetHeight(float lift_pos_L, float lift_pos_R);
+
   void SmoothMoveTo(float start_stretch, float end_stretch,
                     float start_lift, float end_lift,
                     float duration_sec, int steps);
   void SmoothMoveLiftToTarget(float start_lift, float target_lift, float duration_sec, int steps);
   void SmoothMoveStretchToTarget(float start_stretch, float end_stretch, float duration_sec, int steps);
 
+
+
+    void LiftToNavHeight(int target_height);
   /**
    * @brief 设置三个电机的目标状态并立即下发
    * @param strech_pos   伸出电机目标位置（code，total_angle 语义）
@@ -187,6 +191,7 @@ public:
   void Clamp_block();
   void Loosen_block();
   void Get_Block(int block_height, int auto_flag = 0);
+  void NoLiftGet_Block(int auto_flag);
   void Manual_Reset_to_All();
   void PreLayBLock();
 
