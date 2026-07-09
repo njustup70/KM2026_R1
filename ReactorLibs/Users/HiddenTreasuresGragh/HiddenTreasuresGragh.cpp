@@ -59,7 +59,7 @@ void Action_PrePut(StateCore *core)
   // 抬升到对应放块高度
   r1block.PrePut();
   comm.SendActionCommand(ActionType::PICK);
-  
+
   while (MOD::farcon.button_first_half[0] != 1)
   {
     ResponseButtonArea3(1.0f);
@@ -420,14 +420,25 @@ void ResponseButtonArea3(float velo_k)
   {
   }
 
-  //戳第二层块
+  // 光通信
+  // 让r2去放左块
+  if (farcon.button_first_half[2])
+    comm.SendActionCommand(ActionType::A3R2LayLeftBlock);
+  // 让r2去放中块
+  if (farcon.button_first_half[3])
+    comm.SendActionCommand(ActionType::A3R2LayMidBlock);
+  // 让r3去放右块
+  if (farcon.button_first_half[6])
+    comm.SendActionCommand(ActionType::A3R2LayRightBlock);
+
+  // 戳第二层块
   if (farcon.button_second_half[2])
     comm.SendActionCommand(ActionType::PokeF2);
-  //戳第三层块
+  // 戳第三层块
   if (farcon.button_second_half[3])
     comm.SendActionCommand(ActionType::PokeF1);
   // 戳完放平
-  if (farcon.button_second_half[15])
+  if (farcon.button_second_half[7])
     comm.SendActionCommand(ActionType::PICK);
 }
 

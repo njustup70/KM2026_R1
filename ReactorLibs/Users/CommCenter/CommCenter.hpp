@@ -27,15 +27,18 @@ enum class ActionType : uint8_t
     GiveUpDock = 11,
     DockOK = 20,
     SendKFS = 15,
+    // R2GoToArea2 = 21,
 
     //戳块
     PokeF1 = 12,
     PokeF2 = 13,
-    
+
+    A3R2LayLeftBlock = 17,
+    A3R2LayMidBlock = 18,
+    A3R2LayRightBlock = 19,
+
     LooseClaw = 14,
     VerticalRod = 16,
-
-
 };
 
 void R1CBoardCallback(uint8_t task_id, const uint8_t *payload, uint8_t payload_len, void *user_ctx);
