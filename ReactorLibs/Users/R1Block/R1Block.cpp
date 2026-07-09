@@ -1289,7 +1289,7 @@ void R1Block::ManualGetGroundBlock()
   }
 
    chassis.Move({0, 0});
-
+  Seq::Wait(1);
   // 请求人工确认
   while (farcon.button_first_half[0] == 0)
   {
@@ -1304,17 +1304,23 @@ void R1Block::ManualGetGroundBlock()
 
   Clamp_block(); // 夹紧
   Seq::Wait(1);
-  SmoothMoveStretchToTarget(stretch_distance[1], 0, 2, 10);
-
-  while (farcon.button_first_half[0] == 0)
+    while (farcon.button_first_half[0] == 0)
   {
     Area3ResponseFarconForR1Block();
     Seq::Wait(0.005f);
   }
+  SmoothMoveStretchToTarget(stretch_distance[1], 0, 2, 10);
+
+  Seq::Wait(2);
 
   suckmotor[0].SetSpd(0);
   suckmotor[1].SetSpd(0);
 
+      while (farcon.button_first_half[0] == 0)
+  {
+    Area3ResponseFarconForR1Block();
+    Seq::Wait(0.005f);
+  }
   // 取完块
   SetTargetHeight(realse_block_height, realse_block_height);
 
