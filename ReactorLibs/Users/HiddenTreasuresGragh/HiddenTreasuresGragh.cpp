@@ -408,6 +408,7 @@ void ResponseButtonArea3(float velo_k)
   // 控制R2放中间层的第一个块
   if (farcon.button_middle[0][0] == 1)
   {
+
   }
 
   // 控制R2放中间层的第二个块
@@ -429,6 +430,10 @@ void ResponseButtonArea3(float velo_k)
   // 戳完放平
   if (farcon.button_second_half[15])
     comm.SendActionCommand(ActionType::PICK);
+
+  //手动放块取地上块逻辑
+
+
 }
 
 #endif
