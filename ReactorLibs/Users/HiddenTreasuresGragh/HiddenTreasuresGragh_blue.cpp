@@ -51,13 +51,21 @@ void Action_PrePut(StateCore *core)
 {
   while (MOD::farcon.button_first_half[0] != 1)
   {
-    ResponseButtonArea3(0.7f);
+    ResponseButtonArea3(1.0f);
     Seq::Wait(0.005f);
   }
   r1block.PrePut();
+  comm.SendActionCommand(ActionType::PICK);
+  
   while (MOD::farcon.button_first_half[0] != 1)
   {
-    ResponseButtonArea3(0.25f);
+    ResponseButtonArea3(1.0f);
+    Seq::Wait(0.005f);
+  }
+  comm.SendActionCommand(ActionType::LooseClaw);
+  while (MOD::farcon.button_first_half[0] != 1)
+  {
+    ResponseButtonArea3(1.0f);
     Seq::Wait(0.005f);
   }
   MOVE::MoveToTargPos(Blue_Hid_Come_In_Gentle); // 从重试点到贴着墙
@@ -392,6 +400,16 @@ void ResponseButtonArea3(float velo_k)
   if (farcon.button_middle[0][2] == 1)
   {
   }
+
+  //戳第二层块
+  if (farcon.button_second_half[2])
+    comm.SendActionCommand(ActionType::PokeF2);
+  //戳第三层块
+  if (farcon.button_second_half[3])
+    comm.SendActionCommand(ActionType::PokeF1);
+  // 戳完放平
+  if (farcon.button_second_half[15])
+    comm.SendActionCommand(ActionType::PICK);
 }
 
 #endif
