@@ -33,6 +33,8 @@ enum class ActionType : uint8_t
     PokeF2 = 13,
     
     LooseClaw = 14,
+    VerticalRod = 16,
+
 
 };
 

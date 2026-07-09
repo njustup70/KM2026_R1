@@ -159,7 +159,7 @@ void GoFetchRod(StateCore *state_core)
   }
 
   // 先往前怼到杆架子
-  chassis.Move(Vec3(0.075, 0, 0), 1);
+  // chassis.Move(Vec3(0.075, 0, 0), 0.5);
   // 锁 yaw 角
   chassis.LockYaw(3.14);
 
@@ -173,8 +173,6 @@ void GoFetchRod(StateCore *state_core)
     if (go_to_area2)
       return;
   }
-  // 停止底盘运动
-  chassis.Move(Vec2(0, 0));
   chassis.UnlockRotate();
 
   // 完成左右位置确定，准备伸出机械臂
@@ -182,7 +180,7 @@ void GoFetchRod(StateCore *state_core)
   monit.LogInfo("Bow At:(%.2f,%.2f)", comm.slam_pos.x, comm.slam_pos.y);
 
   // 等待机械臂完成取杆
-  Seq::Wait(1);
+  Seq::Wait(0.3);
 
   while (MOD::farcon.button_first_half[0] != 1)
   {
@@ -239,18 +237,18 @@ void GoFetchRod(StateCore *state_core)
   {
     // 必须先往前移动一点，使杆完全脱离r2
     chassis.Move(Vec2(1, 0), 0.5);
+    Seq::Wait(0.5);
 
-    // //先进去二区
-    // MOVE::MoveToTargGes(Vec3(2.40, 3.0, 0.0));
+    // 改成把杆举起来
+    comm.SendActionCommand(ActionType::VerticalRod);
 
-    // 把杆放平，复用一下Pick
-    comm.SendActionCommand(ActionType::PICK);
+    // // 把杆放平，复用一下Pick
+    // comm.SendActionCommand(ActionType::PICK);
+    // Seq::Wait(1);
+    // // 这里要加一个倒把手的
+    // // 但有风险会掉杆，决定加个按键可以在二区把杆微抬起来，防止捅到对方场地
+    // comm.SendActionCommand(ActionType::CLAMP_2_ON);
 
-    Seq::Wait(1);
-
-    // 这里要加一个倒把手的
-    // 但有风险会掉杆，决定加个按键可以在二区把杆微抬起来，防止捅到对方场地
-    comm.SendActionCommand(ActionType::CLAMP_2_ON);
     monit.LogInfo("ready to area2");
 
     go_to_area2 = true;
@@ -465,15 +463,21 @@ void ExploringCharmsGragh_Init(void)
  */
 static void ResponseFarcon(float velo_k)
 {
+  float multi_velo = 1.0;
+  Vec2 v_world;
   if (farcon.toggle[1])
-    velo_k = 1.0f;
+  {
+     v_world.x = -farcon.jys_value[3] * 1.0f / 100.f * 1.0f * multi_velo ; // 摇杆向前 -> 场地X正
+     v_world.y = -farcon.jys_value[2] * 1.0f / 100.f * 1.0f * multi_velo; // 摇杆向左 -> 场地Y正
+  }
+  else 
+  {
+     v_world.x = -farcon.jys_value[3] * 1.0f / 100.f * 1.0f * velo_k ; // 摇杆向前 -> 场地X正
+     v_world.y = -farcon.jys_value[2] * 1.0f / 100.f * 1.0f * velo_k; // 摇杆向左 -> 场地Y正
+  }
+
   // 解锁底盘的位置闭环，角度闭环仍然由系统控制
   chassis.UnlockWalk();
-
-  Vec2 v_world;
-  v_world.x = -farcon.jys_value[3] * 1.0f / 100.f * 1.0f * velo_k; // 摇杆向前 -> 场地X正
-  v_world.y = -farcon.jys_value[2] * 1.0f / 100.f * 1.0f * velo_k; // 摇杆向左 -> 场地Y正
-
   Vec2 v_body = v_world.Rotate(-System.position.z);
 
   if (!chassis.IsLockRotate())
@@ -508,7 +512,11 @@ static void ResponseFarcon(float velo_k)
 
   // 放弃对接
   if (farcon.button_second_half[0])
+  {
     comm.SendActionCommand(ActionType::GiveUpDock);
+    go_to_area2 = true;
+  }
+
   // r1得再去取杆
   if (farcon.button_second_half[1])
     need_fetch_rod_again = true;

@@ -511,7 +511,7 @@ void Action_Choose_Hid_Mode(StateCore *state_core)
     if (farcon.button_middle[1][0] == 1)
     {
       choose_call_to_R2 = 1;
-      choose_to_put_block = 0;
+      choose_to_lay_block = 0;
       choose_to_get_block = 0;
       choose_to_fight_block = 0;
       choose_to_Combination = 0;
@@ -520,7 +520,7 @@ void Action_Choose_Hid_Mode(StateCore *state_core)
     else if (farcon.button_middle[1][1] == 1)
     {
       choose_call_to_R2 = 0;
-      choose_to_put_block = 1;
+      choose_to_lay_block = 1;
       choose_to_get_block = 0;
       choose_to_fight_block = 0;
       choose_to_Combination = 0;
@@ -529,7 +529,7 @@ void Action_Choose_Hid_Mode(StateCore *state_core)
     else if (farcon.button_middle[1][2] == 1)
     {
       choose_call_to_R2 = 0;
-      choose_to_put_block = 0;
+      choose_to_lay_block = 0;
       choose_to_get_block = 1;
       choose_to_fight_block = 0;
       choose_to_Combination = 0;
