@@ -12,11 +12,11 @@
 // 1 = KungFu_Master武林探秘
 // 2 = Exploring_the_Charms崇武探幽
 // 3 = Hidden_Treasures九宫藏宝
-
-#define Current_Mode Mode_Exploring_the_Charms
-#define Halve Red_Halve
 // =====================================================
 
+
+#define Current_Mode Mode_Hidden_Treasures
+#define Halve Red_Halve
 //用于代码运行时的逻辑切换
 enum Match_Mode
 {

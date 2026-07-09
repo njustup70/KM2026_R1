@@ -203,7 +203,8 @@ public:
   void AnyToMiddleGrid_Blue();
   void PutBlock();
   void GetGroundBlock();
-
+  void ManualGetGroundBlock();
+  void Maunal_PutBlock();
   void Action_LiftToHeight(float height); // TODO: 预留
   int trans_height(int block_height);
   void GetTargetBlockInfo();

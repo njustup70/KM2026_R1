@@ -6,11 +6,13 @@
 #include "StateCore.hpp"
 #include "Sick.hpp"
 #include "bsp_log.hpp"
+#include "CommCenter.hpp"
 using APP::chassis;
 using APP::monit;
 using MOD::farcon;
 using MOD::sick;
 extern bool is_pick_done;
+using APP::comm;
 R1Block &APP::r1block = R1Block::GetInstance();
 
 // int stretch_debug = 2100000;
@@ -423,10 +425,10 @@ void R1Block::LiftToNavHeight(int NavHeight)
     SetTargetHeight(blockheight_2_liftmotortargetpos[1], blockheight_2_liftmotortargetpos[1]);
     last_height = 400;
   }
-  else if(NavHeight==600)
+  else if (NavHeight == 600)
   {
-       SetTargetHeight(blockheight_2_liftmotortargetpos[2], blockheight_2_liftmotortargetpos[2]);
-    last_height = 600; 
+    SetTargetHeight(blockheight_2_liftmotortargetpos[2], blockheight_2_liftmotortargetpos[2]);
+    last_height = 600;
   }
 }
 
@@ -836,9 +838,8 @@ void R1Block::NoLiftGet_Block(int auto_flag)
     no_lift_now_get_block = 2;
   }
 
- // 松开夹爪
+  // 松开夹爪
   Loosen_block();
-
 
   // 自动对准
   Aim_Block();
@@ -914,7 +915,6 @@ void R1Block::NoLiftGet_Block(int auto_flag)
     Area2ResponseFarconForR1Block();
     Seq::Wait(0.005f);
   }
-
 }
 
 void R1Block::PreLayBLock()
@@ -1250,6 +1250,106 @@ void R1Block::GetGroundBlock()
   SmoothMoveLiftToTarget(0, realse_block_height, 3, 100); // 差一个高度变化
 }
 
+void R1Block::ManualGetGroundBlock()
+{
+  // 请求人工确认
+  while (farcon.button_first_half[0] == 0)
+  {
+    Area3ResponseFarconForR1Block();
+    Seq::Wait(0.005f);
+  }
+  SetTargetHeight(0, 0);
+  last_height = 0;
+  Loosen_block();
+  Seq::Wait(1);
+  if (block_detect[0] == 1)
+  {
+    // Vec2 rel_xy = {0, 0.02};
+    Spd = Vec2{0, 0.05};
+    aim_right = 0;
+    Seq::WaitUntil([&]()
+                   { return block_detect[1] == 1; });
+    Spd = Vec2{0, -0.05};
+    Seq::Wait(0.5);
+    chassis.Move({0, 0});
+
+    aim_right = 1;
+  }
+  else if (block_detect[1] == 1)
+  {
+    // Vec2 rel_xy = {0, -0.02};
+    Spd = Vec2{0, -0.05};
+    aim_right = 0;
+    Seq::WaitUntil([&]()
+                   { return block_detect[0] == 1; });
+    Spd = Vec2{0, 0.05};
+    Seq::Wait(0.5);
+    chassis.Move({0, 0});
+    aim_right = 1;
+  }
+
+   chassis.Move({0, 0});
+
+  // 请求人工确认
+  while (farcon.button_first_half[0] == 0)
+  {
+    Area3ResponseFarconForR1Block();
+    Seq::Wait(0.005f);
+  }
+
+  SetTargetStretch(stretch_distance[1], stretch_distance[1]);
+  suckmotor[0].SetSpd(-0.8 * suck_speed);
+  suckmotor[1].SetSpd(0.8 * suck_speed);
+  Seq::Wait(1);
+
+  Clamp_block(); // 夹紧
+  Seq::Wait(1);
+  SmoothMoveStretchToTarget(stretch_distance[1], 0, 2, 10);
+
+  while (farcon.button_first_half[0] == 0)
+  {
+    Area3ResponseFarconForR1Block();
+    Seq::Wait(0.005f);
+  }
+
+  suckmotor[0].SetSpd(0);
+  suckmotor[1].SetSpd(0);
+
+  // 取完块
+  SetTargetHeight(realse_block_height, realse_block_height);
+
+}
+
+void R1Block::Maunal_PutBlock()
+{
+  // ************************开始吐块**********************//
+  // 请求人工确认
+  while (farcon.button_first_half[0] == 0)
+  {
+    Area3ResponseFarconForR1Block();
+    Seq::Wait(0.005f);
+  }
+  Clamp_block();
+  suckmotor[0].SetSpd(suck_speed);
+  suckmotor[1].SetSpd(-suck_speed);
+
+  Seq::Wait(1);
+  SetTargetStretch(stretch_distance[0] - 1500000, stretch_distance[0] - 1500000);
+  // 请求人工确认
+  while (farcon.button_first_half[0] == 0)
+  {
+    Area3ResponseFarconForR1Block();
+    Seq::Wait(0.005f);
+  }
+  suckmotor[0].SetSpd(0);
+  suckmotor[1].SetSpd(0);
+  Loosen_block(); // 松
+  Seq::Wait(1);
+
+  SetTargetStretch(0, 0);
+}
+
+
 void R1Block::Action_LiftToHeight(float height)
 {
   // TODO: 根据 height（mm）换算 liftmotor (注意：不是 stretchmotor) 的 total_angle 目标值并下发
@@ -1319,4 +1419,25 @@ static void Area3ResponseFarconForR1Block(float velo_k)
   {
     chassis.Move(Vec2(v_body.x, v_body.y));
   }
+
+    // 光通信
+  // 让r2去放左块
+  if (farcon.button_first_half[2])
+    comm.SendActionCommand(ActionType::A3R2LayLeftBlock);
+  // 让r2去放中块
+  if (farcon.button_first_half[3])
+    comm.SendActionCommand(ActionType::A3R2LayMidBlock);
+  // 让r3去放右块
+  if (farcon.button_first_half[6])
+    comm.SendActionCommand(ActionType::A3R2LayRightBlock);
+
+  // 戳第二层块
+  if (farcon.button_second_half[2])
+    comm.SendActionCommand(ActionType::PokeF2);
+  // 戳第三层块
+  if (farcon.button_second_half[3])
+    comm.SendActionCommand(ActionType::PokeF1);
+  // 戳完放平
+  if (farcon.button_second_half[7])
+    comm.SendActionCommand(ActionType::PICK);
 }
