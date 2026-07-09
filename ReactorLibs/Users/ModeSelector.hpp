@@ -15,7 +15,7 @@
 // =====================================================
 
 
-#define Current_Mode Mode_Hidden_Treasures
+#define Current_Mode Mode_KungFu_Master
 #define Halve Red_Halve
 //用于代码运行时的逻辑切换
 enum Match_Mode
