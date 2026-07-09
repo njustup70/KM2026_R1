@@ -310,10 +310,6 @@ void Action_NavToBlock(StateCore *state_core)
   // 获取当前节点
   PathNode cur_node = guide_dog[guide_dog_index];
 
-  // 跑到下一个点
-  WalkToPathNode(cur_node);
-
-
   if (cur_node.is_pick_point)
   {
     // 获取高度，准备通过 LinkTo 条件触发切入 Action_GetBlock
@@ -418,7 +414,7 @@ void Action_PlanToGrid(StateCore *core)
 
 void Action_Manual_PutBlock(StateCore *state_core)
 {
-  r1block.Maunal_PutBlock(); // 一吐一吸
+  r1block.ReleaseBlock(); // 一吐一吸
 
   state_core->GetCurState()->Complete = true;
 }
@@ -665,19 +661,25 @@ void ResponseButtonArea3(float velo_k)
     chassis.Move(Vec2(v_body.x, v_body.y));
   }
 
-  // 控制R2放中间层的第一个块
-  if (farcon.button_middle[0][0] == 1)
-  {
-  }
+  // 光通信
+  // 让r2去放左块
+  if (farcon.button_first_half[2])
+    comm.SendActionCommand(ActionType::A3R2LayLeftBlock);
+  // 让r2去放中块
+  if (farcon.button_first_half[3])
+    comm.SendActionCommand(ActionType::A3R2LayMidBlock);
+  // 让r3去放右块
+  if (farcon.button_first_half[6])
+    comm.SendActionCommand(ActionType::A3R2LayRightBlock);
 
-  // 控制R2放中间层的第二个块
-  if (farcon.button_middle[0][1] == 1)
-  {
-  }
-
-  // 控制R2放中间层的第三个块
-  if (farcon.button_middle[0][2] == 1)
-  {
-  }
+  // 戳第二层块
+  if (farcon.button_second_half[2])
+    comm.SendActionCommand(ActionType::PokeF2);
+  // 戳第三层块
+  if (farcon.button_second_half[3])
+    comm.SendActionCommand(ActionType::PokeF1);
+  // 戳完放平
+  if (farcon.button_second_half[7])
+    comm.SendActionCommand(ActionType::GuardRod);
 }
 #endif
