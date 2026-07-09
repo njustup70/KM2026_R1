@@ -13,7 +13,9 @@
 bool is_dock_done = false;
 
 bool is_final_goal_reached = false;
+bool is_lg_finish_goal=false;
 bool is_ready_to_pick = false;
+bool manual_area2_lg_pick=false;
 int guide_dog_index = 0;
 
 TaskLogic &APP::logic = TaskLogic::GetInstance();
@@ -48,6 +50,10 @@ void TaskLogic::Update()
     }
   }
 
+  if(farcon.toggle[2]==1)
+  {
+    manual_area2_lg_pick=1;
+  }
 
   static int choose_halve = 0;
   choose_halve++;
