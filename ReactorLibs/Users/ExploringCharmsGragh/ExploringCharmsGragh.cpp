@@ -132,6 +132,8 @@ void GoFetchRod(StateCore *state_core)
 {
   // 进入之后，清空标志位，防止无限循环
   need_fetch_rod_again = false;
+  comm.SendActionCommand(ActionType::BOW);
+
 
   // 根据取杆的杆号，选择对应的路径
   switch (rod_id)
@@ -176,11 +178,8 @@ void GoFetchRod(StateCore *state_core)
   chassis.UnlockRotate();
 
   // 完成左右位置确定，准备伸出机械臂
-  comm.SendActionCommand(ActionType::BOW);
+  // comm.SendActionCommand(ActionType::BOW);
   monit.LogInfo("Bow At:(%.2f,%.2f)", comm.slam_pos.x, comm.slam_pos.y);
-
-  // 等待机械臂完成取杆
-  Seq::Wait(0.3);
 
   while (MOD::farcon.button_first_half[0] != 1)
   {
@@ -408,7 +407,7 @@ void Action_AutoGetBlock(StateCore *state_core)
 
 void Action_LgGetBlock(StateCore *state_core)
 {
-  while (farcon.button_first_half[0] == 1)
+  while (farcon.button_first_half[0] != 1)
   {
     ResponseLgFarcon();
     Seq::Wait(0.005);
@@ -479,6 +478,7 @@ void ExploringCharmsGragh_Init(void)
   s_auto_pick.LinkTo(&manual_area2_lg_pick, s_lg_pick);
   s_lg_pick.LinkTo(&s_lg_pick.Complete, s_lg_pick);
   s_lg_pick.LinkTo(&is_lg_finish_goal, s_overwait);
+  
   // 二区重试
   s_move.LinkTo(&go_to_area2, s_plan);
   s_auto_pick.LinkTo(&go_to_area2, s_plan);
