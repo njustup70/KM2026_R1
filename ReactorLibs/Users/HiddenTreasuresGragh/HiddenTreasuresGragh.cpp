@@ -75,7 +75,7 @@ void Action_PrePut(StateCore *core)
   MOVE::MoveToTargPos(Red_Hid_Come_In_Gentle);
   while (MOD::farcon.button_first_half[0] != 1)
   {
-    ResponseButtonArea3(0.25f);
+    ResponseButtonArea3(0.6f);
     Seq::Wait(0.005f);
   }
   state_core.GetCurState()->Complete = true;
@@ -109,7 +109,7 @@ void Action_Lg_Put_Block(StateCore *state_core)
   while (MOD::farcon.button_first_half[0] != 1)
   {
 
-    ResponseButtonArea3(0.25f);
+    ResponseButtonArea3(0.6f);
     if (farcon.button_middle[3][0] == 1)
     {
       put_flag = true;
