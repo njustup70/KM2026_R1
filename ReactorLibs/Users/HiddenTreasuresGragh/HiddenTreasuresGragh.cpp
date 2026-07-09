@@ -181,21 +181,6 @@ void ResponseButtonArea3(float velo_k)
     chassis.Move(Vec2(v_body.x, v_body.y));
   }
 
-  // 控制R2放中间层的第一个块
-  if (farcon.button_middle[0][0] == 1)
-  {
-  }
-
-  // 控制R2放中间层的第二个块
-  if (farcon.button_middle[0][1] == 1)
-  {
-  }
-
-  // 控制R2放中间层的第三个块
-  if (farcon.button_middle[0][2] == 1)
-  {
-  }
-
   // 光通信
   // 让r2去放左块
   if (farcon.button_first_half[2])
