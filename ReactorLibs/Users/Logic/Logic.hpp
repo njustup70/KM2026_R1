@@ -8,11 +8,12 @@
 #include "PathChaser.hpp"
 
 extern bool is_final_goal_reached;
+extern bool is_lg_finish_goal;
 extern int target_height;
 extern bool is_ready_to_pick;
 extern int guide_dog_index;
 extern bool is_dock_done;
-
+extern bool manual_area2_lg_pick;
 class TaskLogic: public Application
 {
     SINGLETON(TaskLogic):Application("TaskLogic"){};
