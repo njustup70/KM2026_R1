@@ -69,6 +69,29 @@ void PathChaserType::SetYawTarget(float ang_rad)
     }
 }
 
+PathChaserType::DebugPathTarget PathChaserType::GetDebugTargetByCurrentT() const
+{
+    DebugPathTarget out;
+    if (_mode != ChaseMode::Path || !_use_t_ref || !_path_valid || _waypoints == nullptr || _waypoint_count == 0)
+    {
+        return out;
+    }
+
+    PathRef ref = _sample_ref_by_time(_elapsed_sec);
+    out.valid = true;
+    out.pos = ref.pos;
+    out.yaw = ref.yaw;
+    out.vel = ref.vel;
+    out.omega = ref.omega;
+    out.t = ref.t;
+    return out;
+}
+
+Vec2 PathChaserType::GetDebugTargetPosByCurrentT() const
+{
+    return GetDebugTargetByCurrentT().pos;
+}
+
 float PathChaserType::_wrap_pi(float rad)
 {
     while (rad > PI) rad -= 2.0f * PI;
@@ -101,6 +124,20 @@ float PathChaserType::_smooth_step(float x)
 {
     x = StdMath::fclamp(x, 0.0f, 1.0f);
     return x * x * (3.0f - 2.0f * x);
+}
+
+Vec3 PathChaserType::_resolve_path_tolerance(Vec3 tolerance) const
+{
+    if (tolerance.x < 0.0f) tolerance.x = _path_default_tolerance.x;
+    if (tolerance.y < 0.0f) tolerance.y = _path_default_tolerance.y;
+    if (tolerance.z < 0.0f) tolerance.z = _path_default_tolerance.z;
+    return tolerance;
+}
+
+bool PathChaserType::_is_path_end_pos_done(Vec2 pos_err) const
+{
+    return fabsf(pos_err.x) < _path_tolerance.x &&
+           fabsf(pos_err.y) < _path_tolerance.y;
 }
 
 /**
@@ -393,7 +430,9 @@ void PathChaserType::_update_time_ref_path_cmd(const Vec3& now_pose)
     PathRef ref = _sample_ref_by_time(_elapsed_sec);
     Vec2 now_pos = now_pose.ToVec2();
     const PathWaypoint& final_wp = _waypoints[_waypoint_count - 1];
-    float final_pos_err = (final_wp.pos - now_pos).Length();
+    Vec2 final_pos_err = final_wp.pos - now_pos;
+    float final_pos_err_len = final_pos_err.Length();
+    bool final_pos_done = _is_path_end_pos_done(final_pos_err);
     Vec2 pos_err = ref.pos - now_pos;
     float pos_err_len = pos_err.Length();
 
@@ -418,9 +457,9 @@ void PathChaserType::_update_time_ref_path_cmd(const Vec3& now_pose)
         time_scale = StdMath::fclamp(time_scale, 0.0f, 1.0f);
         if (time_scale < end_ff_scale) end_ff_scale = time_scale;
     }
-    if (_time_end_slow_dist > 1e-6f && final_pos_err < _time_end_slow_dist)
+    if (_time_end_slow_dist > 1e-6f && final_pos_err_len < _time_end_slow_dist)
     {
-        float dist_scale = final_pos_err / _time_end_slow_dist;
+        float dist_scale = final_pos_err_len / _time_end_slow_dist;
         dist_scale = StdMath::fclamp(dist_scale, 0.0f, 1.0f);
         if (dist_scale < end_ff_scale) end_ff_scale = dist_scale;
     }
@@ -430,11 +469,11 @@ void PathChaserType::_update_time_ref_path_cmd(const Vec3& now_pose)
     float omega = StdMath::fclamp(ref.omega * ff_scale + yaw_fb, -_max_omega, _max_omega);
 
     bool end_brake_active = (_elapsed_sec >= _path_total_time - _time_end_ff_fade_time) ||
-                            (final_pos_err < _time_end_slow_dist);
+                            (final_pos_err_len < _time_end_slow_dist);
     if (end_brake_active && _time_end_slow_dist > 1e-6f)
     {
-        float brake_limit = sqrtf(2.0f * _time_end_max_acc * final_pos_err);
-        if (final_pos_err > _pos_tol && brake_limit < _time_end_min_vel)
+        float brake_limit = sqrtf(2.0f * _time_end_max_acc * final_pos_err_len);
+        if (!final_pos_done && brake_limit < _time_end_min_vel)
         {
             brake_limit = _time_end_min_vel;
         }
@@ -448,7 +487,7 @@ void PathChaserType::_update_time_ref_path_cmd(const Vec3& now_pose)
     float final_yaw_err = fabsf(_wrap_pi(final_wp.yaw_rad - now_pose.z));
     bool time_ready = _elapsed_sec >= _path_total_time;
 
-    if (time_ready && final_pos_err < _pos_tol && final_yaw_err < _yaw_tol)
+    if (time_ready && final_pos_done && final_yaw_err < _path_tolerance.z)
     {
         if (_finish_tick_cnt < _finish_hold_ticks) _finish_tick_cnt++;
     }
@@ -529,11 +568,12 @@ void PathChaserType::_update_progress_ref_path_cmd(const Vec3& now_pose)
     Vec2 v_world = _limit_vec2(vel_ff * ff_scale + pos_fb, _max_vel);
 
     const PathWaypoint& final_wp = _waypoints[_waypoint_count - 1];
-    float final_pos_err = (final_wp.pos - now_pos).Length();
+    Vec2 final_pos_err = final_wp.pos - now_pos;
+    bool final_pos_done = _is_path_end_pos_done(final_pos_err);
     if (_path_end_slow_dist > 1e-6f && remain_to_end_s < _path_end_slow_dist)
     {
         float brake_limit = sqrtf(2.0f * _path_end_max_acc * remain_to_end_s);
-        if (final_pos_err > _pos_tol && brake_limit < _path_end_min_vel)
+        if (!final_pos_done && brake_limit < _path_end_min_vel)
         {
             brake_limit = _path_end_min_vel;
         }
@@ -547,7 +587,7 @@ void PathChaserType::_update_progress_ref_path_cmd(const Vec3& now_pose)
     _cmd.body = Vec3(body_xy.x, body_xy.y, omega);
 
     float final_yaw_err = fabsf(_wrap_pi(final_wp.yaw_rad - now_pose.z));
-    if (final_pos_err < _pos_tol && final_yaw_err < _yaw_tol)
+    if (final_pos_done && final_yaw_err < _path_tolerance.z)
     {
         if (_finish_tick_cnt < _finish_hold_ticks) _finish_tick_cnt++;
     }
@@ -587,14 +627,16 @@ void PathChaserType::_update_point_cmd(const Vec3& now_pose)
     {
         Vec2 dir = pos_err / _point_remain_dist;
         float v_by_p = _point_kp_pos * _point_remain_dist;
-        float slow_scale = _smooth_step(_point_remain_dist / _point_slow_dist);
-        float v_limit = _point_max_vel * slow_scale;
-        float brake_limit = sqrtf(2.0f * _point_max_acc * _point_remain_dist);
-        if (v_limit > brake_limit) v_limit = brake_limit;
-        if (v_limit < _point_min_vel && brake_limit > _point_min_vel) v_limit = _point_min_vel;
+        float brake_limit = sqrtf(2.0f * _point_max_acc * _point_remain_dist) * _point_decel_factor;
 
-        float speed = v_by_p;
-        if (speed > v_limit) speed = v_limit;
+        // 普通跑点的速度上限必须同时满足“位置P控制”、“速度包络”和“刹车距离”。
+        // 这里不再使用最低速度保底，否则末端会一直带着一小段速度往前拱。
+        float speed_limit = v_by_p;
+        if (speed_limit > _point_max_vel) speed_limit = _point_max_vel;
+        if (speed_limit > brake_limit) speed_limit = brake_limit;
+        if (speed_limit < 0.0f) speed_limit = 0.0f;
+
+        float speed = speed_limit;
         target_vel_world = dir * speed;
     }
 
@@ -610,12 +652,12 @@ void PathChaserType::_update_point_cmd(const Vec3& now_pose)
     if (_point_yaw_enabled && _point_yaw_err_abs > _yaw_tol)
     {
         float omega_by_p = _point_kp_yaw * yaw_err;
-        float slow_scale = _smooth_step(_point_yaw_err_abs / _point_slow_yaw);
-        float omega_limit = _point_max_omega * slow_scale;
-        float brake_limit = sqrtf(2.0f * _point_max_alpha * _point_yaw_err_abs);
-        if (omega_limit > brake_limit) omega_limit = brake_limit;
-        if (omega_limit < _point_min_omega && brake_limit > _point_min_omega) omega_limit = _point_min_omega;
-        target_omega = StdMath::fclamp(omega_by_p, -omega_limit, omega_limit);
+        float brake_limit = sqrtf(2.0f * _point_max_alpha * _point_yaw_err_abs) * _point_decel_factor;
+        float omega_cap = _point_max_omega;
+        if (omega_cap > brake_limit) omega_cap = brake_limit;
+
+        // 同理，yaw 末端也不保底，不然会在目标角附近来回拱。
+        target_omega = StdMath::fclamp(omega_by_p, -omega_cap, omega_cap);
     }
 
     float omega_delta = target_omega - _point_last_omega;
