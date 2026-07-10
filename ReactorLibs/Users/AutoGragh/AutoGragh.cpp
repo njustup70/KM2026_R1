@@ -303,7 +303,6 @@ void Action_NavToBlock(StateCore *state_core)
       return;
   }
 
-
   // 获取当前节点
   PathNode cur_node = guide_dog[guide_dog_index];
 
@@ -324,7 +323,6 @@ void Action_NavToBlock(StateCore *state_core)
     is_ready_to_pick = true;
     return;
   }
-
 
   // ------如果当前点是终点，设置标志位，触发状态机切换到等待状态
   if (cur_node.is_at_end)
@@ -371,6 +369,16 @@ void Action_AutoGetBlock(StateCore *state_core)
   guide_dog_index++;
   state_core->GetCurState()->Complete = true;
 }
+void Action_LgGetBlock(StateCore *state_core)
+{
+  while (farcon.button_first_half[0] != 1)
+  {
+    Area2ResponseFarcon();
+    Seq::Wait(0.005);
+  }
+  r1block.NoLiftGet_Block(1);
+  state_core->GetCurState()->Complete = true;
+}
 
 //**************************************三区状态块*******************************************************//
 
@@ -411,8 +419,8 @@ void Action_PlanToGrid(StateCore *core)
 
 void Action_Manual_PutBlock(StateCore *state_core)
 {
-      Seq::Wait(0.5f);
-      while (farcon.button_first_half[0] == 0)
+  Seq::Wait(0.5f);
+  while (farcon.button_first_half[0] == 0)
   {
     ResponseButtonArea3(1);
     Seq::Wait(0.005f);
@@ -430,11 +438,10 @@ void Action_Manual_Pick(StateCore *state_core)
 
 void Action_Lg_Put_Block(StateCore *state_core)
 {
-            put_flag = false;
-      getground_flag = false;
+  put_flag = false;
+  getground_flag = false;
   while (MOD::farcon.button_first_half[0] != 1)
   {
-
     ResponseButtonArea3(0.6f);
     if (farcon.button_middle[3][0] == 1)
     {
@@ -516,7 +523,6 @@ void AutoGragh_Init(void)
   s_lay_pre.LinkTo(&s_lay_pre.Complete, s_plantogrid);
   s_plantogrid.LinkTo(&s_plantogrid.Complete, s_Lg_Put);
 
-
   s_Lg_Put.LinkTo(&put_flag, s_manual_put);
   s_Lg_Put.LinkTo(&getground_flag, s_manual_pick);
 
@@ -536,6 +542,8 @@ void AutoGragh_Init(void)
 
   StateBlock &s_auto_pick = auto_flow.AddState("AutoGetBlocking");
 
+  // 手控取块跑点
+  StateBlock &s_lg_pick = auto_flow.AddState("LeiGe GetBlocking");
   // 三区
   StateBlock &s_plantogrid = auto_flow.AddState("Plan_toGrid");
   // 正常模式的状态块
@@ -552,6 +560,8 @@ void AutoGragh_Init(void)
   s_plan.StateAction = Action_Planning;
   s_move.StateAction = Action_NavToBlock;
   s_auto_pick.StateAction = Action_AutoGetBlock;
+
+  s_lg_pick.StateAction = Action_LgGetBlock;
   // 三区
 
   s_plantogrid.StateAction = Action_PlanToGrid;
@@ -571,6 +581,19 @@ void AutoGragh_Init(void)
 
   s_auto_pick.LinkTo(&s_auto_pick.Complete, s_move);
   s_move.LinkTo(&is_final_goal_reached, s_plantogrid); // 等待
+
+
+    // 手动取块完成进三区,否则继续取块
+  //************************** */ 蕾哥手控模式
+  s_plan.LinkTo(&manual_area2_lg_pick, s_lg_pick);
+  s_move.LinkTo(&manual_area2_lg_pick, s_lg_pick);
+  s_auto_pick.LinkTo(&manual_area2_lg_pick, s_lg_pick);
+  s_lg_pick.LinkTo(&s_lg_pick.Complete, s_lg_pick);
+  s_lg_pick.LinkTo(&is_lg_finish_goal, s_plantogrid);
+
+  // 二区重试
+  s_move.LinkTo(&go_to_area2, s_plan);
+  s_auto_pick.LinkTo(&go_to_area2, s_plan);
 
   // 三区
   s_plantogrid.LinkTo(&s_plantogrid.Complete, s_Lg_Put);
@@ -643,11 +666,8 @@ static void ResponseFarcon(float velo_k)
   if (farcon.button_second_half[2])
     need_fetch_rod_again = true;
 
-  //手动抬升
-  
-
+  // 手动抬升
 }
-
 
 static void Area2ResponseFarcon(float velo_k)
 {
@@ -705,7 +725,7 @@ void ResponseButtonArea3(float velo_k)
 
   if (!chassis.IsLockRotate())
   {
-    float yaw_spd = -farcon.jys_value[0] * 1.0f / 100.f * 1.5f; 
+    float yaw_spd = -farcon.jys_value[0] * 1.0f / 100.f * 1.5f;
     chassis.Move(Vec3(v_body.x, v_body.y, yaw_spd));
   }
   else
