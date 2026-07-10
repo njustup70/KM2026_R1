@@ -121,6 +121,8 @@ void Action_Lg_Put_Block(StateCore *state_core)
   }
 
   state_core->GetCurState()->Complete = true;
+  Seq::Wait(0.5f);
+
 }
 
 // ================================初始化========================================================================
@@ -137,7 +139,6 @@ void HiddenTreasuresGragh_Blue_Init(void)
   StateBlock &s_manual_put = HT_flow.AddState("Manual_put");
   StateBlock &s_manual_pick = HT_flow.AddState("Manual_pick");
   //******************************状态函数绑定***********************
-  // 后期选择是放块/取块/给R2发送消息还是？
   // 正常规划
   s_put_pre.StateAction = Action_PrePut;
   s_planput.StateAction = Action_InPlanPutBlock;
