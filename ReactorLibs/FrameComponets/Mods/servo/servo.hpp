@@ -18,7 +18,7 @@ public:
     float GetAngle() const { return angle; }
     
 private:
-    BSP::TIM::PWM pwm_inst;
+    // BSP::TIM::PWM pwm_inst;
     float angle;                // 当前舵机角度，单位：度DEG
     bool initialized;
     bool enabled;

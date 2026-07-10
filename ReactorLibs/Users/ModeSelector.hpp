@@ -15,7 +15,7 @@
 // =====================================================
 
 
-#define Current_Mode Mode_Exploring_the_Charms
+#define Current_Mode Mode_Exploring_the_Charms	
 #define Halve Blue_Halve
 //用于代码运行时的逻辑切换
 enum Match_Mode
