@@ -414,6 +414,11 @@ void Action_PlanToGrid(StateCore *core)
 
 void Action_Manual_PutBlock(StateCore *state_core)
 {
+      while (farcon.button_first_half[0] == 0)
+  {
+    ResponseButtonArea3(1);
+    Seq::Wait(0.005f);
+  }
   r1block.ReleaseBlock(); // 一吐一吸
 
   state_core->GetCurState()->Complete = true;
