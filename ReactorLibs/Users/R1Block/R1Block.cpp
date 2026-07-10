@@ -1281,7 +1281,7 @@ void R1Block::ManualGetGroundBlock()
     Seq::Wait(0.005f);
   }
 
-  SetTargetStretch(stretch_distance[1], stretch_distance[1]);
+  SetTargetStretch(stretch_distance[1]-800000, stretch_distance[1]-800000);
   suckmotor[0].SetSpd(-0.8 * suck_speed);
   suckmotor[1].SetSpd(0.8 * suck_speed);
   Seq::Wait(1);
