@@ -16,7 +16,7 @@
 
 
 #define Current_Mode Mode_Hidden_Treasures
-#define Halve Red_Halve
+#define Halve Blue_Halve
 //用于代码运行时的逻辑切换
 enum Match_Mode
 {
