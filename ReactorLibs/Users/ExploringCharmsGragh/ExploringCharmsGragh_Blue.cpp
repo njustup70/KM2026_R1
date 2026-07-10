@@ -20,11 +20,13 @@
 #include "blue_rod2.hpp"
 #include "blue_rod3.hpp"
 #include "blue_todock2.hpp"
+#include "blue_rod3todock.hpp"
 #include "blue_toassemble.hpp"
 
 static void ResponseFarcon(float velo_k = 1.0f);
-static void Area2ResponseFarcon(float velo_k=1.0f);
+static void Area2ResponseFarcon(float velo_k = 1.0f);
 static void ResponseLgFarcon(float velo_k = 1.0f);
+
 using namespace APP;
 using namespace MOD;
 using namespace MOVE;
@@ -134,6 +136,7 @@ void GoFetchRod(StateCore *state_core)
   // 进入之后，清空标志位，防止无限循环
   need_fetch_rod_again = false;
   comm.SendActionCommand(ActionType::BOW);
+
   // 根据取杆的杆号，选择对应的路径
   switch (rod_id)
   {
@@ -181,8 +184,6 @@ void GoFetchRod(StateCore *state_core)
   // 完成左右位置确定，准备伸出机械臂
   // comm.SendActionCommand(ActionType::BOW);
   monit.LogInfo("Bow At:(%.2f,%.2f)", comm.slam_pos.x, comm.slam_pos.y);
-  // 等待机械臂完成取杆
-  Seq::Wait(1);
 
   while (MOD::farcon.button_first_half[0] != 1)
   {
@@ -203,7 +204,14 @@ void GoFetchRod(StateCore *state_core)
   // 同时闭紧夹爪
   comm.SendActionCommand(ActionType::CLAMP_2_ON);
   // 走到对接点
-  MOVE::MoveToTargPos(Area1ToDock);
+  if (rod_id == 3)
+  {
+    MOVE::MoveToTargPos(Rod3ToDock);
+  }
+  else
+  {
+    MOVE::MoveToTargPos(Area1ToDock);
+  }
 
   // 锁定Yaw角，并转手动（本图是蓝场图）
   chassis.LockYaw(1.571f);
@@ -244,13 +252,10 @@ void GoFetchRod(StateCore *state_core)
     // 改成把杆举起来
     comm.SendActionCommand(ActionType::VerticalRod);
 
-    // // 把杆放平，复用一下Pick
-    // comm.SendActionCommand(ActionType::PICK);
     // Seq::Wait(1);
-    // // 这里要加一个倒把手的
-    // // 但有风险会掉杆，决定加个按键可以在二区把杆微抬起来，防止捅到对方场地
+    // 这里要加一个倒把手的
+    // 但有风险会掉杆，决定加个按键可以在二区把杆微抬起来，防止捅到对方场地
     // comm.SendActionCommand(ActionType::CLAMP_2_ON);
-
     monit.LogInfo("ready to area2");
 
     go_to_area2 = true;
@@ -337,6 +342,8 @@ void Action_NavToBlock(StateCore *state_core)
     Seq::Wait(0.005f);
     if (go_to_area2)
       return;
+    if (manual_area2_lg_pick)
+      return;
   }
 
   // 获取当前节点
@@ -415,8 +422,6 @@ void Action_LgGetBlock(StateCore *state_core)
   r1block.NoLiftGet_Block(1);
   state_core->GetCurState()->Complete = true;
 }
-
-
 /**********************************************************************/
 
 void Action_OverWait(StateCore *state_core)
@@ -440,6 +445,7 @@ void ExploringCharmsGragh_Blue_Init(void)
   StateBlock &s_move = EC_Blue_flow.AddState("NavtoBlock");
 
   StateBlock &s_auto_pick = EC_Blue_flow.AddState("AutoGetBlocking");
+
   // 手控取块跑点
   StateBlock &s_lg_pick = EC_Blue_flow.AddState("LeiGe GetBlocking");
   StateBlock &s_overwait = EC_Blue_flow.AddState("OverWait");
@@ -451,7 +457,8 @@ void ExploringCharmsGragh_Blue_Init(void)
   s_plan.StateAction = Action_Planning;
   s_move.StateAction = Action_NavToBlock;
   s_auto_pick.StateAction = Action_AutoGetBlock;
-    s_lg_pick.StateAction = Action_LgGetBlock;
+
+  s_lg_pick.StateAction = Action_LgGetBlock;
   // 结束
   s_overwait.StateAction = Action_OverWait;
 
@@ -492,15 +499,21 @@ void ExploringCharmsGragh_Blue_Init(void)
  */
 static void ResponseFarcon(float velo_k)
 {
+  float multi_velo = 1.0;
+  Vec2 v_world;
   if (farcon.toggle[1])
-    velo_k = 1.0f;
+  {
+    v_world.x = -farcon.jys_value[3] * 1.0f / 100.f * 1.0f * multi_velo; // 摇杆向前 -> 场地X正
+    v_world.y = -farcon.jys_value[2] * 1.0f / 100.f * 1.0f * multi_velo; // 摇杆向左 -> 场地Y正
+  }
+  else
+  {
+    v_world.x = -farcon.jys_value[3] * 1.0f / 100.f * 1.0f * velo_k; // 摇杆向前 -> 场地X正
+    v_world.y = -farcon.jys_value[2] * 1.0f / 100.f * 1.0f * velo_k; // 摇杆向左 -> 场地Y正
+  }
+
   // 解锁底盘的位置闭环，角度闭环仍然由系统控制
   chassis.UnlockWalk();
-
-  Vec2 v_world;
-  v_world.x = -farcon.jys_value[3] * 1.0f / 100.f * 1.0f * velo_k; // 摇杆向前 -> 场地X正
-  v_world.y = -farcon.jys_value[2] * 1.0f / 100.f * 1.0f * velo_k; // 摇杆向左 -> 场地Y正
-
   Vec2 v_body = v_world.Rotate(-System.position.z);
 
   if (!chassis.IsLockRotate())
@@ -512,7 +525,6 @@ static void ResponseFarcon(float velo_k)
   {
     chassis.Move(Vec2(v_body.x, v_body.y));
   }
-
   /***********************/
   // 控制矛头
   if (farcon.button_first_half[3])
@@ -535,7 +547,10 @@ static void ResponseFarcon(float velo_k)
 
   // 放弃对接
   if (farcon.button_second_half[0])
+  {
     comm.SendActionCommand(ActionType::GiveUpDock);
+    // go_to_area2 = true;
+  }
   // r1得再去取杆
   if (farcon.button_second_half[1])
     need_fetch_rod_again = true;
@@ -543,7 +558,6 @@ static void ResponseFarcon(float velo_k)
   // 2.在取块、跑点的任意响应按键处，r1重新跳入planer，此时可以重新选好kfs块（取过的可以删去）
   if (farcon.button_second_half[2])
     go_to_area2 = true;
-
 }
 
 static void Area2ResponseFarcon(float velo_k)
@@ -590,9 +604,9 @@ if(farcon.toggle[2]==1)
   {
     r1block.LiftToNavHeight(600);
   }
-
 }
-else {
+else 
+{
   // 控制矛头
   if (farcon.button_first_half[3])
     comm.SendActionCommand(ActionType::SpearUp); // 矛头会向下
@@ -618,13 +632,9 @@ else {
     comm.SendActionCommand(ActionType::GiveUpDock);
     // go_to_area2 = true;
   }
-
-
+}
 }
 
-
-
-}
 
 /**
  * @brief 遥控器能控制的中间时刻
@@ -674,5 +684,6 @@ static void ResponseLgFarcon(float velo_k)
     r1block.LiftToNavHeight(600);
   }
 }
+
 
 #endif
