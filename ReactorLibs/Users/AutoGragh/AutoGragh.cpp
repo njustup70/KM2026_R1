@@ -26,6 +26,7 @@
 #include "Red_KF_Are3_Plan.hpp"
 
 static void ResponseFarcon(float velo_k = 1.0f);
+static void Area2ResponseFarcon(float velo_k=1.0f);
 static void ResponseButtonArea3(float velo_k = 1.0f);
 using namespace APP;
 using namespace MOD;
@@ -298,7 +299,7 @@ void Action_NavToBlock(StateCore *state_core)
   // 要求遥控器确认，才跑下一个点
   while (MOD::farcon.button_first_half[0] != 1)
   {
-    ResponseFarcon();
+    Area2ResponseFarcon();
     Seq::Wait(0.005f);
     if (go_to_area2)
       return;
@@ -362,7 +363,7 @@ void Action_AutoGetBlock(StateCore *state_core)
   // 要求遥控器确认，才跑下一个点
   while (MOD::farcon.button_first_half[0] != 1)
   {
-    ResponseFarcon();
+    Area2ResponseFarcon();
     Seq::Wait(0.005f);
     if (go_to_area2)
       return;
@@ -381,7 +382,7 @@ void Action_PreLay(StateCore *core)
 {
   while (MOD::farcon.button_first_half[0] != 1)
   {
-    ResponseFarcon(0.6f);
+    ResponseButtonArea3(0.6f);
     Seq::Wait(0.005f);
   }
   // 抬升到对应放块高度
@@ -395,7 +396,7 @@ void Action_PlanToGrid(StateCore *core)
   r1block.Clamp_block();
   while (MOD::farcon.button_first_half[0] != 1)
   {
-    ResponseFarcon(0.6f);
+    ResponseButtonArea3(0.6f);
     Seq::Wait(0.005f);
   }
   Seq::Wait(1);
@@ -414,6 +415,7 @@ void Action_PlanToGrid(StateCore *core)
 
 void Action_Manual_PutBlock(StateCore *state_core)
 {
+      Seq::Wait(0.5f);
       while (farcon.button_first_half[0] == 0)
   {
     ResponseButtonArea3(1);
@@ -644,6 +646,55 @@ static void ResponseFarcon(float velo_k)
   // r1得再去取杆
   if (farcon.button_second_half[2])
     need_fetch_rod_again = true;
+
+  //手动抬升
+  
+
+}
+
+
+static void Area2ResponseFarcon(float velo_k)
+{
+  float multi_velo = 1.0;
+  Vec2 v_world;
+  if (farcon.toggle[1])
+  {
+    v_world.x = -farcon.jys_value[3] * 1.0f / 100.f * 1.0f * multi_velo; // 摇杆向前 -> 场地X正
+    v_world.y = -farcon.jys_value[2] * 1.0f / 100.f * 1.0f * multi_velo; // 摇杆向左 -> 场地Y正
+  }
+  else
+  {
+    v_world.x = -farcon.jys_value[3] * 1.0f / 100.f * 1.0f * velo_k; // 摇杆向前 -> 场地X正
+    v_world.y = -farcon.jys_value[2] * 1.0f / 100.f * 1.0f * velo_k; // 摇杆向左 -> 场地Y正
+  }
+
+  // 解锁底盘的位置闭环，角度闭环仍然由系统控制
+  chassis.UnlockWalk();
+  Vec2 v_body = v_world.Rotate(-System.position.z);
+
+  if (!chassis.IsLockRotate())
+  {
+    float yaw_spd = -farcon.jys_value[0] * 1.0f / 100.f * 1.5f; // 摇杆向左 -> 逆时针旋转
+    chassis.Move(Vec3(v_body.x, v_body.y, yaw_spd));
+  }
+  else
+  {
+    chassis.Move(Vec2(v_body.x, v_body.y));
+  }
+  // r1手动二区取块
+  // 抬升高度
+  if (farcon.button_first_half[4] == 1)
+  {
+    r1block.LiftToNavHeight(200);
+  }
+  else if (farcon.button_first_half[5] == 1)
+  {
+    r1block.LiftToNavHeight(400);
+  }
+  else if (farcon.button_first_half[6] == 1)
+  {
+    r1block.LiftToNavHeight(400);
+  }
 }
 
 void ResponseButtonArea3(float velo_k)
