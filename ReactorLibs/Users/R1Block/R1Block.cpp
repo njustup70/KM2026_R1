@@ -1297,7 +1297,7 @@ void R1Block::ManualGetGroundBlock()
     Area3ResponseFarconForR1Block(1);
     Seq::Wait(0.005f);
   }
-  SmoothMoveStretchToTarget(stretch_distance[1], 0, 2, 10);
+  SmoothMoveStretchToTarget(stretch_distance[1]-800000, 0, 2, 10);
 
   Seq::Wait(2);
 
