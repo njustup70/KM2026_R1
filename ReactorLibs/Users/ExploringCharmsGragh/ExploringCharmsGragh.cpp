@@ -20,11 +20,13 @@
 #include "rod2.hpp"
 #include "rod3.hpp"
 #include "a1_todock.hpp"
+#include "a1_rod3todock.hpp"
 #include "a1_toassemble.hpp"
 
 static void ResponseFarcon(float velo_k = 1.0f);
 static void Area2ResponseFarcon(float velo_k = 1.0f);
 static void ResponseLgFarcon(float velo_k = 1.0f);
+
 using namespace APP;
 using namespace MOD;
 using namespace MOVE;
@@ -199,8 +201,17 @@ void GoFetchRod(StateCore *state_core)
 
   // 同时闭紧夹爪
   comm.SendActionCommand(ActionType::CLAMP_2_ON);
+  
   // 走到对接点
-  MOVE::MoveToTargPos(Area1ToDock);
+  if (rod_id == 3)
+  {
+      MOVE::MoveToTargPos(Rod3ToDock);
+
+  }
+  else 
+  {
+      MOVE::MoveToTargPos(Area1ToDock);
+  }
 
   // 锁定Yaw角，并转手动（本图是红场图）
   chassis.LockYaw(-1.571f);
@@ -441,7 +452,6 @@ void ExploringCharmsGragh_Init(void)
   StateBlock &s_auto_pick = EC_flow.AddState("AutoGetBlocking");
   // 手控取块跑点
   StateBlock &s_lg_pick = EC_flow.AddState("LeiGe GetBlocking");
-
   StateBlock &s_overwait = EC_flow.AddState("OverWait");
 
   // 一区
@@ -546,7 +556,6 @@ static void ResponseFarcon(float velo_k)
     comm.SendActionCommand(ActionType::GiveUpDock);
     // go_to_area2 = true;
   }
-
   // r1得再去取杆
   if (farcon.button_second_half[1])
     need_fetch_rod_again = true;
@@ -555,7 +564,6 @@ static void ResponseFarcon(float velo_k)
   if (farcon.button_second_half[2])
     go_to_area2 = true;
 
-  // r1手动二区取块
 }
 
 static void Area2ResponseFarcon(float velo_k)
@@ -604,7 +612,8 @@ if(farcon.toggle[2]==1)
   }
 
 }
-else {
+else 
+{
   // 控制矛头
   if (farcon.button_first_half[3])
     comm.SendActionCommand(ActionType::SpearUp); // 矛头会向下
@@ -630,11 +639,7 @@ else {
     comm.SendActionCommand(ActionType::GiveUpDock);
     // go_to_area2 = true;
   }
-
-
 }
-
-
 
 }
 
