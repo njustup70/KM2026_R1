@@ -39,10 +39,6 @@ bool put_flag = false;
 bool getground_flag = false;
 
 bool choose_call_to_R2 = 0; // 默认与R2通信，1是去放块，2是取块，3 是戳块等偏自由操作，4是合体
-bool choose_to_lay_block = 0;
-bool choose_to_get_block = 0;
-bool choose_to_fight_block = 0;
-bool choose_to_Combination = 0;
 
 extern volatile bool g_guide_dog_data_ready;
 
@@ -693,7 +689,7 @@ static void Area2ResponseFarcon(float velo_k)
   }
   else if (farcon.button_first_half[6] == 1)
   {
-    r1block.LiftToNavHeight(400);
+    r1block.LiftToNavHeight(600);
   }
 }
 

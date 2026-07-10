@@ -533,9 +533,9 @@ void KuangFuMaster_Blue_Init(void)
   // 正常模式的状态块
 
   // 大概率R1会快一点，需要R1赶快把块塞到洞里面，留几个块自由选择，然后再加上给R2通信，和最后的取地上块
-  StateBlock &s_Lg_Put = auto_flow.AddState("LG Putting Block");
-  StateBlock &s_manual_put = auto_flow.AddState("Manual_put");
-  StateBlock &s_manual_pick = auto_flow.AddState("Manual_pick");
+  StateBlock &s_Lg_Put = blue_kf_flow.AddState("LG Putting Block");
+  StateBlock &s_manual_put = blue_kf_flow.AddState("Manual_put");
+  StateBlock &s_manual_pick = blue_kf_flow.AddState("Manual_pick");
 
   // 一区
   s_wait.StateAction = Wait_ForStart;
@@ -679,7 +679,7 @@ static void Area2ResponseFarcon(float velo_k)
   }
   else if (farcon.button_first_half[6] == 1)
   {
-    r1block.LiftToNavHeight(400);
+    r1block.LiftToNavHeight(600);
   }
 }
 

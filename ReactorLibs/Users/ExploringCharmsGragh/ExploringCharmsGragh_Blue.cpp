@@ -394,7 +394,7 @@ void Action_AutoGetBlock(StateCore *state_core)
   monit.LogInfo("Try to Get Block");
 
   // 自动取块
-  r1block.Get_Block(target_height, 1);
+  r1block.NoLiftGet_Block(1);
 
   // 要求遥控器确认，才跑下一个点
   while (MOD::farcon.button_first_half[0] != 1)
