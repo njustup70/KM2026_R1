@@ -29,11 +29,8 @@ static void ResponseButtonArea3(float velo_k = 1.0f);
 // 全局状态图对象
 StateGraph HT_Blue_flow{"HiddenTreasuresGragh_blue"};
 
-bool choose_call_to_R2 = 0; // 默认与R2通信，1是去放块，2是取块，3 是戳块等偏自由操作，4是合体
-bool choose_to_put_block = 0;
-bool choose_to_get_block = 0;
-bool choose_to_fight_block = 0;
-bool choose_to_Combination = 0;
+bool put_flag = false;
+bool getground_flag = false;
 
 // 遥控器显示当前三区状态
 uint8_t Area3_farcon_data[3] = {0x46, 0x43, 0};
@@ -51,27 +48,32 @@ void Action_PrePut(StateCore *core)
 {
   while (MOD::farcon.button_first_half[0] != 1)
   {
-    ResponseButtonArea3(1.0f);
+    ResponseButtonArea3(0.25f);
     Seq::Wait(0.005f);
   }
+  // 抬升到对应放块高度
   r1block.PrePut();
-  comm.SendActionCommand(ActionType::PICK);
-  
-  while (MOD::farcon.button_first_half[0] != 1)
-  {
-    ResponseButtonArea3(1.0f);
-    Seq::Wait(0.005f);
-  }
-  comm.SendActionCommand(ActionType::LooseClaw);
-  while (MOD::farcon.button_first_half[0] != 1)
-  {
-    ResponseButtonArea3(1.0f);
-    Seq::Wait(0.005f);
-  }
-  MOVE::MoveToTargPos(Blue_Hid_Come_In_Gentle); // 从重试点到贴着墙
+  comm.SendActionCommand(ActionType::GuardRod);
+  Seq::Wait(0.6);
+
   while (MOD::farcon.button_first_half[0] != 1)
   {
     ResponseButtonArea3(0.25f);
+    Seq::Wait(0.005f);
+  }
+  comm.SendActionCommand(ActionType::CLAMP);
+  Seq::Wait(0.6);
+
+  while (MOD::farcon.button_first_half[0] != 1)
+  {
+    ResponseButtonArea3(1.0f);
+    Seq::Wait(0.005f);
+  }
+  // 从重试点到正中间
+  MOVE::MoveToTargPos(Blue_Hid_Come_In_Gentle);
+  while (MOD::farcon.button_first_half[0] != 1)
+  {
+    ResponseButtonArea3(0.6f);
     Seq::Wait(0.005f);
   }
   state_core.GetCurState()->Complete = true;
@@ -80,224 +82,42 @@ void Action_PrePut(StateCore *core)
 void Action_InPlanPutBlock(StateCore *state_core)
 {
   MOVE::MoveToTargPos(Blue_Hid_Wall_to_Grid_Gentle); // 从重试点到正中间
-
-  r1block.FromMiddleToAny(); /// 从中间走进任意一个洞
-  Seq::Wait(0.3);
-  while (farcon.button_first_half[0] == 0)
-  {
-    ResponseButtonArea3();
-    Seq::Wait(0.005f);
-  }
-  r1block.PutBlock();
+  r1block.Maunal_PutBlock();                        
   state_core->GetCurState()->Complete = true;
 }
-// 状态：取地上预设的块
-void Action_InPlantoGetGroundBlock(StateCore *state_core)
+/void Action_Manual_PutBlock(StateCore *state_core)
 {
-  while (MOD::farcon.button_first_half[0] != 1)
-  {
-    ResponseButtonArea3(0.25f);
-    Seq::Wait(0.005f);
-  }
-  chassis.RotateAt(0);
-  Seq::WaitUntil([&]()
-                 { return (chassis._Rotating() == 1); });
-  while (MOD::farcon.button_first_half[0] != 1)
-  {
-    ResponseButtonArea3(0.25f);
-    Seq::Wait(0.005f);
-  }
+  r1block.Maunal_PutBlock(); // 一吐一吸
 
-  chassis.MoveAt({10.9, 1.96});
-  Seq::WaitUntil([&]()
-                 { return (chassis._Walking() == 1); });
-  while (MOD::farcon.button_first_half[0] != 1)
-  {
-    ResponseButtonArea3(0.25f);
-    Seq::Wait(0.005f);
-  }
-  r1block.GetGroundBlock();
   state_core->GetCurState()->Complete = true;
 }
 
-// 到对应格子前面
-void Action_FreeToGrid(StateCore *state_core)
+void Action_Manual_Pick(StateCore *state_core)
 {
-  Area3_facon_Transmit(2);
-  static int freeput_pos = 1;
-  while (farcon.button_middle[2][1] != 1)
+  r1block.ManualGetGroundBlock();
+  state_core->GetCurState()->Complete = true;
+}
+
+void Action_Lg_Put_Block(StateCore *state_core)
+{
+            put_flag = false;
+      getground_flag = false;
+  while (MOD::farcon.button_first_half[0] != 1)
   {
+
+    ResponseButtonArea3(0.6f);
     if (farcon.button_middle[3][0] == 1)
     {
-      freeput_pos = 0;
-    }
-    else if (farcon.button_middle[3][2] == 1)
-    {
-      freeput_pos = 2;
+      put_flag = true;
+      getground_flag = false;
     }
     else if (farcon.button_middle[3][1] == 1)
     {
-      freeput_pos = 1;
+      put_flag = false;
+      getground_flag = true;
     }
-    Seq::Wait(0.01);
-  }
 
-  chassis.RotateAt(-1.57);
-  Seq::WaitUntil([&]()
-                 { return (chassis._Rotating() == 1); });
-
-  if (freeput_pos == 0)
-  {
-    chassis.MoveAt({11.3, 0.95});
-    Seq::WaitUntil([&]()
-                   { return (chassis._Walking() == 1); });
-  }
-  else if (freeput_pos == 2)
-  {
-    chassis.MoveAt({10.26, 0.95});
-    Seq::WaitUntil([&]()
-                   { return (chassis._Walking() == 1); });
-  }
-  else if (freeput_pos == 1)
-  {
-    chassis.MoveAt({10.75, 0.95});
-    Seq::WaitUntil([&]()
-                   { return (chassis._Walking() == 1); });
-  }
-  while (MOD::farcon.button_first_half[0] != 1)
-  {
-    ResponseButtonArea3(0.25f);
     Seq::Wait(0.005f);
-  }
-  Seq::Wait(0.3);
-  state_core->GetCurState()->Complete = true;
-}
-
-void Action_FreePut(StateCore *state_core)
-{
-  Seq::Wait(0.3);
-
-  while (farcon.button_first_half[0] == 0)
-  {
-    chassis.Move({0.2, 0});
-    Seq::Wait(0.05);
-  }
-  Seq::Wait(1);
-  // 请求人工确认
-  while (farcon.button_first_half[0] == 0)
-  {
-    ResponseButtonArea3();
-    Seq::Wait(0.005f);
-  }
-
-  r1block.PutBlock();
-  state_core->GetCurState()->Complete = true;
-}
-
-void Action_FreeGetBlock(StateCore *state_core)
-{
-  Area3_facon_Transmit(3);
-  Seq::Wait(0.5);
-  // 请求人工确认
-  while (farcon.button_first_half[0] == 0)
-  {
-    ResponseButtonArea3();
-    Seq::Wait(0.005f);
-  }
-  r1block.GetGroundBlock();
-  state_core->GetCurState()->Complete = true;
-}
-
-void Action_Choose_Hid_Mode(StateCore *state_core)
-{
-  Area3_facon_Transmit(0);
-  monit.LogInfo("Choosing Mode");
-  while (farcon.button_first_half[0] == 0)
-  {
-    ResponseButtonArea3();
-    if (farcon.button_middle[1][0] == 1)
-    {
-      choose_call_to_R2 = 1;
-      choose_to_put_block = 0;
-      choose_to_get_block = 0;
-      choose_to_fight_block = 0;
-      choose_to_Combination = 0;
-    }
-    else if (farcon.button_middle[1][1] == 1)
-    {
-      choose_call_to_R2 = 0;
-      choose_to_put_block = 1;
-      choose_to_get_block = 0;
-      choose_to_fight_block = 0;
-      choose_to_Combination = 0;
-    }
-    else if (farcon.button_middle[1][2] == 1)
-    {
-      choose_call_to_R2 = 0;
-      choose_to_put_block = 0;
-      choose_to_get_block = 1;
-      choose_to_fight_block = 0;
-      choose_to_Combination = 0;
-    }
-    Seq::Wait(0.005);
-  }
-
-  state_core->GetCurState()->Complete = true;
-}
-
-// 去找R2
-void Action_R2_call(StateCore *state_core)
-{
-  Area3_facon_Transmit(1);
-  static int r2_call_first = 0;
-  chassis.RotateAt(-1.57);
-  Seq::WaitUntil([&]()
-                 { return (chassis._Rotating() == 1); });
-  if (r2_call_first == 0)
-  {
-    while (MOD::farcon.button_first_half[0] != 1)
-    {
-      ResponseButtonArea3(0.25f);
-      Seq::Wait(0.005f);
-    }
-    chassis.MoveAt({11.4, 2.25}); // 去对接点通信
-    Seq::WaitUntil([&]()
-                   { return (chassis._Walking() == 1); });
-
-    while (MOD::farcon.button_first_half[0] != 1)
-    {
-      ResponseButtonArea3(0.25f);
-      Seq::Wait(0.005f);
-    }
-
-    chassis.MoveAt({10.1, 2.25}); // 去等待点
-    Seq::WaitUntil([&]()
-                   { return (chassis._Walking() == 1); });
-    r2_call_first++;
-  }
-  else
-  {
-    while (MOD::farcon.button_first_half[0] != 1)
-    {
-      ResponseButtonArea3(0.25f);
-      Seq::Wait(0.005f);
-    }
-    chassis.MoveAt({11.4, 1.7}); // 去对接点通信
-    Seq::WaitUntil([&]()
-                   { return (chassis._Walking() == 1); });
-
-    while (MOD::farcon.button_first_half[0] != 1)
-    {
-      ResponseButtonArea3(0.25f);
-      Seq::Wait(0.005f);
-    }
-
-    chassis.MoveAt({10.1, 1.7}); // 去等待点
-    Seq::WaitUntil([&]()
-                   { return (chassis._Walking() == 1); });
-    chassis.MoveAt({10.1, 2.25}); // 去等待点
-    Seq::WaitUntil([&]()
-                   { return (chassis._Walking() == 1); });
   }
 
   state_core->GetCurState()->Complete = true;
@@ -311,56 +131,30 @@ void HiddenTreasuresGragh_Blue_Init(void)
   monit.LogWarning("this is Blue HiddenTreasures!");
 
   // 按照正常的规划
-  StateBlock &s_put_pre = HT_Blue_flow.AddState("PrePutBlock");
-  StateBlock &s_planput = HT_Blue_flow.AddState("PutBlock"); // 不同的
-  StateBlock &s_planpickground = HT_Blue_flow.AddState("GetGroundBlock");
-
-  StateBlock &s_choose_hid_mode = HT_Blue_flow.AddState("Choose_Hid_Mode");
-  // 自由搏击
-  StateBlock &s_free_togrid = HT_Blue_flow.AddState("FreeToGrid");
-  StateBlock &s_free_put = HT_Blue_flow.AddState("FreePutBlock");
-  StateBlock &s_free_pick = HT_Blue_flow.AddState("FreePickBlock");
-
-  // 后期选择是放块/取块/给R2发送消息还是？
-
-  StateBlock &call_R2 = HT_Blue_flow.AddState("Call_R2");
+  StateBlock &s_put_pre = HT_flow.AddState("PrePutBlock");
+  StateBlock &s_planput = HT_flow.AddState("PlanPutBlock"); // 不同的
+  StateBlock &s_Lg_Put = HT_flow.AddState("LG Putting Block");
+  StateBlock &s_manual_put = HT_flow.AddState("Manual_put");
+  StateBlock &s_manual_pick = HT_flow.AddState("Manual_pick");
   //******************************状态函数绑定***********************
+  // 后期选择是放块/取块/给R2发送消息还是？
   // 正常规划
   s_put_pre.StateAction = Action_PrePut;
   s_planput.StateAction = Action_InPlanPutBlock;
-  s_planpickground.StateAction = Action_InPlantoGetGroundBlock;
-
-  // 状态图切换
-  s_choose_hid_mode.StateAction = Action_Choose_Hid_Mode;
-  // 自由搏击
-  s_free_togrid.StateAction = Action_FreeToGrid;
-  s_free_put.StateAction = Action_FreePut;
-  s_free_pick.StateAction = Action_FreeGetBlock;
-
-  //  R2通信
-  call_R2.StateAction = Action_R2_call;
+  s_Lg_Put.StateAction = Action_Lg_Put_Block;
+  s_manual_put.StateAction = Action_Manual_PutBlock;
+  s_manual_pick.StateAction = Action_Manual_Pick;
 
   //******************************状态切换条件***********************
   // 规划
   s_put_pre.LinkTo(&s_put_pre.Complete, s_planput);
-  s_planput.LinkTo(&s_planput.Complete, s_planpickground);
-  // 自由搏击
-  s_planpickground.LinkTo(&s_planpickground.Complete, s_choose_hid_mode);
+  s_planput.LinkTo(&s_planput.Complete, s_Lg_Put);
 
-  // 由s_choose_hid_mode来选择是给R2发消息还是说直接去放块还是去手动取块还是只是单纯去戳一下对面的块
-  s_choose_hid_mode.LinkTo(&choose_call_to_R2, call_R2);
-  s_choose_hid_mode.LinkTo(&choose_to_put_block, s_free_togrid);
-  s_choose_hid_mode.LinkTo(&choose_to_get_block, s_free_pick);
-  // s_choose_hid_mode.LinkTo(&choose_to_Combination, s_free_togrid);
+  s_Lg_Put.LinkTo(&put_flag, s_manual_put);
+  s_Lg_Put.LinkTo(&getground_flag, s_manual_pick);
 
-  // 决定是给R2发消息
-  call_R2.LinkTo(&call_R2.Complete, s_choose_hid_mode);
-  // 决定直接去放块
-  s_free_togrid.LinkTo(&s_free_togrid.Complete, s_free_put);
-  s_free_put.LinkTo(&s_free_put.Complete, s_choose_hid_mode);
-
-  // 决定去手动取块
-  s_free_pick.LinkTo(&s_free_pick.Complete, s_choose_hid_mode);
+  s_manual_put.LinkTo(&s_manual_put.Complete, s_Lg_Put);
+  s_manual_pick.LinkTo(&s_manual_pick.Complete, s_Lg_Put);
 
   // // 注册图
   state_core.RegistGraph(HT_Blue_flow);
@@ -386,30 +180,26 @@ void ResponseButtonArea3(float velo_k)
     chassis.Move(Vec2(v_body.x, v_body.y));
   }
 
-  // 控制R2放中间层的第一个块
-  if (farcon.button_middle[0][0] == 1)
-  {
-  }
+  // 光通信
+  // 让r2去放左块
+  if (farcon.button_first_half[2])
+    comm.SendActionCommand(ActionType::A3R2LayLeftBlock);
+  // 让r2去放中块
+  if (farcon.button_first_half[3])
+    comm.SendActionCommand(ActionType::A3R2LayMidBlock);
+  // 让r3去放右块
+  if (farcon.button_first_half[6])
+    comm.SendActionCommand(ActionType::A3R2LayRightBlock);
 
-  // 控制R2放中间层的第二个块
-  if (farcon.button_middle[0][1] == 1)
-  {
-  }
-
-  // 控制R2放中间层的第三个块
-  if (farcon.button_middle[0][2] == 1)
-  {
-  }
-
-  //戳第二层块
+  // 戳第二层块
   if (farcon.button_second_half[2])
     comm.SendActionCommand(ActionType::PokeF2);
-  //戳第三层块
+  // 戳第三层块
   if (farcon.button_second_half[3])
     comm.SendActionCommand(ActionType::PokeF1);
   // 戳完放平
-  if (farcon.button_second_half[15])
-    comm.SendActionCommand(ActionType::PICK);
+  if (farcon.button_second_half[7])
+    comm.SendActionCommand(ActionType::GuardRod);
 }
 
 #endif

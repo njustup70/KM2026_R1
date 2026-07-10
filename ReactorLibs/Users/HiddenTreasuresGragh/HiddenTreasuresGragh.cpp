@@ -75,7 +75,7 @@ void Action_PrePut(StateCore *core)
   MOVE::MoveToTargPos(Red_Hid_Come_In_Gentle);
   while (MOD::farcon.button_first_half[0] != 1)
   {
-    ResponseButtonArea3(0.25f);
+    ResponseButtonArea3(0.6f);
     Seq::Wait(0.005f);
   }
   state_core.GetCurState()->Complete = true;
@@ -109,7 +109,7 @@ void Action_Lg_Put_Block(StateCore *state_core)
   while (MOD::farcon.button_first_half[0] != 1)
   {
 
-    ResponseButtonArea3(0.25f);
+    ResponseButtonArea3(0.6f);
     if (farcon.button_middle[3][0] == 1)
     {
       put_flag = true;
@@ -180,21 +180,6 @@ void ResponseButtonArea3(float velo_k)
   else
   {
     chassis.Move(Vec2(v_body.x, v_body.y));
-  }
-
-  // 控制R2放中间层的第一个块
-  if (farcon.button_middle[0][0] == 1)
-  {
-  }
-
-  // 控制R2放中间层的第二个块
-  if (farcon.button_middle[0][1] == 1)
-  {
-  }
-
-  // 控制R2放中间层的第三个块
-  if (farcon.button_middle[0][2] == 1)
-  {
   }
 
   // 光通信

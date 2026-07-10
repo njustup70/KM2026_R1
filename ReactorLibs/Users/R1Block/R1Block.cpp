@@ -20,7 +20,7 @@ R1Block &APP::r1block = R1Block::GetInstance();
 // int release_test_flag = 0;
 // int calm_flag = 0;
 static void Area2ResponseFarconForR1Block(float velo_k = 0.25);
-static void Area3ResponseFarconForR1Block(float velo_k = 0.25);
+static void Area3ResponseFarconForR1Block(float velo_k = 1);
 extern bool is_prelay_finished;
 int debug_origin = 0;
 int target_height = 200;
@@ -1255,45 +1255,18 @@ void R1Block::ManualGetGroundBlock()
   // 请求人工确认
   while (farcon.button_first_half[0] == 0)
   {
-    Area3ResponseFarconForR1Block();
+    Area3ResponseFarconForR1Block(1);
     Seq::Wait(0.005f);
   }
   SetTargetHeight(0, 0);
   last_height = 0;
   Loosen_block();
   Seq::Wait(1);
-  if (block_detect[0] == 1)
-  {
-    // Vec2 rel_xy = {0, 0.02};
-    Spd = Vec2{0, 0.05};
-    aim_right = 0;
-    Seq::WaitUntil([&]()
-                   { return block_detect[1] == 1; });
-    Spd = Vec2{0, -0.05};
-    Seq::Wait(0.5);
-    chassis.Move({0, 0});
-
-    aim_right = 1;
-  }
-  else if (block_detect[1] == 1)
-  {
-    // Vec2 rel_xy = {0, -0.02};
-    Spd = Vec2{0, -0.05};
-    aim_right = 0;
-    Seq::WaitUntil([&]()
-                   { return block_detect[0] == 1; });
-    Spd = Vec2{0, 0.05};
-    Seq::Wait(0.5);
-    chassis.Move({0, 0});
-    aim_right = 1;
-  }
-
-   chassis.Move({0, 0});
 
   // 请求人工确认
   while (farcon.button_first_half[0] == 0)
   {
-    Area3ResponseFarconForR1Block();
+    Area3ResponseFarconForR1Block(1);
     Seq::Wait(0.005f);
   }
 
@@ -1301,20 +1274,30 @@ void R1Block::ManualGetGroundBlock()
   suckmotor[0].SetSpd(-0.8 * suck_speed);
   suckmotor[1].SetSpd(0.8 * suck_speed);
   Seq::Wait(1);
-
-  Clamp_block(); // 夹紧
-  Seq::Wait(1);
-  SmoothMoveStretchToTarget(stretch_distance[1], 0, 2, 10);
-
-  while (farcon.button_first_half[0] == 0)
+    while (farcon.button_first_half[0] == 0)
   {
-    Area3ResponseFarconForR1Block();
+    Area3ResponseFarconForR1Block(1);
     Seq::Wait(0.005f);
   }
+  Clamp_block(); // 夹紧
+  Seq::Wait(1);
+    while (farcon.button_first_half[0] == 0)
+  {
+    Area3ResponseFarconForR1Block(1);
+    Seq::Wait(0.005f);
+  }
+  SmoothMoveStretchToTarget(stretch_distance[1], 0, 2, 10);
+
+  Seq::Wait(2);
 
   suckmotor[0].SetSpd(0);
   suckmotor[1].SetSpd(0);
 
+      while (farcon.button_first_half[0] == 0)
+  {
+    Area3ResponseFarconForR1Block(1);
+    Seq::Wait(0.005f);
+  }
   // 取完块
   SetTargetHeight(realse_block_height, realse_block_height);
 
@@ -1326,7 +1309,7 @@ void R1Block::Maunal_PutBlock()
   // 请求人工确认
   while (farcon.button_first_half[0] == 0)
   {
-    Area3ResponseFarconForR1Block();
+    Area3ResponseFarconForR1Block(1);
     Seq::Wait(0.005f);
   }
   Clamp_block();
@@ -1338,7 +1321,7 @@ void R1Block::Maunal_PutBlock()
   // 请求人工确认
   while (farcon.button_first_half[0] == 0)
   {
-    Area3ResponseFarconForR1Block();
+    Area3ResponseFarconForR1Block(1);
     Seq::Wait(0.005f);
   }
   suckmotor[0].SetSpd(0);
