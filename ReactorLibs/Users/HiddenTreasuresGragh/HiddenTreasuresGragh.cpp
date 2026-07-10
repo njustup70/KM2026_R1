@@ -125,6 +125,7 @@ void Action_Lg_Put_Block(StateCore *state_core)
   }
 
   state_core->GetCurState()->Complete = true;
+  Seq::Wait(0.5f);
 }
 
 // ================================初始化========================================================================
