@@ -35,10 +35,6 @@ void TaskLogic::Update()
 {
   aimrod_state = Hardware::miniyellow_aim_rod.Read();
 
-  if (farcon.button_second_half[16 - 8 - 1])
-  {
-    is_dock_done = true;
-  }
   static int restart_slam_count= 0;
   if (farcon.button_second_half[13 - 8 - 1])
   {

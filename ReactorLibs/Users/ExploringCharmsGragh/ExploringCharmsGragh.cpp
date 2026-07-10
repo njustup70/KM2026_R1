@@ -23,7 +23,7 @@
 #include "a1_toassemble.hpp"
 
 static void ResponseFarcon(float velo_k = 1.0f);
-static void Area2ResponseFarcon(float velo_k=1.0f);
+static void Area2ResponseFarcon(float velo_k = 1.0f);
 static void ResponseLgFarcon(float velo_k = 1.0f);
 using namespace APP;
 using namespace MOD;
@@ -544,7 +544,7 @@ static void ResponseFarcon(float velo_k)
   if (farcon.button_second_half[0])
   {
     comm.SendActionCommand(ActionType::GiveUpDock);
-    go_to_area2 = true;
+    // go_to_area2 = true;
   }
 
   // r1得再去取杆
@@ -588,6 +588,8 @@ static void Area2ResponseFarcon(float velo_k)
   }
   // r1手动二区取块
   // 抬升高度
+if(farcon.toggle[2]==1)
+{
   if (farcon.button_first_half[4] == 1)
   {
     r1block.LiftToNavHeight(200);
@@ -598,8 +600,42 @@ static void Area2ResponseFarcon(float velo_k)
   }
   else if (farcon.button_first_half[6] == 1)
   {
-    r1block.LiftToNavHeight(400);
+    r1block.LiftToNavHeight(600);
   }
+
+}
+else {
+  // 控制矛头
+  if (farcon.button_first_half[3])
+    comm.SendActionCommand(ActionType::SpearUp); // 矛头会向下
+  if (farcon.button_first_half[2])
+    comm.SendActionCommand(ActionType::SpearDown); // 矛头会向上
+  // 控制矛头左右
+  if (farcon.button_first_half[6])
+    comm.SendActionCommand(ActionType::SpearLeft);
+  if (farcon.button_first_half[7])
+    comm.SendActionCommand(ActionType::SpearRight);
+
+  // 发送对接完成
+  if (farcon.button_first_half[4])
+    comm.SendActionCommand(ActionType::DockOK);
+
+  // 发送KFS给R2,这个考虑融在逻辑里自动发
+  if (farcon.button_first_half[5])
+    comm.SendActionCommand(ActionType::SendKFS);
+
+  // 放弃对接
+  if (farcon.button_second_half[0])
+  {
+    comm.SendActionCommand(ActionType::GiveUpDock);
+    // go_to_area2 = true;
+  }
+
+
+}
+
+
+
 }
 
 /**
@@ -633,6 +669,21 @@ static void ResponseLgFarcon(float velo_k)
   else
   {
     chassis.Move(Vec2(v_body.x, v_body.y));
+  }
+
+  // r1手动二区取块
+  // 抬升高度
+  if (farcon.button_first_half[4] == 1)
+  {
+    r1block.LiftToNavHeight(200);
+  }
+  else if (farcon.button_first_half[5] == 1)
+  {
+    r1block.LiftToNavHeight(400);
+  }
+  else if (farcon.button_first_half[6] == 1)
+  {
+    r1block.LiftToNavHeight(600);
   }
 }
 

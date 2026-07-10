@@ -36,7 +36,7 @@ namespace MOVE
     template <size_t N>
     bool MoveToTargPos(const Path<N>& path)
     {
-        APP::path_chaser.ChasePath(path);
+        APP::path_chaser.ChasePath(path,true,Vec3(0.01,0.01,0.01));
         uint32_t log_tick = 0;
 
         while (!APP::path_chaser.IsFinished())
