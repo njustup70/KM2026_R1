@@ -192,7 +192,7 @@ public:
 public:
     //发给遥控器显示的数据包
     FloatDataPacket pos_packet;
-    uint8_t pos_data[9];
+    uint8_t pos_data[13];
 
     bool is_retrying = false;                               // 是否处于重试状态（从RetryZone出发）
     Application* app_list[24];                              // 系统中的应用实例列表
