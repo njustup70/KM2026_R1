@@ -85,7 +85,7 @@ void Action_InPlanPutBlock(StateCore *state_core)
   r1block.Maunal_PutBlock();                        
   state_core->GetCurState()->Complete = true;
 }
-/void Action_Manual_PutBlock(StateCore *state_core)
+void Action_Manual_PutBlock(StateCore *state_core)
 {
   r1block.Maunal_PutBlock(); // 一吐一吸
 
@@ -121,6 +121,7 @@ void Action_Lg_Put_Block(StateCore *state_core)
   }
 
   state_core->GetCurState()->Complete = true;
+    Seq::Wait(0.5f);
 }
 
 // ================================初始化========================================================================
@@ -131,11 +132,11 @@ void HiddenTreasuresGragh_Blue_Init(void)
   monit.LogWarning("this is Blue HiddenTreasures!");
 
   // 按照正常的规划
-  StateBlock &s_put_pre = HT_flow.AddState("PrePutBlock");
-  StateBlock &s_planput = HT_flow.AddState("PlanPutBlock"); // 不同的
-  StateBlock &s_Lg_Put = HT_flow.AddState("LG Putting Block");
-  StateBlock &s_manual_put = HT_flow.AddState("Manual_put");
-  StateBlock &s_manual_pick = HT_flow.AddState("Manual_pick");
+  StateBlock &s_put_pre = HT_Blue_flow.AddState("PrePutBlock");
+  StateBlock &s_planput = HT_Blue_flow.AddState("PlanPutBlock"); // 不同的
+  StateBlock &s_Lg_Put = HT_Blue_flow.AddState("LG Putting Block");
+  StateBlock &s_manual_put = HT_Blue_flow.AddState("Manual_put");
+  StateBlock &s_manual_pick = HT_Blue_flow.AddState("Manual_pick");
   //******************************状态函数绑定***********************
   // 后期选择是放块/取块/给R2发送消息还是？
   // 正常规划

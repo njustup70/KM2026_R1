@@ -24,6 +24,7 @@
 
 static void ResponseFarcon(float velo_k = 1.0f);
 static void Area2ResponseFarcon(float velo_k=1.0f);
+static void ResponseLgFarcon(float velo_k = 1.0f);
 using namespace APP;
 using namespace MOD;
 using namespace MOVE;
@@ -132,7 +133,7 @@ void GoFetchRod(StateCore *state_core)
 {
   // 进入之后，清空标志位，防止无限循环
   need_fetch_rod_again = false;
-
+  comm.SendActionCommand(ActionType::BOW);
   // 根据取杆的杆号，选择对应的路径
   switch (rod_id)
   {
@@ -159,7 +160,7 @@ void GoFetchRod(StateCore *state_core)
   }
 
   // 先往前怼到杆架子
-  chassis.Move(Vec3(0.075, 0, 0), 1);
+  // chassis.Move(Vec3(0.075, 0, 0), 1);
   // 锁 yaw 角
   chassis.LockYaw(3.14);
 
@@ -174,11 +175,11 @@ void GoFetchRod(StateCore *state_core)
       return;
   }
   // 停止底盘运动
-  chassis.Move(Vec2(0, 0));
+  // chassis.Move(Vec2(0, 0));
   chassis.UnlockRotate();
 
   // 完成左右位置确定，准备伸出机械臂
-  comm.SendActionCommand(ActionType::BOW);
+  // comm.SendActionCommand(ActionType::BOW);
   monit.LogInfo("Bow At:(%.2f,%.2f)", comm.slam_pos.x, comm.slam_pos.y);
   // 等待机械臂完成取杆
   Seq::Wait(1);
@@ -238,18 +239,18 @@ void GoFetchRod(StateCore *state_core)
   {
     // 必须先往前移动一点，使杆完全脱离r2
     chassis.Move(Vec2(1, 0), 0.5);
+    Seq::Wait(0.5);
 
-    // //先进去二区
-    // MOVE::MoveToTargGes(Vec3(2.40, 3.0, 0.0));
+    // 改成把杆举起来
+    comm.SendActionCommand(ActionType::VerticalRod);
 
-    // 把杆放平，复用一下Pick
-    comm.SendActionCommand(ActionType::PICK);
-
+    // // 把杆放平，复用一下Pick
+    // comm.SendActionCommand(ActionType::PICK);
     // Seq::Wait(1);
+    // // 这里要加一个倒把手的
+    // // 但有风险会掉杆，决定加个按键可以在二区把杆微抬起来，防止捅到对方场地
+    // comm.SendActionCommand(ActionType::CLAMP_2_ON);
 
-    // 这里要加一个倒把手的
-    // 但有风险会掉杆，决定加个按键可以在二区把杆微抬起来，防止捅到对方场地
-    comm.SendActionCommand(ActionType::CLAMP_2_ON);
     monit.LogInfo("ready to area2");
 
     go_to_area2 = true;
@@ -341,15 +342,18 @@ void Action_NavToBlock(StateCore *state_core)
   // 获取当前节点
   PathNode cur_node = guide_dog[guide_dog_index];
 
+  if (cur_node.is_pick_point)
+  {
+    // 获取高度，准备通过 LinkTo 条件触发切入 Action_GetBlock
+    target_height = GetBlockHeight(cur_node.label);
+    r1block.LiftToNavHeight(target_height);
+  }
   // 跑到下一个点
   WalkToPathNode(cur_node);
 
   // ------如果当前点是取块点，准备触发取块动作
   if (cur_node.is_pick_point)
   {
-    // 获取高度，准备通过 LinkTo 条件触发切入 Action_GetBlock
-    target_height = GetBlockHeight(cur_node.label);
-
     // 状态转移，进入取块逻辑
     is_ready_to_pick = true;
     return;
@@ -383,7 +387,7 @@ void Action_AutoGetBlock(StateCore *state_core)
   monit.LogInfo("Try to Get Block");
 
   // 自动取块
-  r1block.Get_Block(target_height, 1);
+  r1block.NoLiftGet_Block(1);
 
   // 要求遥控器确认，才跑下一个点
   while (MOD::farcon.button_first_half[0] != 1)
@@ -392,12 +396,26 @@ void Action_AutoGetBlock(StateCore *state_core)
     Seq::Wait(0.005f);
     if (go_to_area2)
       return;
+    if (manual_area2_lg_pick)
+      return;
   }
 
   // 本路点执行完成，进入下一路点
   guide_dog_index++;
   state_core->GetCurState()->Complete = true;
 }
+
+void Action_LgGetBlock(StateCore *state_core)
+{
+  while (farcon.button_first_half[0] != 1)
+  {
+    ResponseLgFarcon();
+    Seq::Wait(0.005);
+  }
+  r1block.NoLiftGet_Block(1);
+  state_core->GetCurState()->Complete = true;
+}
+
 
 /**********************************************************************/
 
@@ -422,7 +440,8 @@ void ExploringCharmsGragh_Blue_Init(void)
   StateBlock &s_move = EC_Blue_flow.AddState("NavtoBlock");
 
   StateBlock &s_auto_pick = EC_Blue_flow.AddState("AutoGetBlocking");
-
+  // 手控取块跑点
+  StateBlock &s_lg_pick = EC_Blue_flow.AddState("LeiGe GetBlocking");
   StateBlock &s_overwait = EC_Blue_flow.AddState("OverWait");
 
   // 一区
@@ -432,6 +451,7 @@ void ExploringCharmsGragh_Blue_Init(void)
   s_plan.StateAction = Action_Planning;
   s_move.StateAction = Action_NavToBlock;
   s_auto_pick.StateAction = Action_AutoGetBlock;
+    s_lg_pick.StateAction = Action_LgGetBlock;
   // 结束
   s_overwait.StateAction = Action_OverWait;
 
@@ -449,6 +469,14 @@ void ExploringCharmsGragh_Blue_Init(void)
   s_move.LinkTo(&is_ready_to_pick, s_auto_pick);     // 取块
   s_move.LinkTo(&is_final_goal_reached, s_overwait); // 等待
   s_auto_pick.LinkTo(&s_auto_pick.Complete, s_move);
+
+  // 手动取块完成进三区,否则继续取块
+  //************************** */ 蕾哥手控模式
+  s_plan.LinkTo(&manual_area2_lg_pick, s_lg_pick);
+  s_move.LinkTo(&manual_area2_lg_pick, s_lg_pick);
+  s_auto_pick.LinkTo(&manual_area2_lg_pick, s_lg_pick);
+  s_lg_pick.LinkTo(&s_lg_pick.Complete, s_lg_pick);
+  s_lg_pick.LinkTo(&is_lg_finish_goal, s_overwait);
 
   // 二区重试
   s_move.LinkTo(&go_to_area2, s_plan);
@@ -518,7 +546,6 @@ static void ResponseFarcon(float velo_k)
 
 }
 
-
 static void Area2ResponseFarcon(float velo_k)
 {
   float multi_velo = 1.0;
@@ -549,6 +576,8 @@ static void Area2ResponseFarcon(float velo_k)
   }
   // r1手动二区取块
   // 抬升高度
+if(farcon.toggle[2]==1)
+{
   if (farcon.button_first_half[4] == 1)
   {
     r1block.LiftToNavHeight(200);
@@ -559,7 +588,90 @@ static void Area2ResponseFarcon(float velo_k)
   }
   else if (farcon.button_first_half[6] == 1)
   {
+    r1block.LiftToNavHeight(600);
+  }
+
+}
+else {
+  // 控制矛头
+  if (farcon.button_first_half[3])
+    comm.SendActionCommand(ActionType::SpearUp); // 矛头会向下
+  if (farcon.button_first_half[2])
+    comm.SendActionCommand(ActionType::SpearDown); // 矛头会向上
+  // 控制矛头左右
+  if (farcon.button_first_half[6])
+    comm.SendActionCommand(ActionType::SpearLeft);
+  if (farcon.button_first_half[7])
+    comm.SendActionCommand(ActionType::SpearRight);
+
+  // 发送对接完成
+  if (farcon.button_first_half[4])
+    comm.SendActionCommand(ActionType::DockOK);
+
+  // 发送KFS给R2,这个考虑融在逻辑里自动发
+  if (farcon.button_first_half[5])
+    comm.SendActionCommand(ActionType::SendKFS);
+
+  // 放弃对接
+  if (farcon.button_second_half[0])
+  {
+    comm.SendActionCommand(ActionType::GiveUpDock);
+    // go_to_area2 = true;
+  }
+
+
+}
+
+
+
+}
+
+/**
+ * @brief 遥控器能控制的中间时刻
+ * @param velo_k 底盘速度系数，在不同的地方进入遥控器，理论速度不同
+ */
+static void ResponseLgFarcon(float velo_k)
+{
+  float multi_velo = 1.0;
+  Vec2 v_world;
+  if (farcon.toggle[1])
+  {
+    v_world.x = -farcon.jys_value[3] * 1.0f / 100.f * 1.0f * multi_velo; // 摇杆向前 -> 场地X正
+    v_world.y = -farcon.jys_value[2] * 1.0f / 100.f * 1.0f * multi_velo; // 摇杆向左 -> 场地Y正
+  }
+  else
+  {
+    v_world.x = -farcon.jys_value[3] * 1.0f / 100.f * 1.0f * velo_k; // 摇杆向前 -> 场地X正
+    v_world.y = -farcon.jys_value[2] * 1.0f / 100.f * 1.0f * velo_k; // 摇杆向左 -> 场地Y正
+  }
+
+  // 解锁底盘的位置闭环，角度闭环仍然由系统控制
+  chassis.UnlockWalk();
+  Vec2 v_body = v_world.Rotate(-System.position.z);
+
+  if (!chassis.IsLockRotate())
+  {
+    float yaw_spd = -farcon.jys_value[0] * 1.0f / 100.f * 1.5f; // 摇杆向左 -> 逆时针旋转
+    chassis.Move(Vec3(v_body.x, v_body.y, yaw_spd));
+  }
+  else
+  {
+    chassis.Move(Vec2(v_body.x, v_body.y));
+  }
+
+  // r1手动二区取块
+  // 抬升高度
+  if (farcon.button_first_half[4] == 1)
+  {
+    r1block.LiftToNavHeight(200);
+  }
+  else if (farcon.button_first_half[5] == 1)
+  {
     r1block.LiftToNavHeight(400);
+  }
+  else if (farcon.button_first_half[6] == 1)
+  {
+    r1block.LiftToNavHeight(600);
   }
 }
 
