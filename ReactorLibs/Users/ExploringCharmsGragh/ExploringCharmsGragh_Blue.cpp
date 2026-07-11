@@ -543,7 +543,7 @@ static void ResponseFarcon(float velo_k)
 
   // 发送KFS给R2,这个考虑融在逻辑里自动发
   if (farcon.button_first_half[5])
-    comm.SendActionCommand(ActionType::SendKFS);
+    comm.SendActionCommand(ActionType::SendBlueKFS);
 
   // 放弃对接
   if (farcon.button_second_half[0])

@@ -27,6 +27,7 @@ enum class ActionType : uint8_t
     GiveUpDock = 11,
     DockOK = 20,
     SendKFS = 15,
+    SendBlueKFS = 22,
     // R2GoToArea2 = 21,
 
     //戳块
