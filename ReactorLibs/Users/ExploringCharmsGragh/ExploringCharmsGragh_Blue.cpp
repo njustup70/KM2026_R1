@@ -111,7 +111,7 @@ uint8_t rod_id = 0;
 // 状态转移标志位：使取杆再次返回
 bool need_fetch_rod_again = false;
 // 状态转移标志位：进入二区
-bool go_to_area2 = false;
+ bool go_to_area2 = false;
 
 static void Wait_ForStart(StateCore *state_core)
 {
