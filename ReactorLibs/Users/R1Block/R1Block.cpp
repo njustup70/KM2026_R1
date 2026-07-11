@@ -376,8 +376,6 @@ void R1Block::Stop()
   liftmotor[1].Neutral();
   liftmotor[1].driver.Disable();
   air_pump_pin.Write(false);
-  liftservo[0].Disable();
-  liftservo[1].Disable();
   enabled = false;
 }
 
@@ -1281,7 +1279,7 @@ void R1Block::ManualGetGroundBlock()
     Seq::Wait(0.005f);
   }
 
-  SetTargetStretch(stretch_distance[1], stretch_distance[1]);
+  SetTargetStretch(stretch_distance[1]-800000, stretch_distance[1]-800000);
   suckmotor[0].SetSpd(-0.8 * suck_speed);
   suckmotor[1].SetSpd(0.8 * suck_speed);
   Seq::Wait(1);
@@ -1297,7 +1295,7 @@ void R1Block::ManualGetGroundBlock()
     Area3ResponseFarconForR1Block(1);
     Seq::Wait(0.005f);
   }
-  SmoothMoveStretchToTarget(stretch_distance[1], 0, 2, 10);
+  SmoothMoveStretchToTarget(stretch_distance[1]-800000, 0, 2, 10);
 
   Seq::Wait(2);
 

@@ -2,10 +2,14 @@
 #include "Chassis.hpp"
 #include "farcon.hpp"
 #include "ModeSelector.hpp"
+#include "IR_TX.hpp"
+#include "tim.h"
 
 using namespace APP;
 using MOD::board_can;
 using MOD::farcon;
+
+IR_TX ir_tx;
 
 uint8_t node_count = 0;
 extern const int X_count;
@@ -40,6 +44,7 @@ void CommCenter::Start()
   /**---- 板间通讯 ----**/
   board_can.Init(Hardware::hcan_main, 0x220, false);
   board_can.RegisterTask(3, AckCBoardCallback, this);
+   ir_tx.Init(ToID(&htim1), BSP::TIM::CH1);
 }
 
 void CommCenter::Update()
@@ -64,6 +69,7 @@ void CommCenter::Update()
     // System.SetPositionSource(System.odometer.transform);
   }
 }
+
 
 /**==========================发给工控机========================= */
 void CommCenter::ChooseHalve()
@@ -371,4 +377,18 @@ void AckCBoardCallback(uint8_t task_id, const uint8_t *payload, uint8_t payload_
       comm.rodair_state = false;
     }
   }
+}
+
+/*------------------红外通信-----------------------*/
+
+void CommCenter::SendIR(uint8_t addr, uint8_t cmd)
+{
+    extern DMA_HandleTypeDef hdma_tim1_up;
+
+    while (hdma_tim1_up.Instance->NDTR > 0) { /* 等上次 DMA 完成 */ }
+    HAL_TIM_PWM_Stop(&htim1, TIM_CHANNEL_1);
+    HAL_DMA_DeInit(&hdma_tim1_up);
+    HAL_DMA_Init(&hdma_tim1_up);
+
+    ir_tx.Send(addr, cmd);  // 非阻塞，DMA 后台发送
 }

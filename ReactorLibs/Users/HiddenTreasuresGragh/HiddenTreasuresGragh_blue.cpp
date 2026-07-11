@@ -48,7 +48,7 @@ void Action_PrePut(StateCore *core)
 {
   while (MOD::farcon.button_first_half[0] != 1)
   {
-    ResponseButtonArea3(0.25f);
+    ResponseButtonArea3(1.0f);
     Seq::Wait(0.005f);
   }
   // 抬升到对应放块高度
@@ -58,7 +58,7 @@ void Action_PrePut(StateCore *core)
 
   while (MOD::farcon.button_first_half[0] != 1)
   {
-    ResponseButtonArea3(0.25f);
+    ResponseButtonArea3(1.0f);
     Seq::Wait(0.005f);
   }
   comm.SendActionCommand(ActionType::CLAMP);
@@ -73,18 +73,12 @@ void Action_PrePut(StateCore *core)
   MOVE::MoveToTargPos(Blue_Hid_Come_In_Gentle);
   while (MOD::farcon.button_first_half[0] != 1)
   {
-    ResponseButtonArea3(0.6f);
+    ResponseButtonArea3(1.0f);
     Seq::Wait(0.005f);
   }
   state_core.GetCurState()->Complete = true;
 }
 
-void Action_InPlanPutBlock(StateCore *state_core)
-{
-  MOVE::MoveToTargPos(Blue_Hid_Wall_to_Grid_Gentle); // 从重试点到正中间
-  r1block.Maunal_PutBlock();                        
-  state_core->GetCurState()->Complete = true;
-}
 void Action_Manual_PutBlock(StateCore *state_core)
 {
   r1block.Maunal_PutBlock(); // 一吐一吸
@@ -105,7 +99,7 @@ void Action_Lg_Put_Block(StateCore *state_core)
   while (MOD::farcon.button_first_half[0] != 1)
   {
 
-    ResponseButtonArea3(0.6f);
+    ResponseButtonArea3(1.0f);
     if (farcon.button_middle[3][0] == 1)
     {
       put_flag = true;
@@ -134,23 +128,19 @@ void HiddenTreasuresGragh_Blue_Init(void)
 
   // 按照正常的规划
   StateBlock &s_put_pre = HT_Blue_flow.AddState("PrePutBlock");
-  StateBlock &s_planput = HT_Blue_flow.AddState("PlanPutBlock"); // 不同的
   StateBlock &s_Lg_Put = HT_Blue_flow.AddState("LG Putting Block");
   StateBlock &s_manual_put = HT_Blue_flow.AddState("Manual_put");
   StateBlock &s_manual_pick = HT_Blue_flow.AddState("Manual_pick");
   //******************************状态函数绑定***********************
   // 正常规划
   s_put_pre.StateAction = Action_PrePut;
-  s_planput.StateAction = Action_InPlanPutBlock;
   s_Lg_Put.StateAction = Action_Lg_Put_Block;
   s_manual_put.StateAction = Action_Manual_PutBlock;
   s_manual_pick.StateAction = Action_Manual_Pick;
 
   //******************************状态切换条件***********************
   // 规划
-  s_put_pre.LinkTo(&s_put_pre.Complete, s_planput);
-  s_planput.LinkTo(&s_planput.Complete, s_Lg_Put);
-
+  s_put_pre.LinkTo(&s_put_pre.Complete, s_manual_put);
   s_Lg_Put.LinkTo(&put_flag, s_manual_put);
   s_Lg_Put.LinkTo(&getground_flag, s_manual_pick);
 

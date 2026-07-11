@@ -192,12 +192,12 @@ void LedWs2812::Upload()
  * @brief 覆写PWM + DMA发送完成中断
  * @note 必须加上 extern "C" 才能正确覆盖 HAL 库里面的弱函数 (Weak function)
  */
-extern "C" void HAL_TIM_PWM_PulseFinishedCallback(TIM_HandleTypeDef *htim)
-{
-    // 【修改这里】：解包指针做对比
-    if(targ_led != nullptr && htim == reinterpret_cast<TIM_HandleTypeDef*>(targ_led->id))
-    {
-        HAL_TIM_PWM_Stop_DMA(htim, targ_led->Channel);
-    }
-}
+// extern "C" void HAL_TIM_PWM_PulseFinishedCallback(TIM_HandleTypeDef *htim)
+// {
+//     // 【修改这里】：解包指针做对比
+//     if(targ_led != nullptr && htim == reinterpret_cast<TIM_HandleTypeDef*>(targ_led->id))
+//     {
+//         HAL_TIM_PWM_Stop_DMA(htim, targ_led->Channel);
+//     }
+// }
 #endif

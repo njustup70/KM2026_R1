@@ -109,6 +109,8 @@ public:
     void ChooseHalve();
     void ChoosePowerOnPos();
     void RestartSLAM();
+public:
+    void SendIR(uint8_t addr, uint8_t cmd);
 
 };
 

@@ -22,12 +22,13 @@ using namespace APP;
 using namespace MOD;
 using namespace MOVE;
 
-static void ResponseButtonArea3(float velo_k = 1.0f);
+static void ResponseButtonArea3(float velo_k = 1.5f);
 
 // 引用路径
 #include "a3_red_hid_come_in_gentle.hpp"
 #include "a3_red_hid_wall_to_grid_gentle.hpp"
 #include "a3_red_hid_wall_to_grid_gentle_75.hpp"
+#include "a3_red_hid_come_in_fast.hpp"
 // 全局状态图对象
 StateGraph HT_flow{"HiddenTreasuresGraph"};
 
@@ -50,7 +51,7 @@ void Action_PrePut(StateCore *core)
 {
   while (MOD::farcon.button_first_half[0] != 1)
   {
-    ResponseButtonArea3(0.25f);
+    ResponseButtonArea3(1.0f);
     Seq::Wait(0.005f);
   }
   // 抬升到对应放块高度
@@ -60,7 +61,7 @@ void Action_PrePut(StateCore *core)
 
   while (MOD::farcon.button_first_half[0] != 1)
   {
-    ResponseButtonArea3(0.25f);
+    ResponseButtonArea3(1.0f);
     Seq::Wait(0.005f);
   }
   comm.SendActionCommand(ActionType::CLAMP);
@@ -72,23 +73,17 @@ void Action_PrePut(StateCore *core)
     Seq::Wait(0.005f);
   }
   // 从重试点到正中间
-  MOVE::MoveToTargPos(Red_Hid_Come_In_Gentle);
+  MOVE::MoveToTargPos(Red_Hid_Come_In_Fast);
   while (MOD::farcon.button_first_half[0] != 1)
   {
-    ResponseButtonArea3(0.6f);
+    ResponseButtonArea3(1.0f);
     Seq::Wait(0.005f);
   }
+      Seq::Wait(0.5f);
   state_core.GetCurState()->Complete = true;
 }
 
-void Action_InPlanPutBlock(StateCore *state_core)
-{
-  MOVE::MoveToTargPos(Red_Hid_Wall_to_Grid_Gentle_75); // 从重试点到正中间
 
-  r1block.Maunal_PutBlock(); // 一吐一吸
-
-  state_core->GetCurState()->Complete = true;
-}
 void Action_Manual_PutBlock(StateCore *state_core)
 {
   r1block.Maunal_PutBlock(); // 一吐一吸
@@ -109,7 +104,7 @@ void Action_Lg_Put_Block(StateCore *state_core)
   while (MOD::farcon.button_first_half[0] != 1)
   {
 
-    ResponseButtonArea3(0.6f);
+    ResponseButtonArea3(1.0f);
     if (farcon.button_middle[3][0] == 1)
     {
       put_flag = true;
@@ -136,7 +131,6 @@ void HiddenTreasuresGragh_Init(void)
 
   // 按照正常的规划
   StateBlock &s_put_pre = HT_flow.AddState("PrePutBlock");
-  StateBlock &s_planput = HT_flow.AddState("PlanPutBlock"); // 不同的
   StateBlock &s_Lg_Put = HT_flow.AddState("LG Putting Block");
   StateBlock &s_manual_put = HT_flow.AddState("Manual_put");
   StateBlock &s_manual_pick = HT_flow.AddState("Manual_pick");
@@ -144,15 +138,12 @@ void HiddenTreasuresGragh_Init(void)
   //******************************状态函数绑定***********************
   // 正常规划
   s_put_pre.StateAction = Action_PrePut;
-  s_planput.StateAction = Action_InPlanPutBlock;
   s_Lg_Put.StateAction = Action_Lg_Put_Block;
   s_manual_put.StateAction = Action_Manual_PutBlock;
   s_manual_pick.StateAction = Action_Manual_Pick;
   //******************************状态切换条件***********************
   // 规划
-  s_put_pre.LinkTo(&s_put_pre.Complete, s_planput);
-  s_planput.LinkTo(&s_planput.Complete, s_Lg_Put);
-
+  s_put_pre.LinkTo(&s_put_pre.Complete, s_manual_put);
   s_Lg_Put.LinkTo(&put_flag, s_manual_put);
   s_Lg_Put.LinkTo(&getground_flag, s_manual_pick);
 

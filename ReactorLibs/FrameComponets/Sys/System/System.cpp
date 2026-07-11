@@ -70,9 +70,10 @@ void SystemType::Run()
         // position.y += pos_offset.y;
         pos_packet.data1 = position.x;
         pos_packet.data2 = position.y;
+        pos_packet.data3=position.z;
         // pos_packet.data3 = position.z;
         pos_data[0] = 0x06;
-        memcpy(pos_data + 1, &pos_packet, 8);
+        memcpy(pos_data + 1, &pos_packet, 12);
         MOD::farcon.TransmitFarcon(pos_data,sizeof(pos_data));
     }
 
