@@ -296,8 +296,7 @@ void Action_NavToBlock(StateCore *state_core)
     Seq::Wait(0.005f);
     if (go_to_area2)
       return;
-    if (manual_area2_lg_pick)
-      return;
+
   }
   // 获取当前节点
   PathNode cur_node = guide_dog[guide_dog_index];

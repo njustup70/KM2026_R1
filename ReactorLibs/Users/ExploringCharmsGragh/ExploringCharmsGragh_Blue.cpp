@@ -33,7 +33,6 @@ using namespace MOVE;
 
 // 全局变量
 bool is_assemble = false;
-extern bool manual_pick_flag;
 
 extern volatile bool g_guide_dog_data_ready;
 // 全局状态图对象
@@ -68,7 +67,7 @@ static void WalkToPathNode(PathNode cur_node)
   Vec2 target_pos = cur_node.pos;
   int target_xid = cur_node.label;
   float target_yaw = cur_node.target_yaw;
-
+  Vec3 targ_ges(target_pos.x, target_pos.y, target_yaw);
   // 判断是否角点
   bool is_backcorner = (target_xid == 7 || target_xid == 11);
   bool is_frontcorner = (target_xid == 2 || target_xid == 16 || target_xid == 0);
@@ -76,33 +75,94 @@ static void WalkToPathNode(PathNode cur_node)
   // 如果是从一区进入二区的三个点，yaw可以先开始转
   if (is_frontcorner)
   {
-    // 移动底盘到目标点
-    chassis.MoveAt(target_pos);
-    // 同时调整yaw
-    chassis.RotateAt(target_yaw);
-    Seq::WaitUntil([]() -> bool
-                   { return (chassis._Walking() && chassis._Rotating()); });
+    APP::path_chaser.ChaseGes(targ_ges);
+    uint32_t log_tick = 0;
+
+    while (!APP::path_chaser.IsFinished() && (farcon.toggle[2] != 1))
+    {
+      Vec3 speed_vec = APP::path_chaser.GetCmdBody();
+      Vec3 world_vec = APP::path_chaser.GetCmdWorld();
+
+      APP::chassis.Move(speed_vec, 0.01f);
+
+      if (++log_tick >= 20)
+      {
+        log_tick = 0;
+        APP::monit.LogInfo("pt_world_vec(%.3f, %.3f, %.3f)",
+                           world_vec.x, world_vec.y, world_vec.z);
+      }
+      Seq::Wait(0.005f); // 200hz更新频率
+    }
+
+    APP::monit.LogInfo("Move to target gesture.");
   }
   // 姿态控制：如果是四个角点，调用旋转指令并强等待底盘就位
-  if (is_backcorner)
+  else if (is_backcorner)
   {
-    chassis.MoveAt(target_pos);
-    // 强等待底盘横移就位
-    Seq::WaitUntil([]() -> bool
-                   { return chassis._Walking(); });
-    // 调整yaw
-    chassis.RotateAt(target_yaw);
-    // 强等待旋转就位
-    Seq::WaitUntil([]() -> bool
-                   { return chassis._Rotating(); });
+    APP::path_chaser.ChasePos(target_pos);
+    uint32_t log_tick_xy = 0;
+
+    while (!APP::path_chaser.IsFinished() && (farcon.toggle[2] != 1))
+    {
+      Vec3 speed_vec = APP::path_chaser.GetCmdBody();
+      Vec3 world_vec = APP::path_chaser.GetCmdWorld();
+
+      APP::chassis.Move(speed_vec, 0.01f);
+
+      if (++log_tick_xy >= 20)
+      {
+        log_tick_xy = 0;
+        APP::monit.LogInfo("pt_world_vec(%.3f, %.3f, %.3f)",
+                           world_vec.x, world_vec.y, world_vec.z);
+      }
+      Seq::Wait(0.005f); // 200hz更新频率
+    }
+
+    APP::monit.LogInfo("Move to target XY.");
+
+    APP::path_chaser.ChaseYaw(target_yaw);
+    uint32_t log_tick_yaw = 0;
+
+    while (!APP::path_chaser.IsFinished() && (farcon.toggle[2] != 1))
+    {
+      Vec3 speed_vec = APP::path_chaser.GetCmdBody();
+      Vec3 world_vec = APP::path_chaser.GetCmdWorld();
+
+      APP::chassis.Move(speed_vec, 0.01f);
+
+      if (++log_tick_yaw >= 20)
+      {
+        log_tick_yaw = 0;
+        APP::monit.LogInfo("pt_world_vec(%.3f, %.3f, %.3f)",
+                           world_vec.x, world_vec.y, world_vec.z);
+      }
+      Seq::Wait(0.005f); // 200hz更新频率
+    }
+
+    APP::monit.LogInfo("Move to target Yaw");
   }
   else
   {
-    // 移动底盘到目标点
-    chassis.MoveAt(target_pos);
-    // 普通通过点，也只需要等底盘横移到达即可
-    Seq::WaitUntil([]() -> bool
-                   { return chassis._Walking(); });
+    APP::path_chaser.ChasePos(target_pos);
+    uint32_t log_tick_xy = 0;
+
+    while (!APP::path_chaser.IsFinished() && (farcon.toggle[2] != 1))
+    {
+      Vec3 speed_vec = APP::path_chaser.GetCmdBody();
+      Vec3 world_vec = APP::path_chaser.GetCmdWorld();
+
+      APP::chassis.Move(speed_vec, 0.01f);
+
+      if (++log_tick_xy >= 20)
+      {
+        log_tick_xy = 0;
+        APP::monit.LogInfo("pt_world_vec(%.3f, %.3f, %.3f)",
+                           world_vec.x, world_vec.y, world_vec.z);
+      }
+      Seq::Wait(0.005f); // 200hz更新频率
+    }
+
+    APP::monit.LogInfo("Move to target XY.");
   }
 }
 
@@ -111,7 +171,7 @@ uint8_t rod_id = 0;
 // 状态转移标志位：使取杆再次返回
 bool need_fetch_rod_again = false;
 // 状态转移标志位：进入二区
- bool go_to_area2 = false;
+bool go_to_area2 = false;
 
 static void Wait_ForStart(StateCore *state_core)
 {
@@ -335,15 +395,14 @@ void Action_NavToBlock(StateCore *state_core)
   // 打印日志，确认进入状态
   monit.LogInfo("Naving To Block...");
 
-  // 要求遥控器确认，才跑下一个点
-  while (MOD::farcon.button_first_half[0] != 1)
+  // 要求遥控器确认，才跑下一个点,正常自动 模式
+  while (MOD::farcon.button_first_half[0] != 1&&(farcon.toggle[2]!=1))
   {
     Area2ResponseFarcon();
     Seq::Wait(0.005f);
     if (go_to_area2)
       return;
-    if (manual_area2_lg_pick)
-      return;
+
   }
 
   // 获取当前节点
@@ -403,8 +462,7 @@ void Action_AutoGetBlock(StateCore *state_core)
     Seq::Wait(0.005f);
     if (go_to_area2)
       return;
-    if (manual_area2_lg_pick)
-      return;
+
   }
 
   // 本路点执行完成，进入下一路点
@@ -446,8 +504,7 @@ void ExploringCharmsGragh_Blue_Init(void)
 
   StateBlock &s_auto_pick = EC_Blue_flow.AddState("AutoGetBlocking");
 
-  // 手控取块跑点
-  StateBlock &s_lg_pick = EC_Blue_flow.AddState("LeiGe GetBlocking");
+  
   StateBlock &s_overwait = EC_Blue_flow.AddState("OverWait");
 
   // 一区
@@ -458,7 +515,6 @@ void ExploringCharmsGragh_Blue_Init(void)
   s_move.StateAction = Action_NavToBlock;
   s_auto_pick.StateAction = Action_AutoGetBlock;
 
-  s_lg_pick.StateAction = Action_LgGetBlock;
   // 结束
   s_overwait.StateAction = Action_OverWait;
 
@@ -478,12 +534,6 @@ void ExploringCharmsGragh_Blue_Init(void)
   s_auto_pick.LinkTo(&s_auto_pick.Complete, s_move);
 
   // 手动取块完成进三区,否则继续取块
-  //************************** */ 蕾哥手控模式
-  s_plan.LinkTo(&manual_area2_lg_pick, s_lg_pick);
-  s_move.LinkTo(&manual_area2_lg_pick, s_lg_pick);
-  s_auto_pick.LinkTo(&manual_area2_lg_pick, s_lg_pick);
-  s_lg_pick.LinkTo(&s_lg_pick.Complete, s_lg_pick);
-  s_lg_pick.LinkTo(&is_lg_finish_goal, s_overwait);
 
   // 二区重试
   s_move.LinkTo(&go_to_area2, s_plan);
@@ -590,51 +640,50 @@ static void Area2ResponseFarcon(float velo_k)
   }
   // r1手动二区取块
   // 抬升高度
-if(farcon.toggle[2]==1)
-{
-  if (farcon.button_first_half[4] == 1)
+  if (farcon.toggle[2] == 1)
   {
-    r1block.LiftToNavHeight(200);
+    if (farcon.button_first_half[4] == 1)
+    {
+      r1block.LiftToNavHeight(200);
+    }
+    else if (farcon.button_first_half[5] == 1)
+    {
+      r1block.LiftToNavHeight(400);
+    }
+    else if (farcon.button_first_half[6] == 1)
+    {
+      r1block.LiftToNavHeight(600);
+    }
   }
-  else if (farcon.button_first_half[5] == 1)
+  else
   {
-    r1block.LiftToNavHeight(400);
-  }
-  else if (farcon.button_first_half[6] == 1)
-  {
-    r1block.LiftToNavHeight(600);
+    // 控制矛头
+    if (farcon.button_first_half[3])
+      comm.SendActionCommand(ActionType::SpearUp); // 矛头会向下
+    if (farcon.button_first_half[2])
+      comm.SendActionCommand(ActionType::SpearDown); // 矛头会向上
+    // 控制矛头左右
+    if (farcon.button_first_half[6])
+      comm.SendActionCommand(ActionType::SpearLeft);
+    if (farcon.button_first_half[7])
+      comm.SendActionCommand(ActionType::SpearRight);
+
+    // 发送对接完成
+    if (farcon.button_first_half[4])
+      comm.SendActionCommand(ActionType::DockOK);
+
+    // 发送KFS给R2,这个考虑融在逻辑里自动发
+    if (farcon.button_first_half[5])
+      comm.SendActionCommand(ActionType::SendKFS);
+
+    // 放弃对接
+    if (farcon.button_second_half[0])
+    {
+      comm.SendActionCommand(ActionType::GiveUpDock);
+      // go_to_area2 = true;
+    }
   }
 }
-else 
-{
-  // 控制矛头
-  if (farcon.button_first_half[3])
-    comm.SendActionCommand(ActionType::SpearUp); // 矛头会向下
-  if (farcon.button_first_half[2])
-    comm.SendActionCommand(ActionType::SpearDown); // 矛头会向上
-  // 控制矛头左右
-  if (farcon.button_first_half[6])
-    comm.SendActionCommand(ActionType::SpearLeft);
-  if (farcon.button_first_half[7])
-    comm.SendActionCommand(ActionType::SpearRight);
-
-  // 发送对接完成
-  if (farcon.button_first_half[4])
-    comm.SendActionCommand(ActionType::DockOK);
-
-  // 发送KFS给R2,这个考虑融在逻辑里自动发
-  if (farcon.button_first_half[5])
-    comm.SendActionCommand(ActionType::SendKFS);
-
-  // 放弃对接
-  if (farcon.button_second_half[0])
-  {
-    comm.SendActionCommand(ActionType::GiveUpDock);
-    // go_to_area2 = true;
-  }
-}
-}
-
 
 /**
  * @brief 遥控器能控制的中间时刻
@@ -684,6 +733,5 @@ static void ResponseLgFarcon(float velo_k)
     r1block.LiftToNavHeight(600);
   }
 }
-
 
 #endif

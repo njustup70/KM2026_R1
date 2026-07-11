@@ -299,8 +299,6 @@ void Action_NavToBlock(StateCore *state_core)
     Seq::Wait(0.005f);
     if (go_to_area2)
       return;
-    if (manual_area2_lg_pick)
-      return;
   }
 
   // 获取当前节点
@@ -360,8 +358,6 @@ void Action_AutoGetBlock(StateCore *state_core)
     Area2ResponseFarcon();
     Seq::Wait(0.005f);
     if (go_to_area2)
-      return;
-    if (manual_area2_lg_pick)
       return;
   }
 

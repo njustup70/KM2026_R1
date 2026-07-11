@@ -46,10 +46,6 @@ void TaskLogic::Update()
     }
   }
 
-  if(farcon.toggle[2]==1)
-  {
-    manual_area2_lg_pick=1;
-  }
 
   static int choose_halve = 0;
   choose_halve++;

@@ -839,7 +839,7 @@ void R1Block::NoLiftGet_Block(int auto_flag)
   // 松开夹爪
   Loosen_block();
 
-  chassis.Move(Vec2(0.4,0),1);
+  chassis.Move(Vec2(0.3,0),1);
   Seq::Wait(0.5);
   // 请求人工确认
   while (farcon.button_first_half[0] != 1)
