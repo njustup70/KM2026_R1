@@ -79,10 +79,9 @@ void Action_PrePut(StateCore *core)
     ResponseButtonArea3(1.0f);
     Seq::Wait(0.005f);
   }
-      Seq::Wait(0.5f);
+  Seq::Wait(0.5f);
   state_core.GetCurState()->Complete = true;
 }
-
 
 void Action_Manual_PutBlock(StateCore *state_core)
 {
@@ -99,11 +98,10 @@ void Action_Manual_Pick(StateCore *state_core)
 
 void Action_Lg_Put_Block(StateCore *state_core)
 {
-            put_flag = false;
-      getground_flag = false;
+  put_flag = false;
+  getground_flag = false;
   while (MOD::farcon.button_first_half[0] != 1)
   {
-
     ResponseButtonArea3(1.0f);
     if (farcon.button_middle[3][0] == 1)
     {
@@ -123,6 +121,13 @@ void Action_Lg_Put_Block(StateCore *state_core)
   Seq::Wait(0.5f);
 }
 
+void Action_Assassin_Put(StateCore *state_core)
+{
+
+  
+  state_core->GetCurState()->Complete = true;
+}
+
 // ================================初始化========================================================================
 void HiddenTreasuresGragh_Init(void)
 {
@@ -135,12 +140,17 @@ void HiddenTreasuresGragh_Init(void)
   StateBlock &s_manual_put = HT_flow.AddState("Manual_put");
   StateBlock &s_manual_pick = HT_flow.AddState("Manual_pick");
 
+  StateBlock &s_assassin_put = HT_flow.AddState("ASSASSIN Putting Block");
   //******************************状态函数绑定***********************
   // 正常规划
   s_put_pre.StateAction = Action_PrePut;
   s_Lg_Put.StateAction = Action_Lg_Put_Block;
   s_manual_put.StateAction = Action_Manual_PutBlock;
   s_manual_pick.StateAction = Action_Manual_Pick;
+
+  // 刺客吐块和吐块给R2
+  s_assassin_put.StateAction = Action_Assassin_Put;
+
   //******************************状态切换条件***********************
   // 规划
   s_put_pre.LinkTo(&s_put_pre.Complete, s_manual_put);
@@ -149,6 +159,9 @@ void HiddenTreasuresGragh_Init(void)
 
   s_manual_put.LinkTo(&s_manual_put.Complete, s_Lg_Put);
   s_manual_pick.LinkTo(&s_manual_pick.Complete, s_Lg_Put);
+
+
+
   // // 注册图
   state_core.RegistGraph(HT_flow);
 }
