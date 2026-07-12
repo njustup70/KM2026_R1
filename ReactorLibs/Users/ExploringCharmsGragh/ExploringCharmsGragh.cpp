@@ -634,7 +634,10 @@ static void ResponseFarcon(float velo_k)
   // 1.结束对接,r1跳入planer状态；
   // 2.在取块、跑点的任意响应按键处，r1重新跳入planer，此时可以重新选好kfs块（取过的可以删去）
   if (farcon.button_second_half[2])
+  {
     go_to_area2 = true;
+    chassis.UnlockRotate();
+  }
 
   if (farcon.button_first_half[1])
   {
@@ -644,7 +647,7 @@ static void ResponseFarcon(float velo_k)
 
 static void Area2ResponseFarcon(float velo_k)
 {
-// 解锁底盘的位置闭环，角度闭环仍然由系统控制
+  // 解锁底盘的位置闭环，角度闭环仍然由系统控制
   chassis.UnlockWalk();
 
   // 摇杆直接映射到车体坐标系
@@ -654,7 +657,7 @@ static void Area2ResponseFarcon(float velo_k)
 
   if (!chassis.IsLockRotate())
   {
-    float yaw_spd = -farcon.jys_value[0] * 1.0f / 100.f * 1.5f; 
+    float yaw_spd = -farcon.jys_value[0] * 1.0f / 100.f * 1.5f;
     chassis.Move(Vec3(v_body.x, v_body.y, yaw_spd));
   }
   else

@@ -68,74 +68,53 @@ static void WalkToPathNode(PathNode cur_node)
   int target_xid = cur_node.label;
   float target_yaw = cur_node.target_yaw;
   Vec3 targ_ges(target_pos.x, target_pos.y, target_yaw);
+
   // 判断是否角点
   bool is_backcorner = (target_xid == 7 || target_xid == 11);
-  bool is_frontcorner = (target_xid == 2 || target_xid == 16 || target_xid == 0);
+  bool is_frontcorner = (target_xid == 2 || target_xid == 16);
 
-  // 如果是从一区进入二区的三个点，yaw可以先开始转
-  if (is_frontcorner)
+  // 0号点先转再到点
+  if (target_xid == 0)
   {
-    APP::path_chaser.ChaseGes(targ_ges);
-    uint32_t log_tick = 0;
-
+    APP::path_chaser.ChaseYaw(target_yaw);
     while (!APP::path_chaser.IsFinished() && (farcon.toggle[2] != 1))
     {
       Vec3 speed_vec = APP::path_chaser.GetCmdBody();
-      Vec3 world_vec = APP::path_chaser.GetCmdWorld();
-
       APP::chassis.Move(speed_vec, 0.01f);
 
-      if (++log_tick >= 20)
-      {
-        log_tick = 0;
-        APP::monit.LogInfo("pt_world_vec(%.3f, %.3f, %.3f)",
-                           world_vec.x, world_vec.y, world_vec.z);
-      }
+      Seq::Wait(0.005f); // 200hz更新频率
+    }
+    APP::monit.LogInfo("Move to target Yaw");
+
+    APP::path_chaser.ChasePos(target_pos);
+    while (!APP::path_chaser.IsFinished() && (farcon.toggle[2] != 1))
+    {
+      Vec3 speed_vec = APP::path_chaser.GetCmdBody();
+      APP::chassis.Move(speed_vec, 0.01f);
+
       Seq::Wait(0.005f); // 200hz更新频率
     }
 
-    APP::monit.LogInfo("Move to target gesture.");
   }
-  // 姿态控制：如果是四个角点，调用旋转指令并强等待底盘就位
-  else if (is_backcorner)
+  // 姿态控制：如果是四个角点，调用旋转指令并强等待底盘就位，先到点再自转
+  else if (is_backcorner || is_frontcorner)
   {
     APP::path_chaser.ChasePos(target_pos);
-    uint32_t log_tick_xy = 0;
-
     while (!APP::path_chaser.IsFinished() && (farcon.toggle[2] != 1))
     {
       Vec3 speed_vec = APP::path_chaser.GetCmdBody();
-      Vec3 world_vec = APP::path_chaser.GetCmdWorld();
-
       APP::chassis.Move(speed_vec, 0.01f);
 
-      if (++log_tick_xy >= 20)
-      {
-        log_tick_xy = 0;
-        APP::monit.LogInfo("pt_world_vec(%.3f, %.3f, %.3f)",
-                           world_vec.x, world_vec.y, world_vec.z);
-      }
       Seq::Wait(0.005f); // 200hz更新频率
     }
-
     APP::monit.LogInfo("Move to target XY.");
 
     APP::path_chaser.ChaseYaw(target_yaw);
-    uint32_t log_tick_yaw = 0;
-
     while (!APP::path_chaser.IsFinished() && (farcon.toggle[2] != 1))
     {
       Vec3 speed_vec = APP::path_chaser.GetCmdBody();
-      Vec3 world_vec = APP::path_chaser.GetCmdWorld();
-
       APP::chassis.Move(speed_vec, 0.01f);
 
-      if (++log_tick_yaw >= 20)
-      {
-        log_tick_yaw = 0;
-        APP::monit.LogInfo("pt_world_vec(%.3f, %.3f, %.3f)",
-                           world_vec.x, world_vec.y, world_vec.z);
-      }
       Seq::Wait(0.005f); // 200hz更新频率
     }
 
@@ -426,13 +405,12 @@ void Action_NavToBlock(StateCore *state_core)
   monit.LogInfo("Naving To Block...");
 
   // 要求遥控器确认，才跑下一个点,正常自动 模式
-  while (MOD::farcon.button_first_half[0] != 1&&(farcon.toggle[2]!=1))
+  while (MOD::farcon.button_first_half[0] != 1 && (farcon.toggle[2] != 1))
   {
     Area2ResponseFarcon();
     Seq::Wait(0.005f);
     if (go_to_area2)
       return;
-
   }
 
   // 获取当前节点
@@ -492,7 +470,6 @@ void Action_AutoGetBlock(StateCore *state_core)
     Seq::Wait(0.005f);
     if (go_to_area2)
       return;
-
   }
 
   // 本路点执行完成，进入下一路点
@@ -534,7 +511,6 @@ void ExploringCharmsGragh_Blue_Init(void)
 
   StateBlock &s_auto_pick = EC_Blue_flow.AddState("AutoGetBlocking");
 
-  
   StateBlock &s_overwait = EC_Blue_flow.AddState("OverWait");
 
   // 一区
@@ -637,7 +613,10 @@ static void ResponseFarcon(float velo_k)
   // 1.结束对接,r1跳入planer状态；
   // 2.在取块、跑点的任意响应按键处，r1重新跳入planer，此时可以重新选好kfs块（取过的可以删去）
   if (farcon.button_second_half[2])
+  {
     go_to_area2 = true;
+    chassis.UnlockRotate();
+  }
 
   if (farcon.button_first_half[1])
   {
@@ -647,7 +626,7 @@ static void ResponseFarcon(float velo_k)
 
 static void Area2ResponseFarcon(float velo_k)
 {
-// 解锁底盘的位置闭环，角度闭环仍然由系统控制
+  // 解锁底盘的位置闭环，角度闭环仍然由系统控制
   chassis.UnlockWalk();
 
   // 摇杆直接映射到车体坐标系
@@ -657,7 +636,7 @@ static void Area2ResponseFarcon(float velo_k)
 
   if (!chassis.IsLockRotate())
   {
-    float yaw_spd = -farcon.jys_value[0] * 1.0f / 100.f * 1.5f; 
+    float yaw_spd = -farcon.jys_value[0] * 1.0f / 100.f * 1.5f;
     chassis.Move(Vec3(v_body.x, v_body.y, yaw_spd));
   }
   else
