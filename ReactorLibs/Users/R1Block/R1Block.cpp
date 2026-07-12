@@ -2,7 +2,7 @@
 #include <algorithm>
 #include <cmath>
 #include "farcon.hpp"
-#	include "bsp_hardware.hpp"
+#include "bsp_hardware.hpp"
 #include "StateCore.hpp"
 #include "Sick.hpp"
 #include "bsp_log.hpp"
@@ -19,7 +19,7 @@ R1Block &APP::r1block = R1Block::GetInstance();
 // int push_height_debug = 580000;
 // int release_test_flag = 0;
 // int calm_flag = 0;
-static void Area2ResponseFarconForR1Block(float velo_k = 0.25);
+static void Area2ResponseFarconForR1Block(float velo_k = 1);
 static void Area3ResponseFarconForR1Block(float velo_k = 1);
 extern bool is_prelay_finished;
 int debug_origin = 0;
@@ -751,7 +751,7 @@ void R1Block::Get_Block(int block_height, int auto_flag)
   }
 
   // 等待对准完成，伸出双爪，取块
-  SetTargetStretch(stretch_distance[1]-200000, stretch_distance[1]-200000);
+  SetTargetStretch(stretch_distance[1] - 200000, stretch_distance[1] - 200000);
 
   // 确认两爪到位，检测到最外面到了
   Seq::WaitUntil([&]()
@@ -770,7 +770,7 @@ void R1Block::Get_Block(int block_height, int auto_flag)
   // 取第一个块
   if (now_get_block == 0)
   {
-    SmoothMoveStretchToTarget(stretch_distance[1]-200000, 0, 2, 10);
+    SmoothMoveStretchToTarget(stretch_distance[1] - 200000, 0, 2, 10);
     Seq::Wait(1);
     suckmotor[0].SetSpd(0);
     suckmotor[1].SetSpd(0);
@@ -781,7 +781,7 @@ void R1Block::Get_Block(int block_height, int auto_flag)
   // 取第二个块
   else if (now_get_block == 1)
   {
-    SmoothMoveStretchToTarget(stretch_distance[1]-200000, 0, 2, 10);
+    SmoothMoveStretchToTarget(stretch_distance[1] - 200000, 0, 2, 10);
     Seq::Wait(1);
     suckmotor[0].SetSpd(0);
     suckmotor[1].SetSpd(0);
@@ -790,7 +790,7 @@ void R1Block::Get_Block(int block_height, int auto_flag)
   // 取第三个块
   else if (now_get_block == 2)
   {
-    SmoothMoveStretchToTarget(stretch_distance[1]-200000, stretch_distance[0], 2, 10);
+    SmoothMoveStretchToTarget(stretch_distance[1] - 200000, stretch_distance[0], 2, 10);
     Seq::Wait(1);
     suckmotor[0].SetSpd(0);
     suckmotor[1].SetSpd(0);
@@ -838,10 +838,9 @@ void R1Block::NoLiftGet_Block(int auto_flag)
 
   // 松开夹爪
   Loosen_block();
-  if(auto_flag==1)
+  if (auto_flag == 1)
   {
-  chassis.Move(Vec2(0.2,0),1);
-
+    chassis.Move(Vec2(0.2, 0), 2);
   }
 
   Seq::Wait(0.5);
@@ -864,7 +863,7 @@ void R1Block::NoLiftGet_Block(int auto_flag)
   }
 
   // 等待对准完成，伸出双爪，取块
-  SetTargetStretch(stretch_distance[1]-200000, stretch_distance[1]-200000);
+  SetTargetStretch(stretch_distance[1], stretch_distance[1]);
 
   // 确认两爪到位，检测到最外面到了
   Seq::WaitUntil([&]()
@@ -883,27 +882,31 @@ void R1Block::NoLiftGet_Block(int auto_flag)
   // 取第一个块
   if (no_lift_now_get_block == 0)
   {
-    SmoothMoveStretchToTarget(stretch_distance[1]-200000, 0, 2, 10);
+    SmoothMoveStretchToTarget(stretch_distance[1], 0, 2, 10);
     Seq::Wait(1);
     suckmotor[0].SetSpd(0);
     suckmotor[1].SetSpd(0);
-    Clamp_block(); // 夹紧
-
+    Loosen_block();
+    Seq::Wait(1);
+    Clamp_block();
     return;
   }
   // 取第二个块
   else if (no_lift_now_get_block == 1)
   {
-    SmoothMoveStretchToTarget(stretch_distance[1]-200000, 0, 2, 10);
+    SmoothMoveStretchToTarget(stretch_distance[1], 0, 2, 10);
     Seq::Wait(1);
     suckmotor[0].SetSpd(0);
     suckmotor[1].SetSpd(0);
+    Loosen_block();
+    Seq::Wait(1);
+    Clamp_block();
     return;
   }
   // 取第三个块
   else if (no_lift_now_get_block == 2)
   {
-    SmoothMoveStretchToTarget(stretch_distance[1]-200000, release_strectch_distance[1], 2, 10);
+    SmoothMoveStretchToTarget(stretch_distance[1], release_strectch_distance[1], 2, 10);
     Seq::Wait(1);
     suckmotor[0].SetSpd(0);
     suckmotor[1].SetSpd(0);
@@ -920,7 +923,9 @@ void R1Block::NoLiftGet_Block(int auto_flag)
                    { return (llift_reached && rlift_reached); }); // 检测到抬升到对应位置
     Seq::Wait(2);
   }
-
+  Loosen_block();
+  Seq::Wait(1);
+  Clamp_block();
   // 请求人工确认
   while (farcon.button_first_half[0] != 1)
   {
@@ -1283,37 +1288,36 @@ void R1Block::ManualGetGroundBlock()
     Seq::Wait(0.005f);
   }
 
-  SetTargetStretch(stretch_distance[1]-800000, stretch_distance[1]-800000);
+  SetTargetStretch(stretch_distance[1] - 800000, stretch_distance[1] - 800000);
   suckmotor[0].SetSpd(-0.8 * suck_speed);
   suckmotor[1].SetSpd(0.8 * suck_speed);
   Seq::Wait(1);
-    while (farcon.button_first_half[0] == 0)
+  while (farcon.button_first_half[0] == 0)
   {
     Area3ResponseFarconForR1Block(1);
     Seq::Wait(0.005f);
   }
   Clamp_block(); // 夹紧
   Seq::Wait(1);
-    while (farcon.button_first_half[0] == 0)
+  while (farcon.button_first_half[0] == 0)
   {
     Area3ResponseFarconForR1Block(1);
     Seq::Wait(0.005f);
   }
-  SmoothMoveStretchToTarget(stretch_distance[1]-800000, 0, 2, 10);
+  SmoothMoveStretchToTarget(stretch_distance[1] - 800000, 0, 2, 10);
 
   Seq::Wait(2);
 
   suckmotor[0].SetSpd(0);
   suckmotor[1].SetSpd(0);
 
-      while (farcon.button_first_half[0] == 0)
+  while (farcon.button_first_half[0] == 0)
   {
     Area3ResponseFarconForR1Block(1);
     Seq::Wait(0.005f);
   }
   // 取完块
   SetTargetHeight(realse_block_height, realse_block_height);
-
 }
 
 void R1Block::Maunal_PutBlock()
@@ -1345,7 +1349,6 @@ void R1Block::Maunal_PutBlock()
   SetTargetStretch(0, 0);
 }
 
-
 void R1Block::Action_LiftToHeight(float height)
 {
   // TODO: 根据 height（mm）换算 liftmotor (注意：不是 stretchmotor) 的 total_angle 目标值并下发
@@ -1370,21 +1373,21 @@ static void Area2ResponseFarconForR1Block(float velo_k)
   // 解锁底盘的位置闭环，角度闭环仍然由系统控制
   chassis.UnlockWalk();
 
-  Vec2 v_world;
-  v_world.x = -farcon.jys_value[3] * 1.0f / 100.f * 1.0f * velo_k; // 摇杆向前 -> 场地X正
-  v_world.y = -farcon.jys_value[2] * 1.0f / 100.f * 1.0f * velo_k; // 摇杆向左 -> 场地Y正
-
-  Vec2 v_body = v_world.Rotate(-System.position.z);
+  // 摇杆直接映射到车体坐标系
+  Vec3 v_body;
+  v_body.x = -farcon.jys_value[3] * 1.0f / 100.f * 1.0f * velo_k;
+  v_body.y = -farcon.jys_value[2] * 1.0f / 100.f * 1.0f * velo_k;
 
   if (!chassis.IsLockRotate())
   {
-    float yaw_spd = -farcon.jys_value[0] * 1.0f / 100.f * 1.5f; // 摇杆向左 -> 逆时针旋转
+    float yaw_spd = -farcon.jys_value[0] * 1.0f / 100.f * 1.5f;
     chassis.Move(Vec3(v_body.x, v_body.y, yaw_spd));
   }
   else
   {
     chassis.Move(Vec2(v_body.x, v_body.y));
   }
+
   if (farcon.button_second_half[5] == 1)
   {
     APP::r1block.SetTargetHeight(APP::r1block.blockheight_2_liftmotortargetpos[2], APP::r1block.blockheight_2_liftmotortargetpos[2]);
@@ -1416,7 +1419,7 @@ static void Area3ResponseFarconForR1Block(float velo_k)
     chassis.Move(Vec2(v_body.x, v_body.y));
   }
 
-    // 光通信
+  // 光通信
   // 让r2去放左块
   if (farcon.button_first_half[2])
     comm.SendActionCommand(ActionType::A3R2LayLeftBlock);
