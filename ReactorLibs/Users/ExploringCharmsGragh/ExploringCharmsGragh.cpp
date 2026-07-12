@@ -68,74 +68,52 @@ static void WalkToPathNode(PathNode cur_node)
   int target_xid = cur_node.label;
   float target_yaw = cur_node.target_yaw;
   Vec3 targ_ges(target_pos.x, target_pos.y, target_yaw);
+
   // 判断是否角点
   bool is_backcorner = (target_xid == 7 || target_xid == 11);
-  bool is_frontcorner = (target_xid == 2 || target_xid == 16 || target_xid == 0);
+  bool is_frontcorner = (target_xid == 2 || target_xid == 16);
 
-  // 如果是从一区进入二区的三个点，yaw可以先开始转
-  if (is_frontcorner)
+  // 0号点先转再到点
+  if (target_xid == 0)
   {
-    APP::path_chaser.ChaseGes(targ_ges);
-    uint32_t log_tick = 0;
-
+    APP::path_chaser.ChaseYaw(target_yaw);
     while (!APP::path_chaser.IsFinished() && (farcon.toggle[2] != 1))
     {
       Vec3 speed_vec = APP::path_chaser.GetCmdBody();
-      Vec3 world_vec = APP::path_chaser.GetCmdWorld();
-
       APP::chassis.Move(speed_vec, 0.01f);
 
-      if (++log_tick >= 20)
-      {
-        log_tick = 0;
-        APP::monit.LogInfo("pt_world_vec(%.3f, %.3f, %.3f)",
-                           world_vec.x, world_vec.y, world_vec.z);
-      }
       Seq::Wait(0.005f); // 200hz更新频率
     }
+    APP::monit.LogInfo("Move to target Yaw");
 
-    APP::monit.LogInfo("Move to target gesture.");
+    APP::path_chaser.ChasePos(target_pos);
+    while (!APP::path_chaser.IsFinished() && (farcon.toggle[2] != 1))
+    {
+      Vec3 speed_vec = APP::path_chaser.GetCmdBody();
+      APP::chassis.Move(speed_vec, 0.01f);
+
+      Seq::Wait(0.005f); // 200hz更新频率
+    }
   }
-  // 姿态控制：如果是四个角点，调用旋转指令并强等待底盘就位
-  else if (is_backcorner)
+  // 姿态控制：如果是四个角点，调用旋转指令并强等待底盘就位，先到点再自转
+  else if (is_backcorner || is_frontcorner)
   {
     APP::path_chaser.ChasePos(target_pos);
-    uint32_t log_tick_xy = 0;
-
     while (!APP::path_chaser.IsFinished() && (farcon.toggle[2] != 1))
     {
       Vec3 speed_vec = APP::path_chaser.GetCmdBody();
-      Vec3 world_vec = APP::path_chaser.GetCmdWorld();
-
       APP::chassis.Move(speed_vec, 0.01f);
 
-      if (++log_tick_xy >= 20)
-      {
-        log_tick_xy = 0;
-        APP::monit.LogInfo("pt_world_vec(%.3f, %.3f, %.3f)",
-                           world_vec.x, world_vec.y, world_vec.z);
-      }
       Seq::Wait(0.005f); // 200hz更新频率
     }
-
     APP::monit.LogInfo("Move to target XY.");
 
     APP::path_chaser.ChaseYaw(target_yaw);
-    uint32_t log_tick_yaw = 0;
-
     while (!APP::path_chaser.IsFinished() && (farcon.toggle[2] != 1))
     {
       Vec3 speed_vec = APP::path_chaser.GetCmdBody();
-      Vec3 world_vec = APP::path_chaser.GetCmdWorld();
-
       APP::chassis.Move(speed_vec, 0.01f);
 
-      if (++log_tick_yaw >= 20)
-      {
-        log_tick_yaw = 0;
-        APP::monit.LogInfo("pt_world_vec(%.3f, %.3f, %.3f)",
-                           world_vec.x, world_vec.y, world_vec.z);
-      }
       Seq::Wait(0.005f); // 200hz更新频率
     }
 
@@ -256,9 +234,7 @@ void GoFetchRod(StateCore *state_core)
   // 锁 yaw 角
   chassis.LockYaw(3.14);
 
-  Seq::Wait(1.0f);
-
-  // 再手动微调，锁定yaw角
+  // 在这里手动微调
   while (MOD::farcon.button_first_half[0] != 1)
   {
     ResponseFarcon(0.25f);
@@ -272,17 +248,9 @@ void GoFetchRod(StateCore *state_core)
   // comm.SendActionCommand(ActionType::BOW);
   monit.LogInfo("Bow At:(%.2f,%.2f)", comm.slam_pos.x, comm.slam_pos.y);
 
-  while (MOD::farcon.button_first_half[0] != 1)
-  {
-    ResponseFarcon(0.25f);
-    Seq::Wait(0.005f);
-    if (go_to_area2)
-      return;
-  }
-
   // 前方丝杠锁紧
   comm.SendActionCommand(ActionType::CLAMP);
-  Seq::Wait(2);
+  Seq::Wait(1);
 
   // 机械臂抬起
   comm.SendActionCommand(ActionType::PICK);
@@ -303,6 +271,7 @@ void GoFetchRod(StateCore *state_core)
 
   // 锁定Yaw角，并转手动（本图是红场图）
   chassis.LockYaw(-1.571f);
+  comm.SendActionCommand(ActionType::SendKFS);
 
   // 此处响应按键：
   // 正常情况：发kfs，发光通信让r2松开夹爪，看到松开后，按按键1，r1继续后续的自动动作
@@ -710,6 +679,12 @@ static void Area2ResponseFarcon(float velo_k)
       // go_to_area2 = true;
     }
   }
+
+  if (farcon.button_second_half[2])
+    comm.SendActionCommand(ActionType::CLAMP_2_OFF);
+
+  if (farcon.button_second_half[3])
+    comm.SendActionCommand(ActionType::VerticalRod);
 }
 
 /**

@@ -94,7 +94,6 @@ static void WalkToPathNode(PathNode cur_node)
 
       Seq::Wait(0.005f); // 200hz更新频率
     }
-
   }
   // 姿态控制：如果是四个角点，调用旋转指令并强等待底盘就位，先到点再自转
   else if (is_backcorner || is_frontcorner)
@@ -231,12 +230,8 @@ void GoFetchRod(StateCore *state_core)
     }
   }
 
-  // 先往前怼到杆架子
-  // chassis.Move(Vec3(0.075, 0, 0), 1);
   // 锁 yaw 角
   chassis.LockYaw(3.14);
-
-  Seq::Wait(1.0f);
 
   // 再手动微调，锁定yaw角
   while (MOD::farcon.button_first_half[0] != 1)
@@ -254,17 +249,9 @@ void GoFetchRod(StateCore *state_core)
   // comm.SendActionCommand(ActionType::BOW);
   monit.LogInfo("Bow At:(%.2f,%.2f)", comm.slam_pos.x, comm.slam_pos.y);
 
-  while (MOD::farcon.button_first_half[0] != 1)
-  {
-    ResponseFarcon(0.25f);
-    Seq::Wait(0.005f);
-    if (go_to_area2)
-      return;
-  }
-
   // 前方丝杠锁紧
   comm.SendActionCommand(ActionType::CLAMP);
-  Seq::Wait(2);
+  Seq::Wait(1);
 
   // 机械臂抬起
   comm.SendActionCommand(ActionType::PICK);
@@ -284,6 +271,7 @@ void GoFetchRod(StateCore *state_core)
 
   // 锁定Yaw角，并转手动（本图是蓝场图）
   chassis.LockYaw(1.571f);
+  comm.SendActionCommand(ActionType::SendBlueKFS);
 
   // 此处响应按键：
   // 正常情况：发kfs，发光通信让r2松开夹爪，看到松开后，按按键1，r1继续后续的自动动作
@@ -688,6 +676,12 @@ static void Area2ResponseFarcon(float velo_k)
       // go_to_area2 = true;
     }
   }
+
+  if (farcon.button_second_half[2])
+    comm.SendActionCommand(ActionType::CLAMP_2_OFF);
+
+  if (farcon.button_second_half[3])
+    comm.SendActionCommand(ActionType::VerticalRod);
 }
 
 /**
