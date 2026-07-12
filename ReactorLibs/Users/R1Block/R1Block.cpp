@@ -601,7 +601,7 @@ void R1Block::Aim_Block()
     aim_right = 0;
     Seq::WaitUntil([&]()
                    { return block_detect[1] == 1; }); // 检测到没有块在上面的时候
-    Spd = Vec2{0, -0.04};
+    Spd = Vec2{0, -0.06};
     Seq::Wait(1);
     chassis.Move({0, 0});
     aim_right = 1;
@@ -612,7 +612,7 @@ void R1Block::Aim_Block()
     aim_right = 0;
     Seq::WaitUntil([&]()
                    { return block_detect[0] == 1; }); // 检测到没有块在上面的时候
-    Spd = Vec2{0, 0.04};
+    Spd = Vec2{0, 0.06};
     Seq::Wait(1);
     chassis.Move({0, 0});
 
@@ -840,7 +840,7 @@ void R1Block::NoLiftGet_Block(int auto_flag)
   Loosen_block();
   if (auto_flag == 1)
   {
-    chassis.Move(Vec2(0.2, 0), 2);
+    chassis.Move(Vec2(0.2, 0), 3);
   }
 
   Seq::Wait(0.5);
