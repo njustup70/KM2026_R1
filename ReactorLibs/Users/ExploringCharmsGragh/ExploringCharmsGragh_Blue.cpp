@@ -202,17 +202,47 @@ void GoFetchRod(StateCore *state_core)
   {
     case 0:
     {
-      MOVE::MoveToTargPos(Rod1);
+      // MOVE::MoveToTargPos(Rod1);
+
+      APP::path_chaser.ChasePath(Rod1, true, Vec3(0.01, 0.01, 0.01));
+
+      while ((!APP::path_chaser.IsFinished()) && (farcon.toggle[2] != 1))
+      {
+        Vec3 speed_vec = APP::path_chaser.GetCmdBody();
+        APP::chassis.Move(speed_vec, 0.01);
+
+        Seq::Wait(0.005f); // 200hz更新频率
+      }
       break;
     }
     case 1:
     {
-      MOVE::MoveToTargPos(Rod2);
+      // MOVE::MoveToTargPos(Rod2);
+
+      APP::path_chaser.ChasePath(Rod2, true, Vec3(0.01, 0.01, 0.01));
+
+      while ((!APP::path_chaser.IsFinished()) && (farcon.toggle[2] != 1))
+      {
+        Vec3 speed_vec = APP::path_chaser.GetCmdBody();
+        APP::chassis.Move(speed_vec, 0.01);
+
+        Seq::Wait(0.005f); // 200hz更新频率
+      }
       break;
     }
     case 2:
     {
-      MOVE::MoveToTargPos(Rod3);
+      // MOVE::MoveToTargPos(Rod3);
+
+      APP::path_chaser.ChasePath(Rod3, true, Vec3(0.01, 0.01, 0.01));
+
+      while ((!APP::path_chaser.IsFinished()) && (farcon.toggle[2] != 1))
+      {
+        Vec3 speed_vec = APP::path_chaser.GetCmdBody();
+        APP::chassis.Move(speed_vec, 0.01);
+
+        Seq::Wait(0.005f); // 200hz更新频率
+      }
       break;
     }
     default:
@@ -608,6 +638,11 @@ static void ResponseFarcon(float velo_k)
   // 2.在取块、跑点的任意响应按键处，r1重新跳入planer，此时可以重新选好kfs块（取过的可以删去）
   if (farcon.button_second_half[2])
     go_to_area2 = true;
+
+  if (farcon.button_first_half[1])
+  {
+    chassis.Move(Vec2(0.1, 0), 0.1);
+  }
 }
 
 static void Area2ResponseFarcon(float velo_k)
