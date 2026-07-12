@@ -838,8 +838,12 @@ void R1Block::NoLiftGet_Block(int auto_flag)
 
   // 松开夹爪
   Loosen_block();
+  if(auto_flag==1)
+  {
+  chassis.Move(Vec2(0.2,0),1);
 
-  chassis.Move(Vec2(0.3,0),1);
+  }
+
   Seq::Wait(0.5);
   // 请求人工确认
   while (farcon.button_first_half[0] != 1)
@@ -860,7 +864,7 @@ void R1Block::NoLiftGet_Block(int auto_flag)
   }
 
   // 等待对准完成，伸出双爪，取块
-  SetTargetStretch(stretch_distance[1], stretch_distance[1]);
+  SetTargetStretch(stretch_distance[1]-200000, stretch_distance[1]-200000);
 
   // 确认两爪到位，检测到最外面到了
   Seq::WaitUntil([&]()
