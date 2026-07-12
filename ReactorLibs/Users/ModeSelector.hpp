@@ -14,9 +14,8 @@
 // 3 = Hidden_Treasures九宫藏宝
 // =====================================================
 
-
-#define Current_Mode Mode_Exploring_the_Charms	
-#define Halve Blue_Halve
+#define Current_Mode Mode_KungFu_Master	
+#define Halve Red_Halve
 //用于代码运行时的逻辑切换
 enum Match_Mode
 {
