@@ -92,7 +92,7 @@ public:
   float blockheight_2_liftmotortargetpos[3] = {50000.0f, 460000.0f, 870000.0f};
   float stretch_distance[2] = {2100000, 4200000};
   float release_strectch_distance[2] = {1200000.0f, 2800000};
-  float realse_block_height = 520000;
+  float realse_block_height = 560000;
   volatile int block_detect[2] = {0}; // 左右两边块是否在范围内
   volatile int block_exist[3] = {0};  // 三个位置的块检测
   // ======================== 取块状态机控制 ========================

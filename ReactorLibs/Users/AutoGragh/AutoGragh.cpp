@@ -309,6 +309,8 @@ void Action_Planning(StateCore *state_core)
   }
   farcon.TransmitFarcon(guide_dog_lable, 13);
 
+  go_to_area2 = false;
+
   state_core->GetCurState()->Complete = true;
 
   monit.LogInfo("over plan");
@@ -699,10 +701,16 @@ static void ResponseFarcon(float velo_k)
     need_fetch_rod_again = true;
   // 1.结束对接,r1跳入planer状态；
   // 2.在取块、跑点的任意响应按键处，r1重新跳入planer，此时可以重新选好kfs块（取过的可以删去）
-  if (farcon.button_second_half[2])
+  // ★ 边沿触发（上升沿）：按住不放只触发一次，不会反复置位导致 s_plan↔s_move 死锁翻转
   {
-    go_to_area2 = true;
-    chassis.UnlockRotate();
+    static bool prev_area2_btn = false;
+    bool cur = farcon.button_second_half[2];
+    if (cur && !prev_area2_btn)
+    {
+      go_to_area2 = true;
+      chassis.UnlockRotate();
+    }
+    prev_area2_btn = cur;
   }
 
   if (farcon.button_first_half[1])

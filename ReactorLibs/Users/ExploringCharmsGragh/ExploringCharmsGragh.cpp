@@ -606,6 +606,7 @@ static void ResponseFarcon(float velo_k)
   {
     go_to_area2 = true;
     chassis.UnlockRotate();
+    Seq::Wait(0.5);
   }
 
   if (farcon.button_first_half[1])

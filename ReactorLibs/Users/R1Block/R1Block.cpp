@@ -988,7 +988,7 @@ void R1Block::ReleaseBlock(int auto_flag)
     suckmotor[0].SetSpd(suck_speed * 0.9);
     suckmotor[1].SetSpd(-suck_speed * 0.9);
     // 请求人工确认
-    while (farcon.button_first_half[0] != 1 || (block_exist[0] == 0))
+    while ((farcon.button_first_half[0] != 1) && (block_exist[0] != 0))
     {
       Area3ResponseFarconForR1Block();
       Seq::Wait(0.005f);
@@ -998,6 +998,7 @@ void R1Block::ReleaseBlock(int auto_flag)
     Loosen_block(); // 松
     Seq::Wait(1);
     SetTargetStretch(release_strectch_distance[0] - 400000, release_strectch_distance[0] - 400000);
+        Seq::Wait(2);
     Clamp_block(); // 夹紧
   }
 
@@ -1013,14 +1014,14 @@ void R1Block::ReleaseBlock(int auto_flag)
     Seq::Wait(1);
     Clamp_block();
     // 请求人工确认
-    while (farcon.button_first_half[0] != 1 || (block_exist[1] == 0))
+    while ((farcon.button_first_half[0] != 1) && (block_exist[1] != 0))
     {
       Area3ResponseFarconForR1Block();
       Seq::Wait(0.005f);
     }
     Seq::Wait(0.5f);
     // 请求人工确认
-    while (farcon.button_first_half[0] != 1 || (block_exist[0] == 0))
+    while ((farcon.button_first_half[0] != 1) && (block_exist[0] != 0))
     {
       Area3ResponseFarconForR1Block();
       Seq::Wait(0.005f);
@@ -1038,27 +1039,29 @@ void R1Block::ReleaseBlock(int auto_flag)
     //************************* */ 开始吐第三个块****************************//
     Loosen_block();
     Seq::Wait(1);
+        Clamp_block(); // 夹紧
+            Seq::Wait(1);
     SetTargetStretch(release_strectch_distance[0], release_strectch_distance[0]);
-    Clamp_block(); // 夹紧
+
     suckmotor[0].SetSpd(suck_speed);
     suckmotor[1].SetSpd(-suck_speed);
 
     // 检测块的情况
     //  请求人工确认
-    while (farcon.button_first_half[0] != 1 || (block_exist[2] == 0))
+    while ((farcon.button_first_half[0] != 1) && (block_exist[2] != 0))
     {
       Area3ResponseFarconForR1Block();
       Seq::Wait(0.005f);
     }
     Seq::Wait(0.3f);
-    while (farcon.button_first_half[0] != 1 || (block_exist[1] == 0))
+    while ((farcon.button_first_half[0] != 1) && (block_exist[1] != 0))
     {
       Area3ResponseFarconForR1Block();
       Seq::Wait(0.005f);
     }
     Seq::Wait(0.3f);
     // 请求人工确认
-    while (farcon.button_first_half[0] != 1 || (block_exist[0] == 0))
+    while ((farcon.button_first_half[0] != 1) && (block_exist[0] != 0))
     {
       Area3ResponseFarconForR1Block();
       Seq::Wait(0.005f);
@@ -1068,7 +1071,26 @@ void R1Block::ReleaseBlock(int auto_flag)
     suckmotor[0].SetSpd(0);
     suckmotor[1].SetSpd(0);
     SetTargetStretch(0, 0);
-        Seq::Wait(1);
+    Seq::Wait(1);
+  }else
+  {
+        Loosen_block();
+    Seq::Wait(1);
+    SetTargetStretch(0, 0);
+    Seq::Wait(2);
+    Clamp_block();
+    suckmotor[0].SetSpd(suck_speed * 0.9);
+    suckmotor[1].SetSpd(-suck_speed * 0.9);
+    // 请求人工确认
+    while ((farcon.button_first_half[0] != 1) && (block_exist[0] != 0))
+    {
+      Area3ResponseFarconForR1Block();
+      Seq::Wait(0.005f);
+    }
+    suckmotor[0].SetSpd(0);
+    suckmotor[1].SetSpd(0);
+    Loosen_block(); // 松
+    Seq::Wait(1);
   }
 
 #else
@@ -1110,83 +1132,7 @@ void R1Block::PrePut()
   SmoothMoveLiftToTarget(0, realse_block_height, 3, 100);
   Seq::Wait(1);
 }
-void R1Block::FromMiddleToAny()
-{
-  static int put_dposition = 1;
 
-  while (farcon.button_middle[2][1] != 1)
-  {
-    if (farcon.button_middle[3][0] == 1)
-    {
-      put_dposition = 0;
-    }
-    else if (farcon.button_middle[3][2] == 1)
-    {
-      put_dposition = 2;
-    }
-    else if (farcon.button_middle[3][1] == 1)
-    {
-      put_dposition = 1;
-    }
-    Seq::Wait(0.01);
-  }
-  // 放左边块
-  if (put_dposition == 0)
-  {
-    chassis.MoveRelative({0.2, 0.54});
-    Seq::WaitUntil([&]()
-                   { return (chassis._Walking() == 1); }); // 走到第一个块
-  }
-  // 放右边块
-  else if (put_dposition == 2)
-  {
-    chassis.MoveRelative({0.2, -0.54});
-    Seq::WaitUntil([&]()
-                   { return (chassis._Walking() == 1); }); // 走到第三个块
-  }
-  // 放中间块
-  else if (put_dposition == 1)
-  {
-    chassis.MoveRelative({0.2, 0});
-    Seq::WaitUntil([&]()
-                   { return (chassis._Walking() == 1); }); // 走到第三个块
-  }
-  // 请求人工确认
-  while (farcon.button_first_half[0] == 0)
-  {
-    Area3ResponseFarconForR1Block();
-    Seq::Wait(0.005f);
-  }
-  Seq::Wait(2);
-
-  while (farcon.button_first_half[0] == 0)
-  {
-    chassis.Move({0.1, 0});
-    Seq::Wait(0.05);
-  }
-  chassis.Move({0.00, 0});
-}
-// 后面可以接FromMiddleToAny
-void R1Block::AnyToMiddleGrid()
-{
-  // 需要测试参数
-  chassis.RotateAt(1.57);
-  Seq::WaitUntil([&]()
-                 { return (chassis._Rotating() == 1); });
-
-  chassis.MoveAt({10.75, 4.85});
-}
-
-// 后面可以接FromMiddleToAny
-void R1Block::AnyToMiddleGrid_Blue()
-{
-  // 需要测试参数
-  chassis.RotateAt(-1.57);
-  Seq::WaitUntil([&]()
-                 { return (chassis._Rotating() == 1); });
-
-  chassis.MoveAt({10.75, 1.15});
-}
 
 // 包括吐块和出洞
 void R1Block::PutBlock()
