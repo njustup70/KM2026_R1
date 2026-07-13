@@ -305,7 +305,7 @@ class ChassisType : public Application
          * @return true 
          * @return false 
          */
-        bool IsLockRotate() { return _rotating; }
+        bool IsLockRotate() { return _is_yaw_locked; }
 
         //跟通讯相关 CommCenter
         friend class CommCenter;

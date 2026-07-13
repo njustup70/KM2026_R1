@@ -153,18 +153,15 @@ void ChassisType::Update()
     _ApplyPidTuner();
   }
 
-  bool walking_complete = false; // 这个变量只在这一帧有用
-  bool rotaing_complete = false;
-
   // 实现闭环的地方
   if (_walking || _is_pos_locked)
   {
-    walking_complete = _Walking();
+    _Walking();
   }
 
   if (_rotating || _is_yaw_locked)
   {
-    rotaing_complete = _Rotating();
+    _Rotating();
   }
 
   // 将底盘的 速度targ_speed 上传到各个电机
@@ -623,7 +620,6 @@ bool ChassisType::_Walking()
  */
 bool ChassisType::_Rotating()
 {
-  //_is_pos_locked = true;  // 启用位置锁定
   // 计算旋转向量 （速度Rad / s)
   float rotate_diff = NormalizeAngle(targ_ges.z - System.position.z);
 
