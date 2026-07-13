@@ -60,7 +60,7 @@ StateGraph auto_flow{"AutoGragh"};
 #define Zone3 3
 #define competition 4
 
-#define Run_Zone competition
+#define Run_Zone Zone3
 /**
  * @brief 根据块的ID，获取其对应的取块高度
  *
@@ -449,12 +449,7 @@ void Action_PlanToGrid(StateCore *core)
 void Action_Manual_PutBlock(StateCore *state_core)
 {
   Seq::Wait(0.5f);
-  while (farcon.button_first_half[0] == 0)
-  {
-    ResponseButtonArea3(1);
-    Seq::Wait(0.005f);
-  }
-  r1block.ReleaseBlock(); // 一吐一吸
+  r1block.ReleaseBlock(); // 吐块
 
   state_core->GetCurState()->Complete = true;
 }
@@ -487,6 +482,7 @@ void Action_Lg_Put_Block(StateCore *state_core)
   }
 
   state_core->GetCurState()->Complete = true;
+    Seq::Wait(0.5f);
 }
 
 // ================================初始化========================================================================
