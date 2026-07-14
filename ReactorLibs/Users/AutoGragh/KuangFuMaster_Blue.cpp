@@ -33,7 +33,7 @@ StateGraph blue_kf_flow{"BlueKuangFumaster"};
 static void ResponseFarcon(float velo_k = 1.0f);
 static void ResponseButtonArea3(float velo_k = 1.0f);
 
-static void Area2ResponseFarcon(float velo_k=1.0f);
+static void Area2ResponseFarcon(float velo_k = 1.0f);
 #define Zone1 1
 #define Zone2 2
 #define Zone3 3
@@ -184,52 +184,49 @@ static void Wait_ForStart(StateCore *state_core)
     if (go_to_area2)
       return;
   }
+  state_core->GetCurState()->Complete = true;
 }
 /**
  * @brief 一区取杆逻辑
- *
  * @param state_core
  */
 void GoFetchRod(StateCore *state_core)
 {
   // 进入之后，清空标志位，防止无限循环
   need_fetch_rod_again = false;
+  comm.SendActionCommand(ActionType::BOW);
 
-  MOVE::MoveToTargPos(Rod1);
+  // MOVE::MoveToTargPos(Rod1);
+  APP::path_chaser.ChasePath(Rod1, true, Vec3(0.01, 0.01, 0.01));
 
-  // 先往前怼到杆架子
-  chassis.Move(Vec3(0.075, 0, 0), 1);
+  while ((!APP::path_chaser.IsFinished()) && (farcon.toggle[2] != 1))
+  {
+    Vec3 speed_vec = APP::path_chaser.GetCmdBody();
+    APP::chassis.Move(speed_vec, 0.01);
+
+    Seq::Wait(0.005f); // 200hz更新频率
+  }
+
   // 锁 yaw 角
   chassis.LockYaw(3.14);
 
-  Seq::Wait(1.0f);
-
-  // 再手动微调，锁定yaw角
+  // 在这里手动微调
   while (MOD::farcon.button_first_half[0] != 1)
   {
     ResponseFarcon(0.25f);
     Seq::Wait(0.005f);
+    if (go_to_area2)
+      return;
   }
-  // 停止底盘运动
-  chassis.Move(Vec2(0, 0));
   chassis.UnlockRotate();
 
   // 完成左右位置确定，准备伸出机械臂
-  comm.SendActionCommand(ActionType::BOW);
+  // comm.SendActionCommand(ActionType::BOW);
   monit.LogInfo("Bow At:(%.2f,%.2f)", comm.slam_pos.x, comm.slam_pos.y);
-
-  // 等待机械臂完成取杆
-  Seq::Wait(1);
-
-  while (MOD::farcon.button_first_half[0] != 1)
-  {
-    ResponseFarcon(0.25f);
-    Seq::Wait(0.005f);
-  }
 
   // 前方丝杠锁紧
   comm.SendActionCommand(ActionType::CLAMP);
-  Seq::Wait(2);
+  Seq::Wait(1);
 
   // 机械臂抬起
   comm.SendActionCommand(ActionType::PICK);
@@ -242,11 +239,14 @@ void GoFetchRod(StateCore *state_core)
 
   // 锁定Yaw角，并转手动（本图是蓝场图）
   chassis.LockYaw(1.571f);
+  comm.SendActionCommand(ActionType::SendKFS);
 
   while (MOD::farcon.button_first_half[0] != 1)
   {
     ResponseFarcon(0.5f);
     Seq::Wait(0.005f);
+    if (go_to_area2)
+      return;
   }
   chassis.UnlockRotate();
 
@@ -258,18 +258,12 @@ void GoFetchRod(StateCore *state_core)
   comm.SendActionCommand(ActionType::AWAYFROMDOCK);
   Seq::Wait(0.8);
 
+  // 必须先往前移动一点，使杆完全脱离r2
   chassis.Move(Vec2(1, 0), 0.5);
+  Seq::Wait(0.5);
 
-  // 把杆放平，复用一下Pick
-  comm.SendActionCommand(ActionType::PICK);
-
-  Seq::Wait(1);
-
-  // 这里要加一个倒把手的
-  // 但有风险会掉杆，决定加个按键可以在二区把杆微抬起来，防止捅到对方场地
-  comm.SendActionCommand(ActionType::CLAMP_2_ON);
-
-  monit.LogInfo("ready to area2");
+  // 改成把杆举起来
+  comm.SendActionCommand(ActionType::VerticalRod);
 
   go_to_area2 = true;
 }
@@ -303,17 +297,16 @@ void Action_Planning(StateCore *state_core)
 
   monit.LogOK("get path from PC! Now decode.");
 
-  uint8_t guide_dog_lable[13];
-  guide_dog_lable[0] = 0x67;
-  guide_dog_lable[1] = 0x21;
-  for (int i = 0; i < 11; i++)
-  {
-    guide_dog_lable[i + 2] = guide_dog[i].label;
-  }
-  farcon.TransmitFarcon(guide_dog_lable, 13);
+  // uint8_t guide_dog_lable[13];
+  // guide_dog_lable[0] = 0x67;
+  // guide_dog_lable[1] = 0x21;
+  // for (int i = 0; i < 11; i++)
+  // {
+  //   guide_dog_lable[i + 2] = guide_dog[i].label;
+  // }
+  // farcon.TransmitFarcon(guide_dog_lable, 13);
 
   state_core->GetCurState()->Complete = true;
-
   monit.LogInfo("over plan");
 }
 
@@ -335,8 +328,8 @@ void Action_NavToBlock(StateCore *state_core)
     Seq::Wait(0.005f);
     if (go_to_area2)
       return;
-
   }
+
   // 获取当前节点
   PathNode cur_node = guide_dog[guide_dog_index];
 
@@ -386,7 +379,7 @@ void Action_AutoGetBlock(StateCore *state_core)
   monit.LogInfo("Try to Get Block");
 
   // 自动取块
-  r1block.Get_Block(target_height, 1);
+  r1block.NoLiftGet_Block(1);
 
   // 要求遥控器确认，才跑下一个点
   while (MOD::farcon.button_first_half[0] != 1)
@@ -441,8 +434,8 @@ void Action_PlanToGrid(StateCore *core)
 }
 void Action_Manual_PutBlock(StateCore *state_core)
 {
-        Seq::Wait(0.5f);
-    while (farcon.button_first_half[0] == 0)
+  Seq::Wait(0.5f);
+  while (farcon.button_first_half[0] == 0)
   {
     ResponseButtonArea3(1);
     Seq::Wait(0.005f);
@@ -460,11 +453,10 @@ void Action_Manual_Pick(StateCore *state_core)
 
 void Action_Lg_Put_Block(StateCore *state_core)
 {
-            put_flag = false;
-      getground_flag = false;
+  put_flag = false;
+  getground_flag = false;
   while (MOD::farcon.button_first_half[0] != 1)
   {
-
     ResponseButtonArea3(0.6f);
     if (farcon.button_middle[3][0] == 1)
     {
@@ -545,7 +537,6 @@ void KuangFuMaster_Blue_Init(void)
   // 跳转条件
   s_lay_pre.LinkTo(&s_lay_pre.Complete, s_plantogrid);
   s_plantogrid.LinkTo(&s_plantogrid.Complete, s_Lg_Put);
-
 
   s_Lg_Put.LinkTo(&put_flag, s_manual_put);
   s_Lg_Put.LinkTo(&getground_flag, s_manual_pick);
@@ -672,10 +663,7 @@ static void ResponseFarcon(float velo_k)
   // r1得再去取杆
   if (farcon.button_second_half[2])
     need_fetch_rod_again = true;
-
 }
-
-
 
 static void Area2ResponseFarcon(float velo_k)
 {
@@ -720,7 +708,6 @@ static void Area2ResponseFarcon(float velo_k)
     r1block.LiftToNavHeight(600);
   }
 }
-
 
 void ResponseButtonArea3(float velo_k)
 {
