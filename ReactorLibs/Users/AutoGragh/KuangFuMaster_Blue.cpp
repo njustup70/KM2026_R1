@@ -91,41 +91,80 @@ static void WalkToPathNode(PathNode cur_node)
   Vec2 target_pos = cur_node.pos;
   int target_xid = cur_node.label;
   float target_yaw = cur_node.target_yaw;
+  Vec3 targ_ges(target_pos.x, target_pos.y, target_yaw);
 
   // 判断是否角点
   bool is_backcorner = (target_xid == 7 || target_xid == 11);
-  bool is_frontcorner = (target_xid == 2 || target_xid == 16 || target_xid == 0);
+  bool is_frontcorner = (target_xid == 2 || target_xid == 16);
 
-  // 如果是从一区进入二区的三个点，yaw可以先开始转
-  if (is_frontcorner)
+  // 0号点先转再到点
+  if (target_xid == 0)
   {
-    // 移动底盘到目标点
-    chassis.MoveAt(target_pos);
-    // 同时调整yaw
-    chassis.RotateAt(target_yaw);
-    Seq::WaitUntil([]() -> bool
-                   { return (chassis._Walking() && chassis._Rotating()); });
+    APP::path_chaser.ChaseYaw(target_yaw);
+    while (!APP::path_chaser.IsFinished() && (farcon.toggle[2] != 1))
+    {
+      Vec3 speed_vec = APP::path_chaser.GetCmdBody();
+      APP::chassis.Move(speed_vec, 0.01f);
+
+      Seq::Wait(0.005f); // 200hz更新频率
+    }
+    APP::monit.LogInfo("Move to target Yaw");
+
+    APP::path_chaser.ChasePos(target_pos);
+    while (!APP::path_chaser.IsFinished() && (farcon.toggle[2] != 1))
+    {
+      Vec3 speed_vec = APP::path_chaser.GetCmdBody();
+      APP::chassis.Move(speed_vec, 0.01f);
+
+      Seq::Wait(0.005f); // 200hz更新频率
+    }
   }
-  // 姿态控制：如果是四个角点，调用旋转指令并强等待底盘就位
-  if (is_backcorner)
+  // 姿态控制：如果是四个角点，调用旋转指令并强等待底盘就位，先到点再自转
+  else if (is_backcorner || is_frontcorner)
   {
-    chassis.MoveAt(target_pos);
-    // 强等待底盘横移就位
-    Seq::WaitUntil([]() -> bool
-                   { return chassis._Walking(); });
-    // 调整yaw
-    chassis.RotateAt(target_yaw);
-    // 强等待旋转就位
-    Seq::WaitUntil([]() -> bool
-                   { return chassis._Rotating(); });
+    APP::path_chaser.ChasePos(target_pos);
+    while (!APP::path_chaser.IsFinished() && (farcon.toggle[2] != 1))
+    {
+      Vec3 speed_vec = APP::path_chaser.GetCmdBody();
+      APP::chassis.Move(speed_vec, 0.01f);
+
+      Seq::Wait(0.005f); // 200hz更新频率
+    }
+    APP::monit.LogInfo("Move to target XY.");
+
+    APP::path_chaser.ChaseYaw(target_yaw);
+    while (!APP::path_chaser.IsFinished() && (farcon.toggle[2] != 1))
+    {
+      Vec3 speed_vec = APP::path_chaser.GetCmdBody();
+      APP::chassis.Move(speed_vec, 0.01f);
+
+      Seq::Wait(0.005f); // 200hz更新频率
+    }
+
+    APP::monit.LogInfo("Move to target Yaw");
   }
   else
   {
-    // 移动底盘到目标点
-    chassis.MoveAt(target_pos);
-    // 普通通过点，也只需要等底盘横移到达即可
-    Seq::WaitUntil([]() -> bool
-                   { return chassis._Walking(); });
+    APP::path_chaser.ChasePos(target_pos);
+    uint32_t log_tick_xy = 0;
+
+    while (!APP::path_chaser.IsFinished() && (farcon.toggle[2] != 1))
+    {
+      Vec3 speed_vec = APP::path_chaser.GetCmdBody();
+      Vec3 world_vec = APP::path_chaser.GetCmdWorld();
+
+      APP::chassis.Move(speed_vec, 0.01f);
+
+      if (++log_tick_xy >= 20)
+      {
+        log_tick_xy = 0;
+        APP::monit.LogInfo("pt_world_vec(%.3f, %.3f, %.3f)",
+                           world_vec.x, world_vec.y, world_vec.z);
+      }
+      Seq::Wait(0.005f); // 200hz更新频率
+    }
+
+    APP::monit.LogInfo("Move to target XY.");
   }
 }
 
@@ -723,9 +762,5 @@ void ResponseButtonArea3(float velo_k)
   // 戳完放平
   if (farcon.button_second_half[7])
     comm.SendActionCommand(ActionType::GuardRod);
-
-
-  
-
 }
 #endif

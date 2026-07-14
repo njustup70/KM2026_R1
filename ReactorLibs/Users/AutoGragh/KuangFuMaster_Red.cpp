@@ -60,7 +60,7 @@ StateGraph auto_flow{"AutoGragh"};
 #define Zone3 3
 #define competition 4
 
-#define Run_Zone Zone3
+#define Run_Zone competition
 /**
  * @brief 根据块的ID，获取其对应的取块高度
  *
@@ -300,19 +300,16 @@ void Action_Planning(StateCore *state_core)
 
   monit.LogOK("get path from PC! Now decode.");
 
-  uint8_t guide_dog_lable[13];
-  guide_dog_lable[0] = 0x67;
-  guide_dog_lable[1] = 0x21;
-  for (int i = 0; i < 11; i++)
-  {
-    guide_dog_lable[i + 2] = guide_dog[i].label;
-  }
-  farcon.TransmitFarcon(guide_dog_lable, 13);
-
-  go_to_area2 = false;
+  // uint8_t guide_dog_lable[13];
+  // guide_dog_lable[0] = 0x67;
+  // guide_dog_lable[1] = 0x21;
+  // for (int i = 0; i < 11; i++)
+  // {
+  //   guide_dog_lable[i + 2] = guide_dog[i].label;
+  // }
+  // farcon.TransmitFarcon(guide_dog_lable, 13);
 
   state_core->GetCurState()->Complete = true;
-
   monit.LogInfo("over plan");
 }
 
