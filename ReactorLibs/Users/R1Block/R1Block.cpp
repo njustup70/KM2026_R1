@@ -708,25 +708,15 @@ void R1Block::Get_Block(int block_height, int auto_flag)
     now_get_block = 2;
   }
 
-  // 如果中间的取块机构高度没变化，就不需要抬升
-  if (last_height != block_height)
-  {
-    // 获取对应高度的电机PosCode
-    lift_target_pos = trans_height(block_height);
-
-    // 抬升至对应位置
-    SmoothMoveLiftToTarget(trans_height(last_height), lift_target_pos, 1.5);
-
-    // 更新历史量
-    last_height = block_height;
-
-    // 等到抬升完成
-    Seq::WaitUntil([&]()
-                   { return (llift_reached && rlift_reached); }); // 检测到抬升到对应位置
-  }
+  // 获取对应高度的电机PosCode
+  lift_target_pos = trans_height(block_height);
+  SetTargetHeight(lift_target_pos, lift_target_pos);
+  // 等到抬升完成
+  Seq::WaitUntil([&]()
+                 { return (llift_reached && rlift_reached); }); // 检测到抬升到对应位置
 
   // 此时，确认高度正确
-  chassis.Move({0.2, 0}, 2);
+  chassis.Move({0.3, 0}, 2);
 
   // 等待 2 秒，确保块被吸住
   Seq::Wait(2);
@@ -790,7 +780,7 @@ void R1Block::Get_Block(int block_height, int auto_flag)
   // 取第三个块
   else if (now_get_block == 2)
   {
-    SmoothMoveStretchToTarget(stretch_distance[1] - 200000, stretch_distance[0], 2, 10);
+    SmoothMoveStretchToTarget(stretch_distance[1] - 200000, stretch_distance[0] + 200000, 2, 10);
     Seq::Wait(1);
     suckmotor[0].SetSpd(0);
     suckmotor[1].SetSpd(0);
@@ -801,8 +791,7 @@ void R1Block::Get_Block(int block_height, int auto_flag)
       SmoothMoveStretchToTarget(stretch_distance[0], 2, 0);
       Seq::Wait(1);
     }
-    SmoothMoveLiftToTarget(trans_height(last_height), trans_height(600), 3);
-    last_height = 600;
+    SetTargetHeight(trans_height(600) + 20000, trans_height(600) + 20000);
     Seq::WaitUntil([&]()
                    { return (llift_reached && rlift_reached); }); // 检测到抬升到对应位置
     Seq::Wait(2);
@@ -917,8 +906,9 @@ void R1Block::NoLiftGet_Block(int auto_flag)
       SmoothMoveStretchToTarget(stretch_distance[0], 0, 0);
       Seq::Wait(1);
     }
-    SmoothMoveLiftToTarget(trans_height(last_height), trans_height(600), 3);
-    last_height = 600;
+    SetTargetHeight(trans_height(600)+20000, trans_height(600)+20000);
+    // SmoothMoveLiftToTarget(trans_height(last_height), trans_height(600), 3);
+    // last_height = 600;
     Seq::WaitUntil([&]()
                    { return (llift_reached && rlift_reached); }); // 检测到抬升到对应位置
     Seq::Wait(2);
@@ -998,7 +988,7 @@ void R1Block::ReleaseBlock(int auto_flag)
     Loosen_block(); // 松
     Seq::Wait(1);
     SetTargetStretch(release_strectch_distance[0] - 400000, release_strectch_distance[0] - 400000);
-        Seq::Wait(2);
+    Seq::Wait(2);
     Clamp_block(); // 夹紧
   }
 
@@ -1039,8 +1029,8 @@ void R1Block::ReleaseBlock(int auto_flag)
     //************************* */ 开始吐第三个块****************************//
     Loosen_block();
     Seq::Wait(1);
-        Clamp_block(); // 夹紧
-            Seq::Wait(1);
+    Clamp_block(); // 夹紧
+    Seq::Wait(1);
     SetTargetStretch(release_strectch_distance[0], release_strectch_distance[0]);
 
     suckmotor[0].SetSpd(suck_speed);
@@ -1072,9 +1062,10 @@ void R1Block::ReleaseBlock(int auto_flag)
     suckmotor[1].SetSpd(0);
     SetTargetStretch(0, 0);
     Seq::Wait(1);
-  }else
+  }
+  else
   {
-        Loosen_block();
+    Loosen_block();
     Seq::Wait(1);
     SetTargetStretch(0, 0);
     Seq::Wait(2);
@@ -1132,7 +1123,6 @@ void R1Block::PrePut()
   SmoothMoveLiftToTarget(0, realse_block_height, 3, 100);
   Seq::Wait(1);
 }
-
 
 // 包括吐块和出洞
 void R1Block::PutBlock()
