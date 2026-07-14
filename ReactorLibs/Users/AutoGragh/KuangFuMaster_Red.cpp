@@ -1,12 +1,12 @@
 /**
- * @file AutoGraph.cpp
+ * @file KuangFuMaster_Red.cpp
  * @author @all-mx
  * @brief RC26赛季武林探秘的电控状态机逻辑实现:半自动模式
  */
 #include "ModeSelector.hpp"
 #if Current_Mode == Mode_KungFu_Master && Halve == Red_Halve // AutoGraph武林探秘
 
-#include "AutoGragh.hpp"
+#include "KuangFuMaster_Red.hpp"
 #include "PathPlaner.hpp"
 #include "System.hpp"
 #include "Chassis.hpp"
@@ -18,7 +18,7 @@
 
 // 加入PATHS
 #include "rod1.hpp"
-#include "a1_todock.hpp"
+#include "a1_todock3.hpp"
 
 #include "a3_red_hid_come_in_gentle.hpp"
 #include "a3_red_hid_wall_to_grid_gentle.hpp"

@@ -8,7 +8,8 @@
 #include "PathChaser.hpp"
 #include "farcon.hpp"
 #include "ManuGragh.hpp"
-#include "Autogragh.hpp"
+#include "KuangFuMaster_Red.hpp"
+#include "KuangFuMaster_Blue.hpp"
 #include "HiddenTreasuresGragh.hpp"
 #include "ExploringCharmsGragh.hpp"
 #include "ExploringCharmsGragh_Blue.hpp"
@@ -43,35 +44,28 @@ void MainFrameCpp()
   System.RegistApp(APP::comm);
   System.RegistApp(APP::path_chaser);
 
-
-
 // 1.简并模式测试用
 #if Current_Mode == Mode_Test_Degenerate
   test.Degenerate(ActionDege);
   state_core.RegistGraph(test);
-#elif Current_Mode==Mode_KungFu_Master && Halve == Red_Halve
-AutoGragh_Init(); 
-#elif Current_Mode==Mode_KungFu_Master && Halve == Blue_Halve
+  
+#elif Current_Mode == Mode_KungFu_Master && Halve == Red_Halve
+  AutoGragh_Init();
+#elif Current_Mode == Mode_KungFu_Master && Halve == Blue_Halve
+  KuangFuMaster_Blue_Init();
 
 // 3.崇武探幽
 #elif Current_Mode == Mode_Exploring_the_Charms && Halve == Red_Halve
   ExploringCharmsGragh_Init();
-
 #elif Current_Mode == Mode_Exploring_the_Charms && Halve == Blue_Halve
   ExploringCharmsGragh_Blue_Init();
-
-// 3.崇武探幽
-#elif Current_Mode == Mode_Exploring_the_Charms
-  ExploringCharmsGragh_Init();
 
 // 4.九宫藏宝
 #elif Current_Mode == Mode_Hidden_Treasures && Halve == Red_Halve
   HiddenTreasuresGragh_Init();
 #elif Current_Mode == Mode_Hidden_Treasures && Halve == Blue_Halve
   HiddenTreasuresGragh_Blue_Init();
-	
-	
-	
+
 #endif
 
   APP::state_core.Enable(0); // 启动状态机核心，指定初始状态图为0号图 3

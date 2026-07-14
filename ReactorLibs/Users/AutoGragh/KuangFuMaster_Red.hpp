@@ -1,5 +1,5 @@
-#ifndef _AUTOGRAGH_HPP_
-#define _AUTOGRAGH_HPP_
+#ifndef _KUANGFUMASTER_RED_HPP_
+#define _KUANGFUMASTER_RED_HPP_
 #pragma once
 #include <cstdint>
 #include "System.hpp"
