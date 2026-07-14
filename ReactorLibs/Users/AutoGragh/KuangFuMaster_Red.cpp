@@ -173,6 +173,8 @@ uint8_t rod_id = 0;
 bool need_fetch_rod_again = false;
 // 状态转移标志位：进入二区
 bool go_to_area2 = false;
+// 状态转移标志位：进入三区
+bool go_to_area3 = false;
 
 static void Wait_ForStart(StateCore *state_core)
 {
@@ -182,14 +184,14 @@ static void Wait_ForStart(StateCore *state_core)
     Seq::Wait(0.005f);
     if (go_to_area2)
       return;
+    if (go_to_area3)
+      return;
   }
-
   state_core->GetCurState()->Complete = true;
 }
 
 /**
  * @brief 一区取杆逻辑
- *
  * @param state_core
  */
 void GoFetchRod(StateCore *state_core)
@@ -331,6 +333,8 @@ void Action_NavToBlock(StateCore *state_core)
     Seq::Wait(0.005f);
     if (go_to_area2)
       return;
+    if (go_to_area3) // 说明了如果切手动就没法gotoarea3?
+      return;
   }
 
   // 获取当前节点
@@ -381,7 +385,7 @@ void Action_AutoGetBlock(StateCore *state_core)
   // 打印调试日志
   monit.LogInfo("Try to Get Block");
 
-   // 自动取块
+  // 自动取块
   r1block.NoLiftGet_Block(1);
 
   // 要求遥控器确认，才跑下一个点
@@ -390,6 +394,8 @@ void Action_AutoGetBlock(StateCore *state_core)
     Area2ResponseFarcon();
     Seq::Wait(0.005f);
     if (go_to_area2)
+      return;
+    if (go_to_area3)
       return;
   }
 
@@ -409,6 +415,20 @@ void Action_LgGetBlock(StateCore *state_core)
 }
 
 //**************************************三区状态块*******************************************************//
+void Action_PreArea3(StateCore *core)
+{
+  monit.LogInfo("Try to PreArea3");
+  go_to_area3 = false;
+  comm.SendActionCommand(ActionType::GuardRod);
+
+  while (MOD::farcon.button_first_half[0] != 1)
+  {
+    ResponseButtonArea3(1.0f);
+    Seq::Wait(0.005f);
+  }
+
+  state_core.GetCurState()->Complete = true;
+}
 
 void Action_PreLay(StateCore *core)
 {
@@ -428,20 +448,19 @@ void Action_PlanToGrid(StateCore *core)
   r1block.Clamp_block();
   while (MOD::farcon.button_first_half[0] != 1)
   {
-    ResponseButtonArea3(0.6f);
+    ResponseButtonArea3(1.0f);
     Seq::Wait(0.005f);
   }
   Seq::Wait(1);
-  r1block.SmoothMoveLiftToTarget(r1block.blockheight_2_liftmotortargetpos[2], r1block.realse_block_height, 3, 100);
-
+  r1block.SetTargetHeight(r1block.realse_block_height, r1block.realse_block_height);
 #endif
 
-  while (MOD::farcon.button_first_half[0] != 1)
-  {
-    ResponseButtonArea3(0.6f);
-    Seq::Wait(0.005f);
-  }
-  MOVE::MoveToTargPos(Red_KF_Are3_PlanPath); // 从重试点到贴着墙
+  // while (MOD::farcon.button_first_half[0] != 1)
+  // {
+  //   ResponseButtonArea3(0.6f);
+  //   Seq::Wait(0.005f);
+  // }
+  // MOVE::MoveToTargPos(Red_KF_Are3_PlanPath); // 从重试点到贴着墙
   state_core.GetCurState()->Complete = true;
 }
 
@@ -465,7 +484,7 @@ void Action_Lg_Put_Block(StateCore *state_core)
   getground_flag = false;
   while (MOD::farcon.button_first_half[0] != 1)
   {
-    ResponseButtonArea3(0.6f);
+    ResponseButtonArea3(1.0f);
     if (farcon.button_middle[3][0] == 1)
     {
       put_flag = true;
@@ -481,7 +500,7 @@ void Action_Lg_Put_Block(StateCore *state_core)
   }
 
   state_core->GetCurState()->Complete = true;
-    Seq::Wait(0.5f);
+  Seq::Wait(0.5f);
 }
 
 // ================================初始化========================================================================
@@ -555,7 +574,6 @@ void AutoGragh_Init(void)
 
 #elif Run_Zone == competition
   // 全跑
-
   // 一区
   StateBlock &s_wait = auto_flow.AddState("WaitForStart");
   StateBlock &s_fetch_rod = auto_flow.AddState("Fetch_Rod");
@@ -565,6 +583,9 @@ void AutoGragh_Init(void)
   StateBlock &s_move = auto_flow.AddState("NavtoBlock");
 
   StateBlock &s_auto_pick = auto_flow.AddState("AutoGetBlocking");
+
+  // 二区进三区
+  StateBlock &s_prearea3 = auto_flow.AddState("GotoArea3");
 
   // 手控取块跑点
   StateBlock &s_lg_pick = auto_flow.AddState("LeiGe GetBlocking");
@@ -586,37 +607,37 @@ void AutoGragh_Init(void)
   s_auto_pick.StateAction = Action_AutoGetBlock;
 
   s_lg_pick.StateAction = Action_LgGetBlock;
-  // 三区
 
+  // 三区
+  s_prearea3.StateAction = Action_PreArea3;
   s_plantogrid.StateAction = Action_PlanToGrid;
   s_Lg_Put.StateAction = Action_Lg_Put_Block;
   s_manual_put.StateAction = Action_Manual_PutBlock;
   s_manual_pick.StateAction = Action_Manual_Pick;
 
   // 状态转移关系
-  // 一 区
   s_wait.LinkTo(&s_wait.Complete, s_fetch_rod); // 等待开始
-  /****   一区取杆    ****/
-  s_fetch_rod.LinkTo(&need_fetch_rod_again, s_fetch_rod);
+  s_wait.LinkTo(&go_to_area2, s_plan);
+  s_wait.LinkTo(&go_to_area3, s_prearea3);
+
+  // s_fetch_rod.LinkTo(&need_fetch_rod_again, s_fetch_rod);
   s_fetch_rod.LinkTo(&go_to_area2, s_plan);
+
   // 二区
   s_plan.LinkTo(&s_plan.Complete, s_move);       // 规划路径
   s_move.LinkTo(&is_ready_to_pick, s_auto_pick); // 取块
-
   s_auto_pick.LinkTo(&s_auto_pick.Complete, s_move);
   s_move.LinkTo(&is_final_goal_reached, s_plantogrid); // 等待
 
-  // 手动取块完成进三区,否则继续取块
-  //************************** */ 蕾哥手控模式
-  s_plan.LinkTo(&manual_area2_lg_pick, s_lg_pick);
-  s_move.LinkTo(&manual_area2_lg_pick, s_lg_pick);
-  s_auto_pick.LinkTo(&manual_area2_lg_pick, s_lg_pick);
-  s_lg_pick.LinkTo(&s_lg_pick.Complete, s_lg_pick);
-  s_lg_pick.LinkTo(&is_lg_finish_goal, s_plantogrid);
-
   // 二区重试
-  s_move.LinkTo(&go_to_area2, s_plan);
-  s_auto_pick.LinkTo(&go_to_area2, s_plan);
+  // s_move.LinkTo(&go_to_area2, s_plan);
+  // s_auto_pick.LinkTo(&go_to_area2, s_plan);
+
+  // 二区直接进三区
+  s_move.LinkTo(&go_to_area3, s_prearea3);
+  s_auto_pick.LinkTo(&go_to_area3, s_prearea3);
+  s_lg_pick.LinkTo(&go_to_area3, s_prearea3);
+  s_prearea3.LinkTo(&s_prearea3.Complete, s_plantogrid);
 
   // 三区
   s_plantogrid.LinkTo(&s_plantogrid.Complete, s_Lg_Put);
@@ -627,6 +648,13 @@ void AutoGragh_Init(void)
 
   s_manual_put.LinkTo(&s_manual_put.Complete, s_Lg_Put);
   s_manual_pick.LinkTo(&s_manual_pick.Complete, s_Lg_Put);
+
+  // 三区可以进入这个状态
+  //    //************************** */ 蕾哥手控模式
+  //  s_plan.LinkTo(&manual_area2_lg_pick, s_lg_pick);
+  //  s_move.LinkTo(&manual_area2_lg_pick, s_lg_pick);
+  //  s_auto_pick.LinkTo(&manual_area2_lg_pick, s_lg_pick);
+  //  s_lg_pick.LinkTo(&s_lg_pick.Complete, s_lg_pick);
 
 #endif
 
@@ -682,34 +710,28 @@ static void ResponseFarcon(float velo_k)
   // 发送对接完成
   if (farcon.button_first_half[4])
     comm.SendActionCommand(ActionType::DockOK);
-
   // 发送KFS给R2,这个考虑融在逻辑里自动发
   if (farcon.button_first_half[5])
     comm.SendActionCommand(ActionType::SendKFS);
-
   // 放弃对接
   if (farcon.button_second_half[0])
-  {
     comm.SendActionCommand(ActionType::GiveUpDock);
-    // go_to_area2 = true;
-  }
-  // r1得再去取杆
+
+  // // r1得再去取杆
+  // if (farcon.button_second_half[1])
+  //   need_fetch_rod_again = true;
+
   if (farcon.button_second_half[1])
-    need_fetch_rod_again = true;
-  // 1.结束对接,r1跳入planer状态；
-  // 2.在取块、跑点的任意响应按键处，r1重新跳入planer，此时可以重新选好kfs块（取过的可以删去）
-  // ★ 边沿触发（上升沿）：按住不放只触发一次，不会反复置位导致 s_plan↔s_move 死锁翻转
   {
-    static bool prev_area2_btn = false;
-    bool cur = farcon.button_second_half[2];
-    if (cur && !prev_area2_btn)
-    {
-      go_to_area2 = true;
-      chassis.UnlockRotate();
-    }
-    prev_area2_btn = cur;
+    go_to_area2 = true;
+    chassis.UnlockRotate();
   }
 
+  if (farcon.button_second_half[5])
+  {
+    go_to_area3 = true;
+    chassis.UnlockRotate();
+  }
   if (farcon.button_first_half[1])
   {
     chassis.Move(Vec2(0.1, 0), 0.1);
@@ -718,7 +740,7 @@ static void ResponseFarcon(float velo_k)
 
 static void Area2ResponseFarcon(float velo_k)
 {
-   // 解锁底盘的位置闭环，角度闭环仍然由系统控制
+  // 解锁底盘的位置闭环，角度闭环仍然由系统控制
   chassis.UnlockWalk();
 
   // 摇杆直接映射到车体坐标系
@@ -755,17 +777,6 @@ static void Area2ResponseFarcon(float velo_k)
   }
   else
   {
-    // 控制矛头
-    if (farcon.button_first_half[3])
-      comm.SendActionCommand(ActionType::SpearUp); // 矛头会向下
-    if (farcon.button_first_half[2])
-      comm.SendActionCommand(ActionType::SpearDown); // 矛头会向上
-    // 控制矛头左右
-    if (farcon.button_first_half[6])
-      comm.SendActionCommand(ActionType::SpearLeft);
-    if (farcon.button_first_half[7])
-      comm.SendActionCommand(ActionType::SpearRight);
-
     // 发送对接完成
     if (farcon.button_first_half[4])
       comm.SendActionCommand(ActionType::DockOK);
@@ -782,11 +793,11 @@ static void Area2ResponseFarcon(float velo_k)
     }
   }
 
-  if (farcon.button_second_half[2])
-    comm.SendActionCommand(ActionType::CLAMP_2_OFF);
-
-  if (farcon.button_second_half[3])
-    comm.SendActionCommand(ActionType::VerticalRod);
+  if (farcon.button_second_half[5])
+  {
+        go_to_area3 = true;
+    chassis.UnlockRotate();
+  }
 }
 
 void ResponseButtonArea3(float velo_k)

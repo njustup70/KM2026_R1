@@ -1351,14 +1351,14 @@ static void Area2ResponseFarconForR1Block(float velo_k)
     chassis.Move(Vec2(v_body.x, v_body.y));
   }
 
-  if (farcon.button_second_half[5] == 1)
-  {
-    APP::r1block.SetTargetHeight(APP::r1block.blockheight_2_liftmotortargetpos[2], APP::r1block.blockheight_2_liftmotortargetpos[2]);
-    APP::r1block.last_height = 600;
-    Seq::WaitUntil([&]()
-                   { return (APP::r1block.llift_reached && APP::r1block.rlift_reached); }); // 检测到抬升到对应位置
-    Seq::Wait(2);
-  }
+  // if (farcon.button_second_half[5] == 1)
+  // {
+  //   APP::r1block.SetTargetHeight(APP::r1block.blockheight_2_liftmotortargetpos[2], APP::r1block.blockheight_2_liftmotortargetpos[2]);
+  //   APP::r1block.last_height = 600;
+  //   Seq::WaitUntil([&]()
+  //                  { return (APP::r1block.llift_reached && APP::r1block.rlift_reached); }); // 检测到抬升到对应位置
+  //   Seq::Wait(2);
+  // }
 }
 
 // 车体坐标系
