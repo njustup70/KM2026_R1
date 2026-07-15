@@ -46,6 +46,8 @@ extern bool manual_pick_flag;
 
 bool put_flag = false;
 bool getground_flag = false;
+bool put_to_r2 = false;
+
 
 extern volatile bool g_guide_dog_data_ready;
 
@@ -290,7 +292,7 @@ void Action_Planning(StateCore *state_core)
       return;
   }
 
-  while (comm.is_got_dogpath_from_pc == false)
+  while (comm.is_got_dogpath_from_pc == false && farcon.button_first_half[0] != 1)
   {
     // 向工控机发送 KFS 数据
     comm.SendKFStoPC();
@@ -469,7 +471,7 @@ void Action_Manual_PutBlock(StateCore *state_core)
 {
   Seq::Wait(0.5f);
   r1block.SetTargetHeight(r1block.realse_block_height, r1block.realse_block_height);
-  r1block.ReleaseBlock(); // 吐块
+  r1block.ReleaseBlock(1); // 吐块
 
   state_core->GetCurState()->Complete = true;
 }
@@ -498,6 +500,8 @@ void Action_Lg_Put_Block(StateCore *state_core)
 {
 put_flag = false;
   getground_flag = false;
+    put_to_r2=false;
+
   while (MOD::farcon.button_first_half[0] != 1)
   {
     ResponseButtonArea3(1.0f);
@@ -621,7 +625,7 @@ void KuangFuMaster_Blue_Init(void)
   StateBlock &s_Lg_Put = blue_kf_flow.AddState("LG Putting Block");
   StateBlock &s_manual_put = blue_kf_flow.AddState("Manual_put");
   StateBlock &s_manual_pick = blue_kf_flow.AddState("Manual_pick");
-  StateBlock &s_put_to_r2 = auto_flow.AddState("Put to R2");
+  StateBlock &s_put_to_r2 = blue_kf_flow.AddState("Put to R2");
 
   // 一区
   s_wait.StateAction = Wait_ForStart;
