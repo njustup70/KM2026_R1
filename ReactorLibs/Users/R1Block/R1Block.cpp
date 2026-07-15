@@ -895,11 +895,11 @@ void R1Block::NoLiftGet_Block(int auto_flag)
   // 取第三个块
   else if (no_lift_now_get_block == 2)
   {
-    SmoothMoveStretchToTarget(stretch_distance[1], release_strectch_distance[1], 2, 10);
+    SmoothMoveStretchToTarget(stretch_distance[1], release_strectch_distance[1], 1, 10);
     Seq::Wait(1);
     suckmotor[0].SetSpd(0);
     suckmotor[1].SetSpd(0);
-    if (block_detect[0] == 0)
+    if (block_exist[0] == 0)
     {
       Clamp_block();
       Seq::Wait(1);
@@ -907,20 +907,9 @@ void R1Block::NoLiftGet_Block(int auto_flag)
       Seq::Wait(1);
     }
     SetTargetHeight(trans_height(600) + 20000, trans_height(600) + 20000);
-    // SmoothMoveLiftToTarget(trans_height(last_height), trans_height(600), 3);
-    // last_height = 600;
     Seq::WaitUntil([&]()
                    { return (llift_reached && rlift_reached); }); // 检测到抬升到对应位置
-    Seq::Wait(2);
-  }
-  Loosen_block();
-  Seq::Wait(1);
-  Clamp_block();
-  // 请求人工确认
-  while (farcon.button_first_half[0] != 1)
-  {
-    Area2ResponseFarconForR1Block();
-    Seq::Wait(0.005f);
+    Seq::Wait(1);
   }
   Seq::Wait(0.5);
 }
@@ -971,11 +960,11 @@ void R1Block::ReleaseBlock(int auto_flag)
   {
     if (now_put_block == 0)
     {
-      // Loosen_block();
-      // Seq::Wait(1);
+      Loosen_block();
+      Seq::Wait(1);
       // ************************开始吐第一个块**********************//
       SetTargetStretch(release_strectch_distance[1], release_strectch_distance[1]);
-      Seq::Wait(1);
+      Seq::Wait(2);
       Clamp_block();
       suckmotor[0].SetSpd(suck_speed * 0.9);
       suckmotor[1].SetSpd(-suck_speed * 0.9);
@@ -989,8 +978,8 @@ void R1Block::ReleaseBlock(int auto_flag)
       suckmotor[1].SetSpd(0);
       Loosen_block(); // 松
       Seq::Wait(1);
-      SetTargetStretch(release_strectch_distance[0] - 400000, release_strectch_distance[0] - 400000);
-      Seq::Wait(2);
+      SetTargetStretch(release_strectch_distance[0] - 200000, release_strectch_distance[0] - 200000);
+      Seq::Wait(1);
       Clamp_block(); // 夹紧
     }
 
@@ -1011,7 +1000,11 @@ void R1Block::ReleaseBlock(int auto_flag)
         Area3ResponseFarconForR1Block();
         Seq::Wait(0.005f);
       }
-      Seq::Wait(0.5f);
+      while ((farcon.button_first_half[0] != 1) && (block_exist[0] != 1))
+      {
+        Area3ResponseFarconForR1Block();
+        Seq::Wait(0.005f);
+      }
       // 请求人工确认
       while ((farcon.button_first_half[0] != 1) && (block_exist[0] != 0))
       {
@@ -1031,10 +1024,9 @@ void R1Block::ReleaseBlock(int auto_flag)
       //************************* */ 开始吐第三个块****************************//
       Loosen_block();
       Seq::Wait(1);
-      Clamp_block(); // 夹紧
+      SetTargetStretch(0, 0);
       Seq::Wait(1);
-      SetTargetStretch(release_strectch_distance[0], release_strectch_distance[0]);
-
+      Clamp_block(); // 夹紧
       suckmotor[0].SetSpd(suck_speed);
       suckmotor[1].SetSpd(-suck_speed);
 
@@ -1045,13 +1037,22 @@ void R1Block::ReleaseBlock(int auto_flag)
         Area3ResponseFarconForR1Block();
         Seq::Wait(0.005f);
       }
-      Seq::Wait(0.3f);
+      SetTargetStretch(release_strectch_distance[0], release_strectch_distance[0]); // 不在最开始位置了终于可以往前伸了
+      while ((farcon.button_first_half[0] != 1) && (block_exist[1] != 1))
+      {
+        Area3ResponseFarconForR1Block();
+        Seq::Wait(0.005f);
+      }
       while ((farcon.button_first_half[0] != 1) && (block_exist[1] != 0))
       {
         Area3ResponseFarconForR1Block();
         Seq::Wait(0.005f);
       }
-      Seq::Wait(0.3f);
+      while ((farcon.button_first_half[0] != 1) && (block_exist[0] != 1))
+      {
+        Area3ResponseFarconForR1Block();
+        Seq::Wait(0.005f);
+      }
       // 请求人工确认
       while ((farcon.button_first_half[0] != 1) && (block_exist[0] != 0))
       {
@@ -1140,7 +1141,6 @@ void R1Block::ReleaseBlock(int auto_flag)
   // 防止来回触发
   begin_spit_flag = 0;
   // 开始吐第一个块
-  SetTargetState(release_strectch_distance[1], release_strectch_distance[1], 0.0f, 0.0f, realse_block_height, realse_block_height);
   Seq::Wait(2);
 
   suckmotor[0].SetSpd(suck_speed);
@@ -1156,8 +1156,6 @@ void R1Block::ReleaseBlock(int auto_flag)
   SetTargetState(0.0f, 0.0f, 0.0f, 0.0f, 0, 0);
 
 #endif // DEBUG
-
-  //	      SetTargetState(release_strectch_distance[1], release_strectch_distance[1], 0.0f, 0.0f, realse_block_height, realse_block_height);
   // 初始化吐块流程参数
 }
 ////*****************技能赛***********//
@@ -1177,7 +1175,6 @@ void R1Block::PrePut()
 void R1Block::PutBlock()
 {
   // ************************开始吐块**********************//
-  // SetTargetState(release_strectch_distance[1], release_strectch_distance[1], 0.0f, 0.0f, realse_block_height, realse_block_height);
   Clamp_block();
   suckmotor[0].SetSpd(suck_speed);
   suckmotor[1].SetSpd(-suck_speed);

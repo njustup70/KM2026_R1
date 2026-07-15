@@ -294,7 +294,7 @@ void Action_Planning(StateCore *state_core)
   }
 
   Seq::Wait(0.5);
-  while (comm.is_got_dogpath_from_pc == false && farcon.button_first_half[0] != 1)
+  while (comm.is_got_dogpath_from_pc == false )
   {
     // 向工控机发送 KFS 数据
     comm.SendKFStoPC();
@@ -457,13 +457,6 @@ void Action_PlanToGrid(StateCore *core)
   Seq::Wait(1);
   r1block.SetTargetHeight(r1block.realse_block_height, r1block.realse_block_height);
 #endif
-
-  // while (MOD::farcon.button_first_half[0] != 1)
-  // {
-  //   ResponseButtonArea3(0.6f);
-  //   Seq::Wait(0.005f);
-  // }
-  // MOVE::MoveToTargPos(Red_KF_Are3_PlanPath); // 从重试点到贴着墙
   state_core.GetCurState()->Complete = true;
 }
 
@@ -656,10 +649,6 @@ void AutoGragh_Init(void)
   s_auto_pick.LinkTo(&s_auto_pick.Complete, s_move);
   s_move.LinkTo(&is_final_goal_reached, s_plantogrid); // 等待
 
-  // 二区重试
-  // s_move.LinkTo(&go_to_area2, s_plan);
-  // s_auto_pick.LinkTo(&go_to_area2, s_plan);
-
   // 二区直接进三区
   s_move.LinkTo(&go_to_area3, s_prearea3);
   s_auto_pick.LinkTo(&go_to_area3, s_prearea3);
@@ -679,10 +668,10 @@ void AutoGragh_Init(void)
 
   // 三区可以进入这个状态
   //************************** */ 蕾哥手控模式
-  s_prearea3.LinkTo(&manual_area2_lg_pick, s_plantogrid);
   s_plantogrid.LinkTo(&manual_area2_lg_pick, s_lg_pick);
   s_Lg_Put.LinkTo(&manual_area2_lg_pick, s_lg_pick);
   s_manual_put.LinkTo(&manual_area2_lg_pick, s_lg_pick);
+   s_prearea3.LinkTo(&manual_area2_lg_pick, s_lg_pick);
   s_manual_pick.LinkTo(&s_lg_pick.Complete, s_lg_pick);
 
   s_lg_pick.LinkTo(&go_to_area3, s_prearea3);
