@@ -242,7 +242,7 @@ void GoFetchRod(StateCore *state_core)
 
   // 锁定Yaw角，并转手动（本图是蓝场图）
   chassis.LockYaw(1.571f);
-  comm.SendActionCommand(ActionType::SendKFS);
+  comm.SendActionCommand(ActionType::SendBlueKFS);
 
   while (MOD::farcon.button_first_half[0] != 1)
   {
@@ -717,7 +717,7 @@ static void ResponseFarcon(float velo_k)
     comm.SendActionCommand(ActionType::DockOK);
   // 发送KFS给R2,这个考虑融在逻辑里自动发
   if (farcon.button_first_half[5])
-    comm.SendActionCommand(ActionType::SendKFS);
+    comm.SendActionCommand(ActionType::SendBlueKFS);
   // 放弃对接
   if (farcon.button_second_half[0])
     comm.SendActionCommand(ActionType::GiveUpDock);
