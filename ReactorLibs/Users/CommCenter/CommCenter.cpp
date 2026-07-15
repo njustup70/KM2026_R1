@@ -180,7 +180,7 @@ void CommCenter::ProcessGuideDogData()
   monit.LogSpec("ProcessGuideDogData");
   //    1. 检查中断是否送来了新数据
 
-  while(g_guide_dog_data_ready==false&&farcon.toggle[2]!=1)
+  while((g_guide_dog_data_ready==false)&&(farcon.toggle[2]!=1))
   {
 
     Seq::Wait(0.005);

@@ -292,25 +292,17 @@ void Action_Planning(StateCore *state_core)
       return;
   }
 
-  while (comm.is_got_dogpath_from_pc == false && farcon.button_first_half[0] != 1)
+  while ((comm.is_got_dogpath_from_pc == false) )
   {
     // 向工控机发送 KFS 数据
     comm.SendKFStoPC();
+		    ResponseFarcon();
+
     comm.ProcessGuideDogData();
     Seq::Wait(0.1);
   }
 
   monit.LogOK("get path from PC! Now decode.");
-
-  // uint8_t guide_dog_lable[13];
-  // guide_dog_lable[0] = 0x67;
-  // guide_dog_lable[1] = 0x21;
-  // for (int i = 0; i < 11; i++)
-  // {
-  //   guide_dog_lable[i + 2] = guide_dog[i].label;
-  // }
-  // farcon.TransmitFarcon(guide_dog_lable, 13);
-
   state_core->GetCurState()->Complete = true;
   monit.LogInfo("over plan");
 }

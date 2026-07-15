@@ -329,7 +329,7 @@ void Action_NavToBlock(StateCore *state_core)
   monit.LogInfo("Naving To Block...");
 
   // 要求遥控器确认，才跑下一个点
-  while ((MOD::farcon.button_first_half[0] != 1) && (farcon.toggle[2] != 1))
+  while ((MOD::farcon.button_first_half[0] != 1) )
   {
     Area2ResponseFarcon();
     Seq::Wait(0.005f);
