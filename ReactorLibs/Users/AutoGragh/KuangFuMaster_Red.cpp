@@ -289,6 +289,8 @@ void Action_Planning(StateCore *state_core)
   {
     ResponseFarcon();
     Seq::Wait(0.005f);
+    if (go_to_area2)
+      return;
   }
 
   Seq::Wait(0.5);
@@ -296,22 +298,12 @@ void Action_Planning(StateCore *state_core)
   {
     // 向工控机发送 KFS 数据
     comm.SendKFStoPC();
-        ResponseFarcon();
+    ResponseFarcon();
     comm.ProcessGuideDogData();
     Seq::Wait(0.1);
   }
 
   monit.LogOK("get path from PC! Now decode.");
-
-  // uint8_t guide_dog_lable[13];
-  // guide_dog_lable[0] = 0x67;
-  // guide_dog_lable[1] = 0x21;
-  // for (int i = 0; i < 11; i++)
-  // {
-  //   guide_dog_lable[i + 2] = guide_dog[i].label;
-  // }
-  // farcon.TransmitFarcon(guide_dog_lable, 13);
-
   state_core->GetCurState()->Complete = true;
   monit.LogInfo("over plan");
 }
@@ -329,7 +321,7 @@ void Action_NavToBlock(StateCore *state_core)
   monit.LogInfo("Naving To Block...");
 
   // 要求遥控器确认，才跑下一个点
-  while ((MOD::farcon.button_first_half[0] != 1) )
+  while ((MOD::farcon.button_first_half[0] != 1))
   {
     Area2ResponseFarcon();
     Seq::Wait(0.005f);
@@ -507,7 +499,7 @@ void Action_Lg_Put_Block(StateCore *state_core)
 {
   put_flag = false;
   getground_flag = false;
-  put_to_r2=false;
+  put_to_r2 = false;
   while (MOD::farcon.button_first_half[0] != 1)
   {
     ResponseButtonArea3(1.0f);
@@ -687,7 +679,7 @@ void AutoGragh_Init(void)
 
   // 三区可以进入这个状态
   //************************** */ 蕾哥手控模式
-  s_prearea3.LinkTo(&manual_area2_lg_pick,s_plantogrid);
+  s_prearea3.LinkTo(&manual_area2_lg_pick, s_plantogrid);
   s_plantogrid.LinkTo(&manual_area2_lg_pick, s_lg_pick);
   s_Lg_Put.LinkTo(&manual_area2_lg_pick, s_lg_pick);
   s_manual_put.LinkTo(&manual_area2_lg_pick, s_lg_pick);

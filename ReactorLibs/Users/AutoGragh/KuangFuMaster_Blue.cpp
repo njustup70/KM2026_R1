@@ -48,7 +48,6 @@ bool put_flag = false;
 bool getground_flag = false;
 bool put_to_r2 = false;
 
-
 extern volatile bool g_guide_dog_data_ready;
 
 // 遥控器显示当前三区状态
@@ -291,13 +290,12 @@ void Action_Planning(StateCore *state_core)
     if (go_to_area2)
       return;
   }
-
-  while ((comm.is_got_dogpath_from_pc == false) )
+  Seq::Wait(0.5);
+  while (comm.is_got_dogpath_from_pc == false)
   {
     // 向工控机发送 KFS 数据
     comm.SendKFStoPC();
-		    ResponseFarcon();
-
+    ResponseFarcon();
     comm.ProcessGuideDogData();
     Seq::Wait(0.1);
   }
@@ -482,7 +480,7 @@ void Action_Put_ToR2(StateCore *state_core)
     ResponseButtonArea3(1.0f);
     Seq::Wait(0.005f);
   }
-  r1block.SetTargetHeight(r1block.trans_height(600)+50000, r1block.trans_height(600)+50000);
+  r1block.SetTargetHeight(r1block.trans_height(600) + 50000, r1block.trans_height(600) + 50000);
   Seq::Wait(0.1f);
   r1block.ReleaseBlock(1);
   state_core->GetCurState()->Complete = true;
@@ -490,9 +488,9 @@ void Action_Put_ToR2(StateCore *state_core)
 
 void Action_Lg_Put_Block(StateCore *state_core)
 {
-put_flag = false;
+  put_flag = false;
   getground_flag = false;
-    put_to_r2=false;
+  put_to_r2 = false;
 
   while (MOD::farcon.button_first_half[0] != 1)
   {
@@ -593,6 +591,9 @@ void KuangFuMaster_Blue_Init(void)
   s_manual_pick.LinkTo(&s_manual_pick.Complete, s_Lg_Put);
 
 #elif Run_Zone == competition
+
+  //*******************************************状态块创建*************************************************** */
+
   // 全跑
   // 一区
   StateBlock &s_wait = blue_kf_flow.AddState("WaitForStart");
@@ -607,58 +608,63 @@ void KuangFuMaster_Blue_Init(void)
   // 二区进三区
   StateBlock &s_prearea3 = blue_kf_flow.AddState("GotoArea3");
 
-  // 手控取块跑点
-  StateBlock &s_lg_pick = blue_kf_flow.AddState("LeiGe GetBlocking");
   // 三区
+  // 正常流程
   StateBlock &s_plantogrid = blue_kf_flow.AddState("Plan_toGrid");
-  // 正常模式的状态块
-
-  // 大概率R1会快一点，需要R1赶快把块塞到洞里面，留几个块自由选择，然后再加上给R2通信，和最后的取地上块
   StateBlock &s_Lg_Put = blue_kf_flow.AddState("LG Putting Block");
   StateBlock &s_manual_put = blue_kf_flow.AddState("Manual_put");
   StateBlock &s_manual_pick = blue_kf_flow.AddState("Manual_pick");
   StateBlock &s_put_to_r2 = blue_kf_flow.AddState("Put to R2");
 
-  // 一区
+  // 手控取块跑点
+  StateBlock &s_lg_pick = blue_kf_flow.AddState("LeiGe GetBlocking");
+
+  //*********************************************函数绑定区域*************************************************** */
+  // 一区正常流程
   s_wait.StateAction = Wait_ForStart;
   s_fetch_rod.StateAction = GoFetchRod;
-  // 二区
+  //******二区正常流程状态块****//
   s_plan.StateAction = Action_Planning;
   s_move.StateAction = Action_NavToBlock;
   s_auto_pick.StateAction = Action_AutoGetBlock;
 
+  // 二区雷哥手动取块
   s_lg_pick.StateAction = Action_LgGetBlock;
 
   // 三区
+  // 三区等待状态块
   s_prearea3.StateAction = Action_PreArea3;
+
+  //******三区正常流程状态块****//
   s_plantogrid.StateAction = Action_PlanToGrid;
+  // s_Lg_Put旋转模式
   s_Lg_Put.StateAction = Action_Lg_Put_Block;
+  // s_Lg_Put对应的三个后续状态块
   s_manual_put.StateAction = Action_Manual_PutBlock;
   s_manual_pick.StateAction = Action_Manual_Pick;
   s_put_to_r2.StateAction = Action_Put_ToR2;
 
+  //*******************************************状态块跳转流程*************************************************** */
+
   // 状态转移关系
   s_wait.LinkTo(&s_wait.Complete, s_fetch_rod); // 等待开始
+
+  //********重试跳转逻辑***************//
   s_wait.LinkTo(&go_to_area2, s_plan);
+  s_fetch_rod.LinkTo(&go_to_area2, s_plan);
   s_wait.LinkTo(&go_to_area3, s_prearea3);
 
-  // s_fetch_rod.LinkTo(&need_fetch_rod_again, s_fetch_rod);
-  s_fetch_rod.LinkTo(&go_to_area2, s_plan);
-
   // 二区
-  s_plan.LinkTo(&s_plan.Complete, s_move);       // 规划路径
-  s_move.LinkTo(&is_ready_to_pick, s_auto_pick); // 取块
-  s_auto_pick.LinkTo(&s_auto_pick.Complete, s_move);
+  s_plan.LinkTo(&s_plan.Complete, s_move);             // 规划路径
+  s_move.LinkTo(&is_ready_to_pick, s_auto_pick);       // 取块
+  s_auto_pick.LinkTo(&s_auto_pick.Complete, s_move);   // 移动跑点
   s_move.LinkTo(&is_final_goal_reached, s_plantogrid); // 等待
 
-  // 二区重试
-  // s_move.LinkTo(&go_to_area2, s_plan);
-  // s_auto_pick.LinkTo(&go_to_area2, s_plan);
-
-  // 二区直接进三区
+  //********重试跳转逻辑：二区直接进三区***************//
   s_move.LinkTo(&go_to_area3, s_prearea3);
   s_auto_pick.LinkTo(&go_to_area3, s_prearea3);
   s_lg_pick.LinkTo(&go_to_area3, s_prearea3);
+
   s_prearea3.LinkTo(&s_prearea3.Complete, s_plantogrid);
 
   // 三区
@@ -678,6 +684,7 @@ void KuangFuMaster_Blue_Init(void)
   s_plantogrid.LinkTo(&manual_area2_lg_pick, s_lg_pick);
   s_Lg_Put.LinkTo(&manual_area2_lg_pick, s_lg_pick);
   s_manual_put.LinkTo(&manual_area2_lg_pick, s_lg_pick);
+  s_prearea3.LinkTo(&manual_area2_lg_pick, s_lg_pick);
   s_manual_pick.LinkTo(&s_lg_pick.Complete, s_lg_pick);
 
   s_lg_pick.LinkTo(&go_to_area3, s_prearea3);
