@@ -507,6 +507,7 @@ void Action_Lg_Put_Block(StateCore *state_core)
 {
   put_flag = false;
   getground_flag = false;
+  put_to_r2=false;
   while (MOD::farcon.button_first_half[0] != 1)
   {
     ResponseButtonArea3(1.0f);
