@@ -1113,13 +1113,13 @@ void R1Block::ReleaseBlock(int auto_flag)
       Area3ResponseFarconForR1Block();
       Seq::Wait(0.005f);
     }
-    Seq::Wait(0.3f);
+    Seq::Wait(0.2f);
     while ((farcon.button_first_half[0] != 1) && (block_exist[1] != 0))
     {
       Area3ResponseFarconForR1Block();
       Seq::Wait(0.005f);
     }
-    Seq::Wait(0.3f);
+    Seq::Wait(0.2f);
     // 请求人工确认
     while ((farcon.button_first_half[0] != 1) && (block_exist[0] != 0))
     {

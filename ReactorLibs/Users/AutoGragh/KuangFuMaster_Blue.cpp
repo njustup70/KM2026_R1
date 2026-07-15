@@ -459,7 +459,7 @@ void Action_PlanToGrid(StateCore *core)
 }
 void Action_Manual_PutBlock(StateCore *state_core)
 {
-  Seq::Wait(0.5f);
+  Seq::Wait(0.2f);
   r1block.SetTargetHeight(r1block.realse_block_height, r1block.realse_block_height);
   r1block.ReleaseBlock(1); // 吐块
 
@@ -518,7 +518,7 @@ void Action_Lg_Put_Block(StateCore *state_core)
   }
 
   state_core->GetCurState()->Complete = true;
-  Seq::Wait(0.5f);
+  Seq::Wait(0.2f);
 }
 
 // ================================初始化========================================================================
@@ -685,7 +685,7 @@ void KuangFuMaster_Blue_Init(void)
   s_Lg_Put.LinkTo(&manual_area2_lg_pick, s_lg_pick);
   s_manual_put.LinkTo(&manual_area2_lg_pick, s_lg_pick);
   s_prearea3.LinkTo(&manual_area2_lg_pick, s_lg_pick);
-  s_manual_pick.LinkTo(&s_lg_pick.Complete, s_lg_pick);
+  s_lg_pick.LinkTo(&s_lg_pick.Complete, s_lg_pick);
 
   s_lg_pick.LinkTo(&go_to_area3, s_prearea3);
 
