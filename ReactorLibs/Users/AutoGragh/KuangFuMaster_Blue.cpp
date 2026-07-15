@@ -1,5 +1,5 @@
 /**
- * @file AutoGraph.cpp
+ * @file KuangFuMaster_Blue.cpp
  * @author @all-mx
  * @brief RC26赛季武林探秘的电控状态机逻辑实现:半自动模式
  */
@@ -32,7 +32,6 @@ StateGraph blue_kf_flow{"BlueKuangFumaster"};
 
 static void ResponseFarcon(float velo_k = 1.0f);
 static void ResponseButtonArea3(float velo_k = 1.0f);
-
 static void Area2ResponseFarcon(float velo_k = 1.0f);
 #define Zone1 1
 #define Zone2 2
@@ -174,6 +173,8 @@ uint8_t rod_id = 0;
 bool need_fetch_rod_again = false;
 // 状态转移标志位：进入二区
 bool go_to_area2 = false;
+// 状态转移标志位：进入三区
+bool go_to_area3 = false;
 
 static void Wait_ForStart(StateCore *state_core)
 {
@@ -182,6 +183,8 @@ static void Wait_ForStart(StateCore *state_core)
     ResponseFarcon();
     Seq::Wait(0.005f);
     if (go_to_area2)
+      return;
+    if (go_to_area3)
       return;
   }
   state_core->GetCurState()->Complete = true;
@@ -328,6 +331,8 @@ void Action_NavToBlock(StateCore *state_core)
     Seq::Wait(0.005f);
     if (go_to_area2)
       return;
+    if (go_to_area3) // 说明了如果切手动就没法gotoarea3?
+      return;
   }
 
   // 获取当前节点
@@ -388,6 +393,8 @@ void Action_AutoGetBlock(StateCore *state_core)
     Seq::Wait(0.005f);
     if (go_to_area2)
       return;
+    if (go_to_area3)
+      return;
   }
 
   // 本路点执行完成，进入下一路点
@@ -395,14 +402,38 @@ void Action_AutoGetBlock(StateCore *state_core)
   state_core->GetCurState()->Complete = true;
 }
 
+void Action_LgGetBlock(StateCore *state_core)
+{
+  while (farcon.button_first_half[0] != 1)
+  {
+    Area2ResponseFarcon();
+    Seq::Wait(0.005);
+  }
+  r1block.NoLiftGet_Block(1);
+  state_core->GetCurState()->Complete = true;
+}
+
 //**************************************三区状态块*******************************************************//
-// 重试区域自动规划路径跑到九宫格前面中间
+void Action_PreArea3(StateCore *core)
+{
+  monit.LogInfo("Try to PreArea3");
+  go_to_area3 = false;
+  comm.SendActionCommand(ActionType::GuardRod);
+
+  while (MOD::farcon.button_first_half[0] != 1)
+  {
+    ResponseButtonArea3(1.0f);
+    Seq::Wait(0.005f);
+  }
+
+  state_core.GetCurState()->Complete = true;
+}
 
 void Action_PreLay(StateCore *core)
 {
   while (MOD::farcon.button_first_half[0] != 1)
   {
-    ResponseButtonArea3(0.6f);
+    ResponseButtonArea3(1.0f);
     Seq::Wait(0.005f);
   }
   // 抬升到对应放块高度
@@ -416,7 +447,7 @@ void Action_PlanToGrid(StateCore *core)
   r1block.Clamp_block();
   while (MOD::farcon.button_first_half[0] != 1)
   {
-    ResponseButtonArea3(0.6f);
+    ResponseButtonArea3(1.0f);
     Seq::Wait(0.005f);
   }
   Seq::Wait(1);
@@ -424,23 +455,18 @@ void Action_PlanToGrid(StateCore *core)
 
 #endif
 
-  while (MOD::farcon.button_first_half[0] != 1)
-  {
-    ResponseButtonArea3(0.6f);
-    Seq::Wait(0.005f);
-  }
-  MOVE::MoveToTargPos(Blue_KF_Are3_PlanPath); // 从重试点到贴着墙
+  // while (MOD::farcon.button_first_half[0] != 1)
+  // {
+  //   ResponseButtonArea3(0.6f);
+  //   Seq::Wait(0.005f);
+  // }
+  // MOVE::MoveToTargPos(Blue_KF_Are3_PlanPath); // 从重试点到贴着墙
   state_core.GetCurState()->Complete = true;
 }
 void Action_Manual_PutBlock(StateCore *state_core)
 {
   Seq::Wait(0.5f);
-  while (farcon.button_first_half[0] == 0)
-  {
-    ResponseButtonArea3(1);
-    Seq::Wait(0.005f);
-  }
-  r1block.ReleaseBlock(); // 一吐一吸
+  r1block.ReleaseBlock(); // 吐块
 
   state_core->GetCurState()->Complete = true;
 }
@@ -457,7 +483,7 @@ void Action_Lg_Put_Block(StateCore *state_core)
   getground_flag = false;
   while (MOD::farcon.button_first_half[0] != 1)
   {
-    ResponseButtonArea3(0.6f);
+    ResponseButtonArea3(1.0f);
     if (farcon.button_middle[3][0] == 1)
     {
       put_flag = true;
@@ -473,6 +499,7 @@ void Action_Lg_Put_Block(StateCore *state_core)
   }
 
   state_core->GetCurState()->Complete = true;
+  Seq::Wait(0.5f);
 }
 
 // ================================初始化========================================================================
@@ -546,7 +573,6 @@ void KuangFuMaster_Blue_Init(void)
 
 #elif Run_Zone == competition
   // 全跑
-
   // 一区
   StateBlock &s_wait = blue_kf_flow.AddState("WaitForStart");
   StateBlock &s_fetch_rod = blue_kf_flow.AddState("Fetch_Rod");
@@ -557,6 +583,11 @@ void KuangFuMaster_Blue_Init(void)
 
   StateBlock &s_auto_pick = blue_kf_flow.AddState("AutoGetBlocking");
 
+  // 二区进三区
+  StateBlock &s_prearea3 = blue_kf_flow.AddState("GotoArea3");
+
+  // 手控取块跑点
+  StateBlock &s_lg_pick = blue_kf_flow.AddState("LeiGe GetBlocking");
   // 三区
   StateBlock &s_plantogrid = blue_kf_flow.AddState("Plan_toGrid");
   // 正常模式的状态块
@@ -573,25 +604,39 @@ void KuangFuMaster_Blue_Init(void)
   s_plan.StateAction = Action_Planning;
   s_move.StateAction = Action_NavToBlock;
   s_auto_pick.StateAction = Action_AutoGetBlock;
-  // 三区
 
+  s_lg_pick.StateAction = Action_LgGetBlock;
+
+  // 三区
+  s_prearea3.StateAction = Action_PreArea3;
   s_plantogrid.StateAction = Action_PlanToGrid;
   s_Lg_Put.StateAction = Action_Lg_Put_Block;
   s_manual_put.StateAction = Action_Manual_PutBlock;
   s_manual_pick.StateAction = Action_Manual_Pick;
 
   // 状态转移关系
-  // 一 区
   s_wait.LinkTo(&s_wait.Complete, s_fetch_rod); // 等待开始
-  /****   一区取杆    ****/
-  s_fetch_rod.LinkTo(&need_fetch_rod_again, s_fetch_rod);
+  s_wait.LinkTo(&go_to_area2, s_plan);
+  s_wait.LinkTo(&go_to_area3, s_prearea3);
+
+  // s_fetch_rod.LinkTo(&need_fetch_rod_again, s_fetch_rod);
   s_fetch_rod.LinkTo(&go_to_area2, s_plan);
+
   // 二区
   s_plan.LinkTo(&s_plan.Complete, s_move);       // 规划路径
   s_move.LinkTo(&is_ready_to_pick, s_auto_pick); // 取块
-
   s_auto_pick.LinkTo(&s_auto_pick.Complete, s_move);
   s_move.LinkTo(&is_final_goal_reached, s_plantogrid); // 等待
+
+  // 二区重试
+  // s_move.LinkTo(&go_to_area2, s_plan);
+  // s_auto_pick.LinkTo(&go_to_area2, s_plan);
+
+  // 二区直接进三区
+  s_move.LinkTo(&go_to_area3, s_prearea3);
+  s_auto_pick.LinkTo(&go_to_area3, s_prearea3);
+  s_lg_pick.LinkTo(&go_to_area3, s_prearea3);
+  s_prearea3.LinkTo(&s_prearea3.Complete, s_plantogrid);
 
   // 三区
   s_plantogrid.LinkTo(&s_plantogrid.Complete, s_Lg_Put);
@@ -602,6 +647,13 @@ void KuangFuMaster_Blue_Init(void)
 
   s_manual_put.LinkTo(&s_manual_put.Complete, s_Lg_Put);
   s_manual_pick.LinkTo(&s_manual_pick.Complete, s_Lg_Put);
+
+  // 三区可以进入这个状态
+  //    //************************** */ 蕾哥手控模式
+  //  s_plan.LinkTo(&manual_area2_lg_pick, s_lg_pick);
+  //  s_move.LinkTo(&manual_area2_lg_pick, s_lg_pick);
+  //  s_auto_pick.LinkTo(&manual_area2_lg_pick, s_lg_pick);
+  //  s_lg_pick.LinkTo(&s_lg_pick.Complete, s_lg_pick);
 
 #endif
 
@@ -614,58 +666,6 @@ void KuangFuMaster_Blue_Init(void)
  * @param velo_k 底盘速度系数，在不同的地方进入遥控器，理论速度不同
  */
 static void ResponseFarcon(float velo_k)
-{
-  // 解锁底盘的位置闭环，角度闭环仍然由系统控制
-  chassis.UnlockWalk();
-
-  Vec2 v_world;
-  v_world.x = -farcon.jys_value[3] * 1.0f / 100.f * 1.0f * velo_k; // 摇杆向前 -> 场地X正
-  v_world.y = -farcon.jys_value[2] * 1.0f / 100.f * 1.0f * velo_k; // 摇杆向左 -> 场地Y正
-
-  Vec2 v_body = v_world.Rotate(-System.position.z);
-
-  if (!chassis.IsLockRotate())
-  {
-    float yaw_spd = -farcon.jys_value[0] * 1.0f / 100.f * 1.5f; // 摇杆向左 -> 逆时针旋转
-    chassis.Move(Vec3(v_body.x, v_body.y, yaw_spd));
-  }
-  else
-  {
-    chassis.Move(Vec2(v_body.x, v_body.y));
-  }
-
-  /***********************/
-  // 控制矛头
-  if (farcon.button_first_half[3])
-    comm.SendActionCommand(ActionType::SpearUp); // 矛头会向下
-  if (farcon.button_first_half[2])
-    comm.SendActionCommand(ActionType::SpearDown); // 矛头会向上
-  // 控制矛头左右
-  if (farcon.button_first_half[6])
-    comm.SendActionCommand(ActionType::SpearLeft);
-  if (farcon.button_first_half[7])
-    comm.SendActionCommand(ActionType::SpearRight);
-
-  // 发送对接完成
-  if (farcon.button_first_half[4])
-    comm.SendActionCommand(ActionType::DockOK);
-
-  // 发送KFS给R2,这个考虑融在逻辑里自动发
-  if (farcon.button_first_half[5])
-    comm.SendActionCommand(ActionType::SendBlueKFS);
-
-  // 放弃对接
-  if (farcon.button_second_half[0])
-    comm.SendActionCommand(ActionType::GiveUpDock);
-  // 结束对接,r1跳入planer状态
-  if (farcon.button_second_half[1])
-    go_to_area2 = true;
-  // r1得再去取杆
-  if (farcon.button_second_half[2])
-    need_fetch_rod_again = true;
-}
-
-static void Area2ResponseFarcon(float velo_k)
 {
   float multi_velo = 1.0;
   Vec2 v_world;
@@ -693,19 +693,109 @@ static void Area2ResponseFarcon(float velo_k)
   {
     chassis.Move(Vec2(v_body.x, v_body.y));
   }
+
+  /***********************/
+  // 控制矛头
+  if (farcon.button_first_half[3])
+    comm.SendActionCommand(ActionType::SpearUp); // 矛头会向下
+  if (farcon.button_first_half[2])
+    comm.SendActionCommand(ActionType::SpearDown); // 矛头会向上
+  // 控制矛头左右
+  if (farcon.button_first_half[6])
+    comm.SendActionCommand(ActionType::SpearLeft);
+  if (farcon.button_first_half[7])
+    comm.SendActionCommand(ActionType::SpearRight);
+
+  // 发送对接完成
+  if (farcon.button_first_half[4])
+    comm.SendActionCommand(ActionType::DockOK);
+  // 发送KFS给R2,这个考虑融在逻辑里自动发
+  if (farcon.button_first_half[5])
+    comm.SendActionCommand(ActionType::SendKFS);
+  // 放弃对接
+  if (farcon.button_second_half[0])
+    comm.SendActionCommand(ActionType::GiveUpDock);
+
+  // // r1得再去取杆
+  // if (farcon.button_second_half[1])
+  //   need_fetch_rod_again = true;
+
+  if (farcon.button_second_half[1])
+  {
+    go_to_area2 = true;
+    chassis.UnlockRotate();
+  }
+
+  if (farcon.button_second_half[5])
+  {
+    go_to_area3 = true;
+    chassis.UnlockRotate();
+  }
+  if (farcon.button_first_half[1])
+  {
+    chassis.Move(Vec2(0.1, 0), 0.1);
+  }
+}
+
+static void Area2ResponseFarcon(float velo_k)
+{
+  // 解锁底盘的位置闭环，角度闭环仍然由系统控制
+  chassis.UnlockWalk();
+
+  // 摇杆直接映射到车体坐标系
+  Vec3 v_body;
+  v_body.x = -farcon.jys_value[3] * 1.0f / 100.f * 1.0f * velo_k;
+  v_body.y = -farcon.jys_value[2] * 1.0f / 100.f * 1.0f * velo_k;
+
+  if (!chassis.IsLockRotate())
+  {
+    float yaw_spd = -farcon.jys_value[0] * 1.0f / 100.f * 1.5f;
+    chassis.Move(Vec3(v_body.x, v_body.y, yaw_spd));
+  }
+  else
+  {
+    chassis.Move(Vec2(v_body.x, v_body.y));
+  }
+
   // r1手动二区取块
   // 抬升高度
-  if (farcon.button_first_half[4] == 1)
+  if (farcon.toggle[2] == 1)
   {
-    r1block.LiftToNavHeight(200);
+    if (farcon.button_first_half[4] == 1)
+    {
+      r1block.LiftToNavHeight(200);
+    }
+    else if (farcon.button_first_half[5] == 1)
+    {
+      r1block.LiftToNavHeight(400);
+    }
+    else if (farcon.button_first_half[6] == 1)
+    {
+      r1block.LiftToNavHeight(600);
+    }
   }
-  else if (farcon.button_first_half[5] == 1)
+  else
   {
-    r1block.LiftToNavHeight(400);
+    // 发送对接完成
+    if (farcon.button_first_half[4])
+      comm.SendActionCommand(ActionType::DockOK);
+
+    // 发送KFS给R2,这个考虑融在逻辑里自动发
+    if (farcon.button_first_half[5])
+      comm.SendActionCommand(ActionType::SendKFS);
+
+    // 放弃对接
+    if (farcon.button_second_half[0])
+    {
+      comm.SendActionCommand(ActionType::GiveUpDock);
+      // go_to_area2 = true;
+    }
   }
-  else if (farcon.button_first_half[6] == 1)
+
+  if (farcon.button_second_half[5])
   {
-    r1block.LiftToNavHeight(600);
+    go_to_area3 = true;
+    chassis.UnlockRotate();
   }
 }
 

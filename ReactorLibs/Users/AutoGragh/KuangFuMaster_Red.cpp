@@ -434,7 +434,7 @@ void Action_PreLay(StateCore *core)
 {
   while (MOD::farcon.button_first_half[0] != 1)
   {
-    ResponseButtonArea3(0.6f);
+    ResponseButtonArea3(1.0f);
     Seq::Wait(0.005f);
   }
   // 抬升到对应放块高度
@@ -795,7 +795,7 @@ static void Area2ResponseFarcon(float velo_k)
 
   if (farcon.button_second_half[5])
   {
-        go_to_area3 = true;
+    go_to_area3 = true;
     chassis.UnlockRotate();
   }
 }
