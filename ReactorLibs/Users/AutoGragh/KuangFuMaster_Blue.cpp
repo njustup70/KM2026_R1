@@ -404,10 +404,13 @@ void Action_AutoGetBlock(StateCore *state_core)
 
 void Action_LgGetBlock(StateCore *state_core)
 {
+  manual_area2_lg_pick = false;
   while (farcon.button_first_half[0] != 1)
   {
     Area2ResponseFarcon();
     Seq::Wait(0.005);
+    if (go_to_area3)
+      return;
   }
   r1block.NoLiftGet_Block(1);
   state_core->GetCurState()->Complete = true;
@@ -423,6 +426,8 @@ void Action_PreArea3(StateCore *core)
   while (MOD::farcon.button_first_half[0] != 1)
   {
     ResponseButtonArea3(1.0f);
+    if (manual_area2_lg_pick)
+      return;
     Seq::Wait(0.005f);
   }
 
@@ -434,6 +439,8 @@ void Action_PreLay(StateCore *core)
   while (MOD::farcon.button_first_half[0] != 1)
   {
     ResponseButtonArea3(1.0f);
+    if (manual_area2_lg_pick)
+      return;
     Seq::Wait(0.005f);
   }
   // 抬升到对应放块高度
@@ -448,19 +455,14 @@ void Action_PlanToGrid(StateCore *core)
   while (MOD::farcon.button_first_half[0] != 1)
   {
     ResponseButtonArea3(1.0f);
+    if (manual_area2_lg_pick)
+      return;
     Seq::Wait(0.005f);
   }
   Seq::Wait(1);
-  r1block.SmoothMoveLiftToTarget(r1block.blockheight_2_liftmotortargetpos[2], r1block.realse_block_height, 3, 100);
-
+  r1block.SetTargetHeight(r1block.realse_block_height, r1block.realse_block_height);
 #endif
 
-  // while (MOD::farcon.button_first_half[0] != 1)
-  // {
-  //   ResponseButtonArea3(0.6f);
-  //   Seq::Wait(0.005f);
-  // }
-  // MOVE::MoveToTargPos(Blue_KF_Are3_PlanPath); // 从重试点到贴着墙
   state_core.GetCurState()->Complete = true;
 }
 void Action_Manual_PutBlock(StateCore *state_core)
@@ -495,6 +497,8 @@ void Action_Lg_Put_Block(StateCore *state_core)
       getground_flag = true;
     }
 
+    if (manual_area2_lg_pick)
+      return;
     Seq::Wait(0.005f);
   }
 
@@ -650,10 +654,12 @@ void KuangFuMaster_Blue_Init(void)
 
   // 三区可以进入这个状态
   //    //************************** */ 蕾哥手控模式
-  //  s_plan.LinkTo(&manual_area2_lg_pick, s_lg_pick);
-  //  s_move.LinkTo(&manual_area2_lg_pick, s_lg_pick);
-  //  s_auto_pick.LinkTo(&manual_area2_lg_pick, s_lg_pick);
-  //  s_lg_pick.LinkTo(&s_lg_pick.Complete, s_lg_pick);
+  s_plantogrid.LinkTo(&manual_area2_lg_pick, s_lg_pick);
+  s_Lg_Put.LinkTo(&manual_area2_lg_pick, s_lg_pick);
+  s_manual_put.LinkTo(&manual_area2_lg_pick, s_lg_pick);
+  s_manual_pick.LinkTo(&s_lg_pick.Complete, s_lg_pick);
+
+  s_lg_pick.LinkTo(&go_to_area3, s_prearea3);
 
 #endif
 
@@ -839,5 +845,10 @@ void ResponseButtonArea3(float velo_k)
   // 戳完放平
   if (farcon.button_second_half[7])
     comm.SendActionCommand(ActionType::GuardRod);
+
+  if (farcon.button_second_half[1])
+  {
+    manual_area2_lg_pick = true;
+  }
 }
 #endif
