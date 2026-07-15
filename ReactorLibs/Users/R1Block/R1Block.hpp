@@ -89,7 +89,7 @@ public:
   int _stretch_r_origined = 0;
   int _stretch_origined = 0;
   // 取 200/400/600 块时抬升电机3508对应的 total_angle 目标值
-  float blockheight_2_liftmotortargetpos[3] = {50000.0f, 460000.0f, 870000.0f};
+  float blockheight_2_liftmotortargetpos[3] = {70000.0f, 480000.0f, 890000.0f};
   float stretch_distance[2] = {2100000, 4200000};
   float release_strectch_distance[2] = {1200000.0f, 3000000};
   float realse_block_height = 560000;

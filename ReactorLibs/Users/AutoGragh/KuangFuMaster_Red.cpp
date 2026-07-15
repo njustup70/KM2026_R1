@@ -289,14 +289,14 @@ void Action_Planning(StateCore *state_core)
   {
     ResponseFarcon();
     Seq::Wait(0.005f);
-    if (go_to_area2)
-      return;
   }
 
-  while (comm.is_got_dogpath_from_pc == false)
+  Seq::Wait(0.5);
+  while (comm.is_got_dogpath_from_pc == false && farcon.button_first_half[0] != 1)
   {
     // 向工控机发送 KFS 数据
     comm.SendKFStoPC();
+        ResponseFarcon();
     comm.ProcessGuideDogData();
     Seq::Wait(0.1);
   }
@@ -324,11 +324,12 @@ void Action_Planning(StateCore *state_core)
  */
 void Action_NavToBlock(StateCore *state_core)
 {
+  go_to_area2 = false;
   // 打印日志，确认进入状态
   monit.LogInfo("Naving To Block...");
 
   // 要求遥控器确认，才跑下一个点
-  while (MOD::farcon.button_first_half[0] != 1 && (farcon.toggle[2] != 1))
+  while ((MOD::farcon.button_first_half[0] != 1) && (farcon.toggle[2] != 1))
   {
     Area2ResponseFarcon();
     Seq::Wait(0.005f);
@@ -406,10 +407,13 @@ void Action_AutoGetBlock(StateCore *state_core)
 }
 void Action_LgGetBlock(StateCore *state_core)
 {
+  manual_area2_lg_pick = false;
   while (farcon.button_first_half[0] != 1)
   {
     Area2ResponseFarcon();
     Seq::Wait(0.005);
+    if (go_to_area3)
+      return;
   }
   r1block.NoLiftGet_Block(1);
   state_core->GetCurState()->Complete = true;
@@ -425,6 +429,8 @@ void Action_PreArea3(StateCore *core)
   while (MOD::farcon.button_first_half[0] != 1)
   {
     ResponseButtonArea3(1.0f);
+    if (manual_area2_lg_pick)
+      return;
     Seq::Wait(0.005f);
   }
 
@@ -436,6 +442,8 @@ void Action_PreLay(StateCore *core)
   while (MOD::farcon.button_first_half[0] != 1)
   {
     ResponseButtonArea3(1.0f);
+    if (manual_area2_lg_pick)
+      return;
     Seq::Wait(0.005f);
   }
   // 抬升到对应放块高度
@@ -450,6 +458,8 @@ void Action_PlanToGrid(StateCore *core)
   while (MOD::farcon.button_first_half[0] != 1)
   {
     ResponseButtonArea3(1.0f);
+    if (manual_area2_lg_pick)
+      return;
     Seq::Wait(0.005f);
   }
   Seq::Wait(1);
@@ -470,7 +480,7 @@ void Action_Manual_PutBlock(StateCore *state_core)
   Seq::Wait(0.5f);
   // 取完块
   r1block.SetTargetHeight(r1block.realse_block_height, r1block.realse_block_height);
-  r1block.ReleaseBlock(); // 吐块
+  r1block.ReleaseBlock(1); // 吐块
 
   state_core->GetCurState()->Complete = true;
 }
@@ -488,7 +498,7 @@ void Action_Put_ToR2(StateCore *state_core)
     ResponseButtonArea3(1.0f);
     Seq::Wait(0.005f);
   }
-  r1block.SetTargetHeight(r1block.trans_height(600)+50000, r1block.trans_height(600)+50000);
+  r1block.SetTargetHeight(r1block.trans_height(600) + 50000, r1block.trans_height(600) + 50000);
   Seq::Wait(0.1f);
   r1block.ReleaseBlock(1);
   state_core->GetCurState()->Complete = true;
@@ -673,13 +683,16 @@ void AutoGragh_Init(void)
   s_manual_put.LinkTo(&s_manual_put.Complete, s_Lg_Put);
   s_manual_pick.LinkTo(&s_manual_pick.Complete, s_Lg_Put);
   s_put_to_r2.LinkTo(&s_put_to_r2.Complete, s_Lg_Put);
-  // 三区可以进入这个状态
-  //    //************************** */ 蕾哥手控模式
-  //  s_plan.LinkTo(&manual_area2_lg_pick, s_lg_pick);
-  //  s_move.LinkTo(&manual_area2_lg_pick, s_lg_pick);
-  //  s_auto_pick.LinkTo(&manual_area2_lg_pick, s_lg_pick);
-  //  s_lg_pick.LinkTo(&s_lg_pick.Complete, s_lg_pick);
 
+  // 三区可以进入这个状态
+  //************************** */ 蕾哥手控模式
+  s_prearea3.LinkTo(&manual_area2_lg_pick,s_plantogrid);
+  s_plantogrid.LinkTo(&manual_area2_lg_pick, s_lg_pick);
+  s_Lg_Put.LinkTo(&manual_area2_lg_pick, s_lg_pick);
+  s_manual_put.LinkTo(&manual_area2_lg_pick, s_lg_pick);
+  s_manual_pick.LinkTo(&s_lg_pick.Complete, s_lg_pick);
+
+  s_lg_pick.LinkTo(&go_to_area3, s_prearea3);
 #endif
 
   // // 注册图
@@ -864,5 +877,10 @@ void ResponseButtonArea3(float velo_k)
   // 戳完放平
   if (farcon.button_second_half[7])
     comm.SendActionCommand(ActionType::GuardRod);
+
+  if (farcon.button_second_half[1])
+  {
+    manual_area2_lg_pick = true;
+  }
 }
 #endif

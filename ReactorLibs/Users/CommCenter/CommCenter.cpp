@@ -180,8 +180,11 @@ void CommCenter::ProcessGuideDogData()
   monit.LogSpec("ProcessGuideDogData");
   //    1. 检查中断是否送来了新数据
 
-  Seq::WaitUntil([]() -> bool
-                 { return g_guide_dog_data_ready; });
+  while(g_guide_dog_data_ready==false&&farcon.toggle[2]!=1)
+  {
+
+    Seq::Wait(0.005);
+  }
 
   // 2. 立即清除标志位，允许中断接收下一帧数据
   g_guide_dog_data_ready = false;

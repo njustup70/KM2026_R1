@@ -468,6 +468,7 @@ void Action_PlanToGrid(StateCore *core)
 void Action_Manual_PutBlock(StateCore *state_core)
 {
   Seq::Wait(0.5f);
+  r1block.SetTargetHeight(r1block.realse_block_height, r1block.realse_block_height);
   r1block.ReleaseBlock(); // 吐块
 
   state_core->GetCurState()->Complete = true;
@@ -479,9 +480,23 @@ void Action_Manual_Pick(StateCore *state_core)
   state_core->GetCurState()->Complete = true;
 }
 
+void Action_Put_ToR2(StateCore *state_core)
+{
+  Seq::Wait(0.1f);
+  while (MOD::farcon.button_first_half[0] != 1)
+  {
+    ResponseButtonArea3(1.0f);
+    Seq::Wait(0.005f);
+  }
+  r1block.SetTargetHeight(r1block.trans_height(600)+50000, r1block.trans_height(600)+50000);
+  Seq::Wait(0.1f);
+  r1block.ReleaseBlock(1);
+  state_core->GetCurState()->Complete = true;
+}
+
 void Action_Lg_Put_Block(StateCore *state_core)
 {
-  put_flag = false;
+put_flag = false;
   getground_flag = false;
   while (MOD::farcon.button_first_half[0] != 1)
   {
@@ -490,15 +505,21 @@ void Action_Lg_Put_Block(StateCore *state_core)
     {
       put_flag = true;
       getground_flag = false;
+      put_to_r2 = false;
     }
     else if (farcon.button_middle[3][1] == 1)
     {
       put_flag = false;
       getground_flag = true;
+      put_to_r2 = false;
+    }
+    else if (farcon.button_middle[3][2] == 1)
+    {
+      put_flag = false;
+      getground_flag = false;
+      put_to_r2 = true;
     }
 
-    if (manual_area2_lg_pick)
-      return;
     Seq::Wait(0.005f);
   }
 
@@ -600,6 +621,7 @@ void KuangFuMaster_Blue_Init(void)
   StateBlock &s_Lg_Put = blue_kf_flow.AddState("LG Putting Block");
   StateBlock &s_manual_put = blue_kf_flow.AddState("Manual_put");
   StateBlock &s_manual_pick = blue_kf_flow.AddState("Manual_pick");
+  StateBlock &s_put_to_r2 = auto_flow.AddState("Put to R2");
 
   // 一区
   s_wait.StateAction = Wait_ForStart;
@@ -617,6 +639,7 @@ void KuangFuMaster_Blue_Init(void)
   s_Lg_Put.StateAction = Action_Lg_Put_Block;
   s_manual_put.StateAction = Action_Manual_PutBlock;
   s_manual_pick.StateAction = Action_Manual_Pick;
+  s_put_to_r2.StateAction = Action_Put_ToR2;
 
   // 状态转移关系
   s_wait.LinkTo(&s_wait.Complete, s_fetch_rod); // 等待开始
@@ -648,9 +671,11 @@ void KuangFuMaster_Blue_Init(void)
   // 由s_choose_hid_mode来选择是给R2发消息还是说直接去放块还是去手动取块还是只是单纯去戳一下对面的块
   s_Lg_Put.LinkTo(&put_flag, s_manual_put);
   s_Lg_Put.LinkTo(&getground_flag, s_manual_pick);
+  s_Lg_Put.LinkTo(&put_to_r2, s_put_to_r2);
 
   s_manual_put.LinkTo(&s_manual_put.Complete, s_Lg_Put);
   s_manual_pick.LinkTo(&s_manual_pick.Complete, s_Lg_Put);
+  s_put_to_r2.LinkTo(&s_put_to_r2.Complete, s_Lg_Put);
 
   // 三区可以进入这个状态
   //    //************************** */ 蕾哥手控模式
